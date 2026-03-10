@@ -1,0 +1,24 @@
+{
+  "name": "studypedia-server",
+  "version": "1.0.0",
+  "description": "Studypedia Uganda Backend Server - Proxies Groq AI and Firebase Admin APIs",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": ["studypedia", "api", "firebase", "groq"],
+  "author": "Studypedia Uganda",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "firebase-admin": "^12.0.0",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
