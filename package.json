@@ -1,24 +1,16 @@
 {
-  "name": "studypedia-server",
+  "name": "zenith-assets",
   "version": "1.0.0",
-  "description": "Studypedia Uganda Backend Server - Proxies Groq AI and Firebase Admin APIs",
   "main": "server.js",
-  "type": "module",
-  "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js"
-  },
-  "keywords": ["studypedia", "api", "firebase", "groq"],
-  "author": "Studypedia Uganda",
-  "license": "ISC",
+  "description": "Zenith Assets - Investment Platform with PesaPal Integration",
   "dependencies": {
-    "express": "^4.18.2",
+    "axios": "^1.6.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "firebase-admin": "^12.0.0",
-    "node-fetch": "^3.3.2"
+    "express": "^4.18.2"
   },
-  "devDependencies": {
-    "nodemon": "^3.0.1"
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
   }
 }
