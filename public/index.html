@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zenith Assets - Investment Platform</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        
+        :root {
+            --primary: #00d4ff;
+            --primary-dark: #0099cc;
+            --secondary: #7b2cbf;
+            --dark: #0a0a0f;
+            --dark-card: #12121a;
+            --dark-accent: #1a1a25;
+            --text-light: #ffffff;
+            --text-muted: #8b8b9a;
+            --success: #00c853;
+            --warning: #ffab00;
+        }
+        
+        body {
+            background: var(--dark);
+            min-height: 100vh;
+            color: var(--text-light);
+        }
+        
+        /* Header */
+        header {
+            background: var(--dark-card);
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .logo span { color: var(--text-light); }
+        
+        nav a {
+            color: var(--text-muted);
+            text-decoration: none;
+            margin-left: 25px;
+            font-weight: 500;
+            transition: 0.3s;
+        }
+        
+        nav a:hover, nav a.active { color: var(--primary); }
+        
+        /* Main Content */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            padding: 60px 0;
+        }
+        
+        .hero h1 {
+            font-size: 48px;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .hero p {
+            color: var(--text-muted);
+            font-size: 18px;
+            max-width: 600px;
+            margin: 0 auto 40px;
+        }
+        
+        /* Balance Card */
+        .balance-card {
+            background: linear-gradient(135deg, var(--primary-dark), var(--secondary));
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .balance-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        }
+        
+        .balance-label { font-size: 14px; opacity: 0.9; margin-bottom: 10px; }
+        .balance-amount { font-size: 56px; font-weight: 700; }
+        
+        /* Dashboard Grid */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 40px;
+        }
+        
+        .card {
+            background: var(--dark-card);
+            border-radius: 16px;
+            padding: 30px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .card h3 {
+            font-size: 18px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card h3 span {
+            color: var(--primary);
+        }
+        
+        /* Forms */
+        .form-group { margin-bottom: 20px; }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 14px 18px;
+            background: var(--dark-accent);
+            border: 2px solid transparent;
+            border-radius: 10px;
+            color: var(--text-light);
+            font-size: 16px;
+            transition: 0.3s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        .form-group input::placeholder { color: var(--text-muted); }
+        
+        .btn {
+            width: 100%;
+            padding: 16px;
+            background: var(--primary);
+            color: var(--dark);
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        
+        .btn:hover { background: var(--primary-dark); transform: translateY(-2px); }
+        
+        .btn-secondary {
+            background: var(--dark-accent);
+            color: var(--text-light);
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-item {
+            background: var(--dark-accent);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 5px;
+        }
+        
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            background: var(--dark-card);
+            color: var(--text-light);
+            padding: 18px 28px;
+            border-radius: 12px;
+            border-left: 4px solid var(--primary);
+            display: none;
+            font-weight: 500;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            z-index: 1000;
+        }
+        
+        /* Quick Actions */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .action-btn {
+            background: var(--dark-accent);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.3s;
+            border: 2px solid transparent;
+        }
+        
+        .action-btn:hover {
+            border-color: var(--primary);
+            transform: translateY(-3px);
+        }
+        
+        .action-btn span {
+            font-size: 28px;
+            display: block;
+            margin-bottom: 8px;
+        }
+        
+        .action-btn small {
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 32px; }
+            .balance-amount { font-size: 36px; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .quick-actions { grid-template-columns: repeat(2, 1fr); }
+            header { padding: 15px 20px; }
+            nav { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="toast" id="toast"></div>
+    
+    <header>
+        <div class="logo">💎 <span>Zenith</span> Assets</div>
+        <nav>
+            <a href="#" class="active">Dashboard</a>
+            <a href="#">Invest</a>
+            <a href="#">Transactions</a>
+            <a href="#">Profile</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <div class="hero">
+            <h1>Grow Your Wealth</h1>
+            <p>Secure your financial future with Zenith Assets. Smart investments, instant returns.</p>
+        </div>
+
+        <!-- Balance Card -->
+        <div class="balance-card">
+            <div class="balance-label">Total Balance</div>
+            <div class="balance-amount">UGX 2,450,000</div>
+            <div style="margin-top: 15px; font-size: 14px;">+12.5% this month</div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+            <div class="action-btn" onclick="showSection('deposit')">
+                <span>💰</span>
+                <small>Deposit</small>
+            </div>
+            <div class="action-btn" onclick="showSection('withdraw')">
+                <span>🏦</span>
+                <small>Withdraw</small>
+            </div>
+            <div class="action-btn" onclick="showSection('invest')">
+                <span>📈</span>
+                <small>Invest</small>
+            </div>
+            <div class="action-btn">
+                <span>📊</span>
+                <small>History</small>
+            </div>
+        </div>
+
+        <!-- Dashboard Cards -->
+        <div class="dashboard">
+            <!-- Deposit Card -->
+            <div class="card" id="deposit-card">
+                <h3><span>💳</span> Deposit Funds</h3>
+                <div class="form-group">
+                    <label>Phone Number (MTN/Airtel)</label>
+                    <input type="tel" id="login-phone" placeholder="2567XXXXXXXX">
+                </div>
+                <div class="form-group">
+                    <label>Amount (UGX)</label>
+                    <input type="number" id="deposit-amount" placeholder="Minimum 10,000">
+                </div>
+                <button class="btn" onclick="initiatePesaPal()">Deposit Now</button>
+                <p style="margin-top: 15px; font-size: 12px; color: var(--text-muted);">Min deposit: UGX 10,000 • Instant delivery</p>
+            </div>
+
+            <!-- Withdraw Card -->
+            <div class="card" id="withdraw-card" style="display: none;">
+                <h3><span>🏦</span> Withdraw Funds</h3>
+                <div class="form-group">
+                    <label>Phone Number</label>
+                    <input type="tel" placeholder="2567XXXXXXXX">
+                </div>
+                <div class="form-group">
+                    <label>Amount (UGX)</label>
+                    <input type="number" placeholder="Minimum 5,000">
+                </div>
+                <button class="btn">Request Withdrawal</button>
+            </div>
+
+            <!-- Stats Card -->
+            <div class="card">
+                <h3><span>📊</span> Performance</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value">24</div>
+                        <div class="stat-label">Total Deposits</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">UGX 1.2M</div>
+                        <div class="stat-label">Total Invested</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">UGX 450K</div>
+                        <div class="stat-label">Earnings</div>
+                    </div>
+                </div>
+                <button class="btn btn-secondary">View Full Report</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/js/payment.js"></script>
+    <script>
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 3000);
+        }
+        
+        function showSection(section) {
+            document.getElementById('deposit-card').style.display = 'none';
+            document.getElementById('withdraw-card').style.display = 'none';
+            
+            if (section === 'deposit') {
+                document.getElementById('deposit-card').style.display = 'block';
+            } else if (section === 'withdraw') {
+                document.getElementById('withdraw-card').style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>
