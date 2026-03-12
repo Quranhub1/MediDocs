@@ -26,9 +26,11 @@ async function initiatePesaPal() {
             showToast("Redirecting to MoMo Gateway...");
             window.location.href = data.redirect_url; // Direct user to PesaPal Payment Page
         } else {
-            alert("Error creating payment link.");
+            console.error('Payment response:', data);
+            alert("Error creating payment link: " + (data.error || JSON.stringify(data)));
         }
     } catch (e) {
+        console.error('Payment error:', e);
         alert("Server Offline. Start the Node.js server first!");
     }
 }
