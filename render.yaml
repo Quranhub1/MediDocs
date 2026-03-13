@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: zenith-assets
+    env: node
+    buildCommand: npm run build
+    publishDir: build
+    startCommand: node server.js
+    envVars:
+      - key: NODE_VERSION
+        value: "18"
