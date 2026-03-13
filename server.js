@@ -10,11 +10,11 @@ app.use(express.json());
 app.use(cors());
 
 // Serve static files from React build
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'build')));
 
 // For React Router - serve index.html for all routes
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
 // Generate signature for Airtel API
