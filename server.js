@@ -1,21 +1,21 @@
 require('dotenv').config();
 const express = require('express');
+const path = require('path');
 const axios = require('axios');
 const cors = require('cors');
 const crypto = require('crypto');
 
-// Validate required environment variables
-const requiredEnvVars = ['YO_CONSUMER_KEY', 'YO_PUBLIC_KEY', 'YO_BASE_URL', 'CALLBACK_URL'];
-const missingEnvVars = requiredEnvVars.filter(key => !process.env[key]);
-
-if (missingEnvVars.length > 0) {
-    console.error('Missing required environment variables:', missingEnvVars);
-}
-
 const app = express();
 app.use(express.json());
 app.use(cors());
-app.use(express.static('public')); // Serves your HTML
+
+// Serve static files from React build
+app.use(express.static(path.join(__dirname, 'public')));
+
+// For React Router - serve index.html for all routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // Generate signature for Airtel API
 function generateSignature(secretKey, data) {
@@ -28,7 +28,6 @@ function generateSignature(secretKey, data) {
 app.post('/api/pay', async (req, res) => {
     const { amount, phone, email } = req.body;
 
-    // Validate phone number (should be in format 2567xx or 07xx for Uganda)
     let formattedPhone = phone.replace(/[^0-9]/g, '');
     if (formattedPhone.startsWith('0')) {
         formattedPhone = '256' + formattedPhone.substring(1);
@@ -36,13 +35,11 @@ app.post('/api/pay', async (req, res) => {
         formattedPhone = '256' + formattedPhone;
     }
 
-    // Format phone to 9 digits (remove country code for API)
-    const msisdn = formattedPhone.substring(3); // 256 + number -> just the number
+    const msisdn = formattedPhone.substring(3);
     
     const transactionId = Math.floor(Math.random() * 900000000) + 100000000;
     const reference = "ZENITH-" + Math.floor(Math.random() * 100000);
 
-    // Cash In request data
     const requestData = {
         subscriber: {
             msisdn: msisdn
@@ -55,7 +52,6 @@ app.post('/api/pay', async (req, res) => {
     };
 
     try {
-        // Generate signature
         const signature = generateSignature(process.env.YO_PUBLIC_KEY, JSON.stringify(requestData));
 
         const response = await axios.post(
@@ -100,13 +96,7 @@ app.get('/health', (req, res) => {
     res.json({
         status: 'ok',
         paymentProvider: 'Yo! Payments (Airtel Uganda - Cash In API)',
-        apiUrl: process.env.YO_BASE_URL,
-        envVars: {
-            yoBaseUrl: process.env.YO_BASE_URL ? 'set' : 'missing',
-            yoConsumerKey: process.env.YO_CONSUMER_KEY ? 'set' : 'missing',
-            yoPublicKey: process.env.YO_PUBLIC_KEY ? 'set' : 'missing',
-            callbackUrl: process.env.CALLBACK_URL ? 'set' : 'missing'
-        }
+        apiUrl: process.env.YO_BASE_URL
     });
 });
 
@@ -115,20 +105,18 @@ app.get('/callback', (req, res) => {
     const transactionStatus = req.query.status || req.query.transaction_status;
     
     if (transactionStatus === 'SUCCESS' || transactionStatus === 'success') {
-        res.send("<h1>✅ Payment Successful!</h1><p>Redirecting to your dashboard...</p><script>setTimeout(() => { window.location.href='/#profile'; }, 3000)</script>");
+        res.send("<h1>Payment Successful!</h1><p>Redirecting...</p><script>setTimeout(() => { window.location.href='/#/dashboard'; }, 3000)</script>");
     } else {
-        res.send("<h1>Payment Processing...</h1><script>setTimeout(() => { window.location.href='/#profile'; }, 3000)</script>");
+        res.send("<h1>Payment Processing...</h1><script>setTimeout(() => { window.location.href='/#/dashboard'; }, 3000)</script>");
     }
 });
 
 // --- WEBHOOK FOR PAYMENT NOTIFICATIONS ---
 app.post('/api/webhook', async (req, res) => {
     const { status, reference, amount } = req.body;
-    
     console.log('Yo! Payment Webhook:', { status, reference, amount });
-    
     res.json({ received: true });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Zenith Assets running on port ${PORT} (Yo! Payments Cash In)`));
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => console.log(`Zenith Assets running on port ${PORT}`));
