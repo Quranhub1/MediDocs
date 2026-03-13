@@ -1,9 +1,6 @@
 # Dependencies
 node_modules/
 
-# Environment variables (don't commit secrets)
-.env
-
 # Logs
 logs
 *.log
