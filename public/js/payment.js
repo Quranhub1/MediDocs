@@ -27,7 +27,7 @@ async function initiatePesaPal() {
             window.location.href = data.redirect_url; // Direct user to PesaPal Payment Page
         } else {
             console.error('Payment response:', data);
-            alert("Error creating payment link: " + (data.error || JSON.stringify(data)));
+            alert("Error creating payment link: " + JSON.stringify(data.error || data));
         }
     } catch (e) {
         console.error('Payment error:', e);
