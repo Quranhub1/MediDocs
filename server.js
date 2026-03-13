@@ -2,15 +2,14 @@ require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
-const path = require('path');
+const crypto = require('crypto');
 
 // Validate required environment variables
-const requiredEnvVars = ['PESAPAL_CONSUMER_KEY', 'PESAPAL_CONSUMER_SECRET', 'PESAPAL_NOTIFICATION_ID', 'PESAPAL_BASE_URL', 'CALLBACK_URL'];
+const requiredEnvVars = ['YO_CONSUMER_KEY', 'YO_PUBLIC_KEY', 'YO_BASE_URL', 'CALLBACK_URL'];
 const missingEnvVars = requiredEnvVars.filter(key => !process.env[key]);
 
 if (missingEnvVars.length > 0) {
     console.error('Missing required environment variables:', missingEnvVars);
-    // Don't crash - just warn and use defaults where possible
 }
 
 const app = express();
@@ -18,78 +17,94 @@ app.use(express.json());
 app.use(cors());
 app.use(express.static('public')); // Serves your HTML
 
-// --- PESAPAL AUTHENTICATION ---
-async function getPesaPalToken() {
-    try {
-        const response = await axios.post(`${process.env.PESAPAL_BASE_URL}/api/Auth/RequestToken`, {
-            consumer_key: process.env.PESAPAL_CONSUMER_KEY,
-            consumer_secret: process.env.PESAPAL_CONSUMER_SECRET
-        });
-        return response.data.token;
-    } catch (error) {
-        console.error("Auth Error:", error.response?.data || error.message);
-        throw new Error('PesaPal authentication failed');
-    }
+// Generate signature for Airtel API
+function generateSignature(secretKey, data) {
+    const hmac = crypto.createHmac('sha256', secretKey);
+    hmac.update(data);
+    return hmac.digest('hex');
 }
 
-// --- API: INITIATE PAYMENT ---
+// --- API: INITIATE PAYMENT (Cash In) ---
 app.post('/api/pay', async (req, res) => {
     const { amount, phone, email } = req.body;
-    
-    // Get token first
-    let token;
-    try {
-        token = await getPesaPalToken();
-    } catch (authError) {
-        console.error("Failed to get PesaPal token:", authError.message);
-        return res.status(500).json({ error: { error_type: "auth_error", message: "Payment service unavailable" } });
+
+    // Validate phone number (should be in format 2567xx or 07xx for Uganda)
+    let formattedPhone = phone.replace(/[^0-9]/g, '');
+    if (formattedPhone.startsWith('0')) {
+        formattedPhone = '256' + formattedPhone.substring(1);
+    } else if (!formattedPhone.startsWith('256')) {
+        formattedPhone = '256' + formattedPhone;
     }
 
-    // Build order data - only add notification_id if it's set
-    const orderData = {
-        id: "ZENITH-" + Math.floor(Math.random() * 100000),
-        currency: "UGX",
-        amount: amount,
-        description: "Investment Top-up",
-        callback_url: process.env.CALLBACK_URL,
-        redirect_mode: "SUCCESS",
-        billing_address: {
-            email_address: email || "user@zenith.com",
-            phone_number: phone
-        }
+    // Format phone to 9 digits (remove country code for API)
+    const msisdn = formattedPhone.substring(3); // 256 + number -> just the number
+    
+    const transactionId = Math.floor(Math.random() * 900000000) + 100000000;
+    const reference = "ZENITH-" + Math.floor(Math.random() * 100000);
+
+    // Cash In request data
+    const requestData = {
+        subscriber: {
+            msisdn: msisdn
+        },
+        transaction: {
+            amount: amount.toString(),
+            id: transactionId.toString()
+        },
+        reference: reference
     };
-    
-    // Add notification_id only if provided
-    if (process.env.PESAPAL_NOTIFICATION_ID) {
-        orderData.notification_id = process.env.PESAPAL_NOTIFICATION_ID;
-    }
 
     try {
+        // Generate signature
+        const signature = generateSignature(process.env.YO_PUBLIC_KEY, JSON.stringify(requestData));
+
         const response = await axios.post(
-            `${process.env.PESAPAL_BASE_URL}/api/Transactions/SubmitOrderRequest`,
-            orderData,
-            { headers: { Authorization: `Bearer ${token}` } }
+            `${process.env.YO_BASE_URL}/standard/v2/cashin/`,
+            requestData,
+            {
+                headers: {
+                    'Authorization': `Bearer ${process.env.YO_CONSUMER_KEY}`,
+                    'x-key': process.env.YO_PUBLIC_KEY,
+                    'x-signature': signature,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Country': 'UG',
+                    'X-Currency': 'UGX'
+                }
+            }
         );
-        res.json(response.data); // Sends the redirect URL to the frontend
+
+        if (response.data && response.data.status && response.data.status.code === '200') {
+            res.json({
+                status: 'success',
+                message: 'Payment request sent to your phone. Please approve.',
+                transaction_id: response.data.transaction?.id,
+                airtel_money_id: response.data.transaction?.airtel_money_id
+            });
+        } else {
+            res.json(response.data);
+        }
     } catch (error) {
-        console.error("Payment Error:", error.response?.data || error.message);
-        res.status(500).json({ 
-            error: { 
-                error_type: "payment_error", 
-                message: error.response?.data?.error || error.message 
-            } 
+        console.error("Yo! Payment Error:", error.response?.data || error.message);
+        res.status(500).json({
+            error: {
+                error_type: "payment_error",
+                message: error.response?.data?.message || error.response?.data?.status?.message || error.message
+            }
         });
     }
 });
 
 // --- HEALTH CHECK ---
 app.get('/health', (req, res) => {
-    res.json({ 
-        status: 'ok', 
+    res.json({
+        status: 'ok',
+        paymentProvider: 'Yo! Payments (Airtel Uganda - Cash In API)',
+        apiUrl: process.env.YO_BASE_URL,
         envVars: {
-            pesapalBaseUrl: process.env.PESAPAL_BASE_URL ? 'set' : 'missing',
-            pesapalConsumerKey: process.env.PESAPAL_CONSUMER_KEY ? 'set' : 'missing',
-            pesapalNotificationId: process.env.PESAPAL_NOTIFICATION_ID ? 'set' : 'missing',
+            yoBaseUrl: process.env.YO_BASE_URL ? 'set' : 'missing',
+            yoConsumerKey: process.env.YO_CONSUMER_KEY ? 'set' : 'missing',
+            yoPublicKey: process.env.YO_PUBLIC_KEY ? 'set' : 'missing',
             callbackUrl: process.env.CALLBACK_URL ? 'set' : 'missing'
         }
     });
@@ -97,9 +112,23 @@ app.get('/health', (req, res) => {
 
 // --- HANDLE CALLBACK ---
 app.get('/callback', (req, res) => {
-    // This is where users land after payment
-    res.send("<h1>Payment Processing...</h1><script>setTimeout(() => { window.location.href='/#profile'; }, 3000)</script>");
+    const transactionStatus = req.query.status || req.query.transaction_status;
+    
+    if (transactionStatus === 'SUCCESS' || transactionStatus === 'success') {
+        res.send("<h1>✅ Payment Successful!</h1><p>Redirecting to your dashboard...</p><script>setTimeout(() => { window.location.href='/#profile'; }, 3000)</script>");
+    } else {
+        res.send("<h1>Payment Processing...</h1><script>setTimeout(() => { window.location.href='/#profile'; }, 3000)</script>");
+    }
+});
+
+// --- WEBHOOK FOR PAYMENT NOTIFICATIONS ---
+app.post('/api/webhook', async (req, res) => {
+    const { status, reference, amount } = req.body;
+    
+    console.log('Yo! Payment Webhook:', { status, reference, amount });
+    
+    res.json({ received: true });
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Zenith Assets running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Zenith Assets running on port ${PORT} (Yo! Payments Cash In)`));

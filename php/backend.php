@@ -1,23 +1,31 @@
 <?php
 /**
  * Zenith Assets - PHP Backend (Alternative)
- * Secure Backend for PesaPal Integration
+ * Secure Backend for Yo! Payments (Airtel Uganda) - NEW API
  */
 
-$consumer_key = "KHoxY4mbcGO24cIgx21VDwt4MKHyveIm";
-$consumer_secret = "LXW1k3Eg+giZwZnkrZHnTAGyeIk=";
+// Yo! Payments Configuration - Set these in your environment or here
+$consumer_key = getenv('YO_CONSUMER_KEY') ?: 'QDKT6BIR';
+$consumer_secret = getenv('YO_CONSUMER_SECRET') ?: 'your_yo_consumer_secret_here';
+$public_key = getenv('YO_PUBLIC_KEY') ?: 'your_yo_public_key_here';
 
-// PesaPal API URLs
-$auth_url = "https://pay.pesapal.com/v3/api/Auth/RequestToken";
-$submit_url = "https://pay.pesapal.com/v3/api/Transactions/SubmitOrderRequest";
+// Yo! Payments NEW API URLs
+// Staging: https://openapiuat.airtel.ug
+// Production: https://openapi.airtel.ug
+$base_url = getenv('YO_BASE_URL') ?: 'https://openapiuat.airtel.ug';
+$auth_url = $base_url . '/auth/oauth2/token';
+$payment_url = $base_url . '/merchant/v1/payments';
 
 // 1. Get Access Token
 function getAccessToken($consumer_key, $consumer_secret, $auth_url) {
-    $headers = ["Content-Type: application/json", "Accept: application/json"];
-    $postData = json_encode([
-        "consumer_key" => $consumer_key, 
-        "consumer_secret" => $consumer_secret
-    ]);
+    $credentials = base64_encode("$consumer_key:$consumer_secret");
+    
+    $headers = [
+        "Authorization: Basic $credentials",
+        "Content-Type: application/json"
+    ];
+    
+    $postData = json_encode(["grant_type" => "client_credentials"]);
     
     $ch = curl_init($auth_url);
     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
@@ -29,34 +37,46 @@ function getAccessToken($consumer_key, $consumer_secret, $auth_url) {
     curl_close($ch);
     
     $data = json_decode($response, true);
-    return $data['token'] ?? null;
+    return $data['access_token'] ?? null;
 }
 
-// 2. Create Order - Generate redirect link for MoMo payments
-function createOrder($token, $amount, $phone, $email, $submit_url) {
+// 2. Create Payment - Generate redirect link for Airtel Money payments
+function createPayment($token, $amount, $phone, $email, $payment_url, $callback_url) {
+    // Format phone number (Uganda format)
+    $phone = preg_replace('/[^0-9]/', '', $phone);
+    if (substr($phone, 0, 1) === '0') {
+        $phone = '256' . substr($phone, 1);
+    } elseif (substr($phone, 0, 3) !== '256') {
+        $phone = '256' . $phone;
+    }
+    
     $headers = [
-        "Content-Type: application/json", 
-        "Accept: application/json",
-        "Authorization: Bearer " . $token
+        "Authorization: Bearer $token",
+        "Content-Type: application/json",
+        "X-Country: UGA",
+        "X-Currency: UGX"
     ];
     
-    $orderData = [
-        "id" => "ZENITH-" . rand(10000, 99999),
-        "currency" => "UGX",
-        "amount" => $amount,
-        "description" => "Investment Top-up",
-        "callback_url" => "http://localhost:3000/callback",
-        "notification_id" => "",
-        "billing_address" => [
-            "email_address" => $email ?: "user@zenith.com",
-            "phone_number" => $phone
-        ]
+    $paymentData = [
+        "reference" => "ZENITH-" . rand(10000, 99999),
+        "subscriber" => [
+            "country" => "UGA",
+            "currency" => "UGX",
+            "msisdn" => $phone
+        ],
+        "transaction" => [
+            "amount" => $amount,
+            "currency" => "UGX",
+            "description" => "Investment Top-up"
+        ],
+        "callback_url" => $callback_url,
+        "return_url" => $callback_url
     ];
     
-    $ch = curl_init($submit_url);
+    $ch = curl_init($payment_url);
     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
     curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($orderData));
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($paymentData));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     
     $response = curl_exec($ch);
@@ -71,11 +91,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $amount = $input['amount'] ?? 0;
     $phone = $input['phone'] ?? '';
     $email = $input['email'] ?? '';
+    $callback_url = getenv('CALLBACK_URL') ?: 'http://localhost:3000/callback';
     
     $token = getAccessToken($consumer_key, $consumer_secret, $auth_url);
     
     if ($token) {
-        $result = createOrder($token, $amount, $phone, $email, $submit_url);
+        $result = createPayment($token, $amount, $phone, $email, $payment_url, $callback_url);
         header('Content-Type: application/json');
         echo json_encode($result);
     } else {

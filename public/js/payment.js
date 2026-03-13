@@ -1,36 +1,41 @@
 /**
- * Zenith Assets - Payment Handler
- * Initiates PesaPal payment for deposits
+ * Zenith Assets - Manual Deposit Handler
+ * Users deposit by sending money to the admin mobile money number
  */
 
-// Replacement function for initiatePesaPal inside index.html
-async function initiatePesaPal() {
+// Deposit function - shows manual payment instructions
+function initiateDeposit() {
     const amt = document.getElementById('deposit-amount').value;
-    const phone = document.getElementById('login-phone').value;
+    const phone = document.getElementById('login-phone')?.value || '';
 
-    if (amt < 10000) return alert("Min deposit is UGX 10,000");
-    
-    showToast("🔗 Securing Connection...");
-
-    try {
-        // We talk to OUR server, not PesaPal directly (Security!)
-        const response = await fetch('/api/pay', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ amount: amt, phone: phone })
-        });
-
-        const data = await response.json();
-
-        if (data.redirect_url) {
-            showToast("Redirecting to MoMo Gateway...");
-            window.location.href = data.redirect_url; // Direct user to PesaPal Payment Page
-        } else {
-            console.error('Payment response:', data);
-            alert("Error creating payment link: " + JSON.stringify(data.error || data));
-        }
-    } catch (e) {
-        console.error('Payment error:', e);
-        alert("Server offline or unreachable. Please check your connection and try again.");
+    if (!amt || amt < 1000) {
+        alert("Minimum deposit is UGX 1,000");
+        return;
     }
+
+    // Show manual deposit instructions
+    const depositMessage = `DEPOSIT INSTRUCTIONS:\n\n` +
+        `Send UGX ${parseInt(amt).toLocaleString()} to:\n` +
+        `📱 0749846848 (KABALI MADINA)\n\n` +
+        `Network: Airtel Money\n` +
+        `After sending, contact admin to confirm your deposit.\n\n` +
+        `Your deposit will be credited manually within 24 hours.`;
+
+    alert(depositMessage);
+    
+    // Optionally open phone dialer
+    if (confirm("Would you like to open your phone dialer to send money?")) {
+        window.location.href = "tel:*185*8*6*1*74846848*AMOUNT#";
+    }
+}
+
+// Legacy function name for compatibility
+async function initiateYoPayment() {
+    initiateDeposit();
+}
+
+// Show toast notification
+function showToast(message) {
+    // Simple alert for now - can be enhanced with a toast library
+    console.log(message);
 }
