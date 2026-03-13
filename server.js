@@ -35,7 +35,15 @@ async function getPesaPalToken() {
 // --- API: INITIATE PAYMENT ---
 app.post('/api/pay', async (req, res) => {
     const { amount, phone, email } = req.body;
-    const token = await getPesaPalToken();
+    
+    // Get token first
+    let token;
+    try {
+        token = await getPesaPalToken();
+    } catch (authError) {
+        console.error("Failed to get PesaPal token:", authError.message);
+        return res.status(500).json({ error: { error_type: "auth_error", message: "Payment service unavailable" } });
+    }
 
     // Build order data - only add notification_id if it's set
     const orderData = {
