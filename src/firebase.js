@@ -1,19 +1,19 @@
 // Firebase configuration for Zenith Assets
-// Using zenith-assets-4761d Firebase project
+// Using environment variables for security
 
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, where, orderBy, onSnapshot } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 
-// Firebase configuration
+// Firebase configuration from environment variables
 const firebaseConfig = {
-  apiKey: "AIzaSyBm-xKZJbf39aakUdKH030Bdh5TJUhg14I",
-  authDomain: "zenith-assets-4761d.firebaseapp.com",
-  projectId: "zenith-assets-4761d",
-  storageBucket: "zenith-assets-4761d.firebasestorage.app",
-  messagingSenderId: "616504759005",
-  appId: "1:616504759005:web:38486adf6e850ae9a38134",
-  measurementId: "G-9NB30EGW7Y"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID,
+  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase

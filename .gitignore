@@ -13,3 +13,8 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Environment variables (contains sensitive keys)
+.env
+.env.local
+.env.production
