@@ -143,6 +143,7 @@ const Admin = () => {
           if (confirm(`Are you sure you want to DELETE user ${selectedUser.phone}? This action cannot be undone.`)) {
             await deleteUser(selectedUser.phone);
             alert('User deleted successfully!');
+            fetchData();
             setSelectedUser(null);
           }
           break;
@@ -151,6 +152,7 @@ const Admin = () => {
           const newBanStatus = !selectedUser.banned;
           await banUser(selectedUser.phone, newBanStatus);
           alert(`User ${newBanStatus ? 'banned' : 'unbanned'} successfully!`);
+          fetchData();
           break;
           
         case 'update_balance':
@@ -188,6 +190,7 @@ const Admin = () => {
       setActionType('');
       setActionAmount('');
       setSelectedUser(null);
+      fetchData();
       fetchData();
     } catch (error) {
       console.error("Error performing action:", error);
