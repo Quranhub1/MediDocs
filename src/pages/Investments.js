@@ -67,7 +67,7 @@ const Investments = () => {
       id: 4,
       name: 'Elite Package',
       description: 'High-yield investment for maximum returns',
-      image: 'https://images.unsplash.com/photo-1565514020176-6c2235c8e509?w=800',
+      image: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=800',
       minAmount: 250000,
       maxAmount: 5000000,
       duration: '90 days',
