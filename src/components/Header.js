@@ -67,9 +67,10 @@ const Header = () => {
           <div className="hidden md:flex items-center space-x-4">
             {user ? (
               <>
+                <span className="text-sm text-gray-600">{user.phone}</span>
                 <button
                   onClick={handleLogout}
-                  className="text-red-600 hover:text-red-700 px-3 py-2 text-sm font-medium"
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
                 >
                   Logout
                 </button>
@@ -131,12 +132,15 @@ const Header = () => {
             <div className="border-t pt-4 mt-4">
               {user ? (
                 <>
+                  <div className="px-3 py-2 text-base font-medium text-gray-700">
+                    Logged in as: <span className="text-blue-600">{user.phone}</span>
+                  </div>
                   <button
                     onClick={() => {
                       handleLogout();
                       setIsMenuOpen(false);
                     }}
-                    className="block w-full text-left px-3 py-2 text-base font-medium text-red-600 hover:text-red-700"
+                    className="block w-full text-left px-3 py-2 text-base font-medium text-white bg-red-600 hover:bg-red-700 rounded-md mt-2"
                   >
                     Logout
                   </button>
