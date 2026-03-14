@@ -26,9 +26,9 @@ const Admin = () => {
       const parsedUser = JSON.parse(userData);
       setUser(parsedUser);
       
-      // Check if user phone contains admin number (flexible matching)
+      // Check if user is admin - only allow exact phone number 256749846848
       const userPhone = parsedUser.phone || '';
-      const isAdmin = userPhone.includes('749846848') || userPhone.includes('0749846848') || userPhone.includes('+256749846848') || userPhone.includes('256749846848');
+      const isAdmin = userPhone === '256749846848';
       
       if (!isAdmin) {
         alert('Access denied. Admin only. Your number: ' + userPhone);

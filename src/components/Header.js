@@ -31,9 +31,9 @@ const Header = () => {
     { name: 'Referrals', path: '/referrals' },
   ];
 
-  // Add admin link if user is admin (flexible matching)
+  // Add admin link if user is admin - only allow exact phone number 256749846848
   const userPhone = user?.phone || '';
-  const isAdmin = userPhone.includes('749846848') || userPhone.includes('0749846848') || userPhone.includes('+256749846848') || userPhone.includes('256749846848');
+  const isAdmin = userPhone === '256749846848';
   const allLinks = isAdmin ? [...navLinks, { name: 'Admin', path: '/admin' }] : navLinks;
 
   const isActive = (path) => {
