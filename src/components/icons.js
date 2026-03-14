@@ -1,5 +1,4 @@
 // Custom icons export - from @heroicons/react v2
-// Using ONLY verified icon names from the library
 import { 
   HomeIcon,
   ClockIcon,
@@ -20,7 +19,7 @@ import {
   HeartIcon,
   EnvelopeIcon,
   PhoneIcon,
-  MapIcon,
+  MapPinIcon,
   ExclamationCircleIcon,
   InformationCircleIcon,
   ArrowRightIcon,
@@ -71,7 +70,7 @@ import {
   DocumentIcon,
 } from '@heroicons/react/24/outline';
 
-// Create aliases for backward compatibility
+// Aliases
 const TrendingUpIcon = ArrowTrendingUpIcon;
 const TrendingDownIcon = ArrowTrendingDownIcon;
 const DollarSignIcon = CurrencyDollarIcon;
@@ -80,7 +79,7 @@ const MenuIcon = Bars3Icon;
 const MailIcon = EnvelopeIcon;
 const HelpCircle = QuestionMarkCircleIcon;
 const FileText = DocumentTextIcon;
-const LocationMarkerIcon = MapIcon;
+const LocationMarkerIcon = MapPinIcon;
 
 export {
   HomeIcon,
@@ -108,7 +107,7 @@ export {
   MailIcon,
   EnvelopeIcon,
   PhoneIcon,
-  MapIcon,
+  MapPinIcon,
   LocationMarkerIcon,
   ExclamationCircleIcon,
   InformationCircleIcon,
@@ -161,7 +160,6 @@ export {
   DocumentIcon,
 };
 
-// Also export some solid icons
 export {
   StarIcon as StarIconSolid,
   HeartIcon as HeartIconSolid,
