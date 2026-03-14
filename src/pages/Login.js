@@ -55,6 +55,7 @@ const Login = () => {
           balance: 0,
           commission: 0,
           referrals: 0,
+          videosWatched: 0,
           referralCode: phone,
           referredBy: null,
           createdAt: new Date().toISOString()
@@ -86,6 +87,7 @@ const Login = () => {
           balance: 0,
           commission: 0,
           referrals: 0,
+          videosWatched: 0,
           referralCode: phone,
           referredBy: null,
           createdAt: new Date().toISOString()
