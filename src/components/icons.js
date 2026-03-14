@@ -6,7 +6,7 @@ export {
   UsersIcon,
   TrendingUpIcon,
   TrendingDownIcon,
-  DollarSignIcon,
+  CurrencyDollarIcon,
   CheckIcon,
   XIcon,
   UserIcon,
@@ -24,6 +24,8 @@ export {
   InformationCircleIcon,
   ArrowRightIcon,
   ArrowLeftIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
   RefreshIcon,
   SearchIcon,
   FilterIcon,
@@ -56,10 +58,8 @@ export {
   MinusCircleIcon,
   XCircleIcon,
   CheckCircleIcon,
-  ArrowUpIcon,
-  ArrowDownIcon,
   CursorClickIcon,
-  gebeIcon,
+  ExclamationTriangleIcon,
   StatusOnlineIcon,
   StatusOfflineIcon,
   ServerIcon,
@@ -69,6 +69,8 @@ export {
   TerminalIcon,
   DatabaseIcon,
   ServerClusterIcon,
+  HelpCircle,
+  FileText,
 } from '@heroicons/react/24/outline';
 
 // Also export some solid icons
