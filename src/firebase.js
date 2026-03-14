@@ -248,6 +248,42 @@ export const getUserInvestments = async (phone) => {
   }
 };
 
+// Delete user
+export const deleteUser = async (phone) => {
+  try {
+    await deleteDoc(doc(db, usersCollection, phone));
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Ban/Unban user
+export const banUser = async (phone, banned = true) => {
+  try {
+    await updateDoc(doc(db, usersCollection, phone), {
+      banned: banned,
+      bannedAt: banned ? new Date().toISOString() : null
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Error banning user:", error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Update user balance directly
+export const updateUserData = async (phone, data) => {
+  try {
+    await updateDoc(doc(db, usersCollection, phone), data);
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating user data:", error);
+    return { success: false, error: error.message };
+  }
+};
+
 // Add transaction
 export const addTransaction = async (transactionData) => {
   try {

@@ -9,6 +9,8 @@ const Dashboard = () => {
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState([]);
+  const [canWatch, setCanWatch] = useState(true);
+  const [cooldownRemaining, setCooldownRemaining] = useState('');
 
   useEffect(() => {
     const userData = localStorage.getItem('zenith_user');
@@ -16,6 +18,9 @@ const Dashboard = () => {
       const parsedUser = JSON.parse(userData);
       setUser(parsedUser);
       fetchUserData(parsedUser.phone);
+      
+      // Check if user can watch video (48 hour cooldown)
+      checkVideoCooldown(parsedUser);
     }
     
     setVideos([
@@ -30,12 +35,28 @@ const Dashboard = () => {
     setLoading(false);
   }, []);
 
+  // Check video cooldown (48 hours)
+  const checkVideoCooldown = (userData) => {
+    const lastWatch = userData?.lastVideoWatch;
+    if (lastWatch) {
+      const lastWatchTime = new Date(lastWatch).getTime();
+      const now = Date.now();
+      const hoursPassed = (now - lastWatchTime) / (1000 * 60 * 60);
+      
+      if (hoursPassed < 48) {
+        setCanWatch(false);
+        const hoursRemaining = Math.floor(48 - hoursPassed);
+        setCooldownRemaining(`${hoursRemaining} hours`);
+      }
+    }
+  };
+
   const fetchUserData = async (phone) => {
     try {
       const firebaseUser = await getUser(phone);
       if (firebaseUser) {
         setUser(firebaseUser);
-        localStorage.setItem('user', JSON.stringify(firebaseUser));
+        localStorage.setItem('zenith_user', JSON.stringify(firebaseUser));
       }
       
       const txs = await getUserTransactions(phone);
@@ -46,20 +67,25 @@ const Dashboard = () => {
   };
 
   const handleWatchVideo = async (video) => {
+    // Check cooldown first
+    if (!canWatch) {
+      alert(`You can only watch one video every 48 hours. Please wait ${cooldownRemaining} before watching another video.`);
+      return;
+    }
+    
     const earnings = video.earnings;
+    const now = new Date().toISOString();
     
     // Open YouTube video in new window
     window.open(video.url, '_blank', 'width=800,height=600');
     
-    // Show message that earnings will be credited after watching
-    alert(`Please watch the video! After watching, you'll earn UGX ${earnings}. The earnings will be added to your balance.`);
-    
     if (user) {
       const newBalance = user.balance + earnings;
-      const updatedUser = { ...user, balance: newBalance };
+      const updatedUser = { ...user, balance: newBalance, lastVideoWatch: now };
       
       try {
         await updateUserBalance(user.phone, newBalance, 'balance');
+        await updateUserBalance(user.phone, now, 'lastVideoWatch');
         await addTransaction({
           userId: user.phone,
           type: 'earnings',
@@ -69,12 +95,16 @@ const Dashboard = () => {
         
         setUser(updatedUser);
         localStorage.setItem('zenith_user', JSON.stringify(updatedUser));
-        alert(`You earned UGX ${earnings}! Your new balance is UGX ${newBalance}`);
+        setCanWatch(false);
+        setCooldownRemaining('48 hours');
+        alert(`You earned UGX ${earnings}! You can watch another video in 48 hours. Your new balance is UGX ${newBalance}`);
       } catch (error) {
         console.error("Error updating balance:", error);
         setUser(updatedUser);
         localStorage.setItem('zenith_user', JSON.stringify(updatedUser));
-        alert(`You earned UGX ${earnings}! Your new balance is UGX ${newBalance}`);
+        setCanWatch(false);
+        setCooldownRemaining('48 hours');
+        alert(`You earned UGX ${earnings}! You can watch another video in 48 hours. Your new balance is UGX ${newBalance}`);
       }
     }
   };
@@ -160,9 +190,10 @@ const Dashboard = () => {
                 </div>
                 <button
                   onClick={() => handleWatchVideo(video)}
-                  className="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg font-semibold hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 transition"
+                  disabled={!canWatch}
+                  className={`w-full text-white px-4 py-2 rounded-lg font-semibold transition ${canWatch ? 'bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700' : 'bg-gray-400 cursor-not-allowed'}`}
                 >
-                  Watch Now
+                  {canWatch ? 'Watch Now' : `Available in ${cooldownRemaining}`}
                 </button>
               </motion.div>
             ))}

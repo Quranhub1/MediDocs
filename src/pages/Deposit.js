@@ -20,8 +20,8 @@ function Deposit() {
       return;
     }
 
-    if (!amount || amount < 1000) {
-      alert('Minimum deposit is UGX 1,000');
+    if (!amount || amount < 10000) {
+      alert('Minimum deposit is UGX 10,000');
       return;
     }
 
@@ -68,7 +68,7 @@ function Deposit() {
                 </label>
                 <input
                   type="number"
-                  min="1000"
+                  min="10000"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="Enter amount"
@@ -94,9 +94,8 @@ function Deposit() {
                   <p><strong>Step 2:</strong> To number: <strong>0749846848</strong></p>
                   <p><strong>Step 3:</strong> Network: <strong>Airtel Money</strong></p>
                   <hr className="border-green-300 my-2" />
-                  <p className="text-sm"><strong>Step 4:</strong> After sending, contact admin take a screenshot of your deposit  to confirm your deposit.</p>
+                  <p className="text-sm"><strong>Step 4:</strong> After sending, contact admin with a screenshot of your deposit to confirm.</p>
                   <p className="text-sm"><strong>Step 5:</strong> Your balance will be credited within 24 hours.</p>
-                  <p className="text-sm"><strong>Step 5:</strong> Minimum deposit is 10,000ugx.</p>
                 </div>
               </div>
 

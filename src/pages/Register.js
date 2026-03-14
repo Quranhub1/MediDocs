@@ -23,7 +23,7 @@ const Register = () => {
   }, [searchParams]);
 
   useEffect(() => {
-    const user = localStorage.getItem('user');
+    const user = localStorage.getItem('zenith_user');
     if (user) {
       navigate('/dashboard');
     }
@@ -99,7 +99,7 @@ const Register = () => {
       } else {
         // Fallback to local storage
         localStorage.setItem('user_' + phone, JSON.stringify(newUser));
-        localStorage.setItem('user', JSON.stringify(newUser));
+        localStorage.setItem('zenith_user', JSON.stringify(newUser));
         setSuccess('Account created successfully!');
         setTimeout(() => {
           navigate('/dashboard');

@@ -6,6 +6,7 @@ import { updateUserBalance, addWithdrawal, addTransaction } from '../firebase';
 const Withdraw = () => {
   const [user, setUser] = useState(null);
   const [amount, setAmount] = useState('');
+  const [receivePhone, setReceivePhone] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -60,7 +61,7 @@ const Withdraw = () => {
         amount: amountValue,
         status: 'pending',
         method: 'mobile_money',
-        phone: user.phone
+        phone: receivePhone || user.phone
       });
       await addTransaction({
         userId: user.phone,
@@ -72,16 +73,17 @@ const Withdraw = () => {
 
       const updatedUser = { ...user, balance: newBalance };
       setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+      localStorage.setItem('zenith_user', JSON.stringify(updatedUser));
       
-      setSuccess(`Withdrawal request submitted! You will be receive the funds within 30minutes ${user.phone}`);
+      setSuccess(`Withdrawal request submitted! You will receive funds within 30 minutes to ${receivePhone || user.phone}`);
       setAmount('');
+      setReceivePhone('');
     } catch (err) {
       console.error("Withdrawal error:", err);
       const newBalance = user.balance - amountValue;
       const updatedUser = { ...user, balance: newBalance };
       setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+      localStorage.setItem('zenith_user', JSON.stringify(updatedUser));
       
       let withdrawals = JSON.parse(localStorage.getItem('withdrawals') || '[]');
       withdrawals.push({
@@ -92,8 +94,9 @@ const Withdraw = () => {
       });
       localStorage.setItem('withdrawals', JSON.stringify(withdrawals));
       
-      setSuccess(`Withdrawal request successful!youll receive funds within 30 minutes.`);
+      setSuccess(`Withdrawal request successful! You'll receive funds within 30 minutes to ${receivePhone || user.phone}.`);
       setAmount('');
+      setReceivePhone('');
     }
 
     setLoading(false);
@@ -180,31 +183,34 @@ const Withdraw = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Amount to Withdraw
+                Amount to Withdraw (UGX)
               </label>
-              <div className="relative">
-                <span className="absolute left-0 top-0 ml-3 mt-3 text-gray-500">UGX</span>
-                <input
-                  type="number"
-                  name="amount"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="Enter amount"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-              </div>
-              <div className="relative">
-                <span className="absolute left-0 top-0 ml-3 mt-3 text-gray-500">UGX</span>
-                <input
-                  type="text"
-                  name="Number to receive funds"
-                  value={number}
-                  placeholder="Enter number to receive funds"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-              </div>
+              <input
+                type="number"
+                name="amount"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="Enter amount"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
+              <p className="text-xs text-gray-500 mt-1">Minimum: UGX 10,000</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Number to Receive Funds
+              </label>
+              <input
+                type="tel"
+                name="receivePhone"
+                value={receivePhone || user?.phone || ''}
+                onChange={(e) => setReceivePhone(e.target.value)}
+                placeholder="0749846848"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
+              <p className="text-xs text-gray-500 mt-1">Airtel Money number to receive funds</p>
             </div>
 
             <button
