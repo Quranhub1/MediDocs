@@ -61,8 +61,8 @@ import {
   CursorArrowRaysIcon,
   ExclamationTriangleIcon,
   ServerIcon,
-  CloudUploadIcon,
-  CloudDownloadIcon,
+  CloudArrowUpIcon,
+  CloudArrowDownIcon,
   CodeBracketIcon,
   TerminalIcon,
   CircleStackIcon,
@@ -84,6 +84,8 @@ const ThumbUpIcon = HandThumbUpIcon;
 const ThumbDownIcon = HandThumbDownIcon;
 const ArchiveIcon = ArchiveBoxIcon;
 const CursorClickIcon = CursorArrowRaysIcon;
+const CloudUploadIcon = CloudArrowUpIcon;
+const CloudDownloadIcon = CloudArrowDownIcon;
 const LocationMarkerIcon = MapPinIcon;
 const RefreshIcon = ArrowPathIcon;
 const SearchIcon = MagnifyingGlassIcon;
