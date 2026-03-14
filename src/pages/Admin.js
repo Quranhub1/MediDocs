@@ -137,7 +137,11 @@ const Admin = () => {
 
   // Handle action modal submit
   const handleActionSubmit = async () => {
-    if (!selectedUser) return;
+    if (!selectedUser) {
+      alert('Please select a user first');
+      setActionLoading(false);
+      return;
+    }
     setActionLoading(true);
 
     try {
@@ -204,6 +208,10 @@ const Admin = () => {
   };
 
   const openActionModal = (type) => {
+    if (!selectedUser) {
+      alert('Please select a user first by clicking on their row in the table');
+      return;
+    }
     setActionType(type);
     setShowActionModal(true);
     setActionAmount('');
@@ -410,7 +418,7 @@ const Admin = () => {
                           {w.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(w.createdAt).toLocaleDateString()}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{w.createdAt ? new Date(w.createdAt).toLocaleString() : 'N/A'}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {w.status === 'pending' && (
                           <div className="flex space-x-2">
