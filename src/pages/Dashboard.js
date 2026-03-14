@@ -223,11 +223,10 @@ const Dashboard = () => {
               <h3 className="text-lg font-semibold text-gray-900 mb-1">Withdraw</h3>
               <p className="text-sm text-gray-600">Request payout</p>
             </Link>
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <Link to="/deposit" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-lg transition">
               <h3 className="text-lg font-semibold text-gray-900 mb-1">Deposit</h3>
-              <p className="text-sm text-gray-600 mb-2">Send to: 0749846848</p>
-              <p className="text-xs text-gray-500">Contact admin to confirm</p>
-            </div>
+              <p className="text-sm text-gray-600">Add funds to your account</p>
+            </Link>
           </div>
         </motion.div>
       </div>

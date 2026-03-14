@@ -36,6 +36,5 @@ async function initiateYoPayment() {
 
 // Show toast notification
 function showToast(message) {
-    // Simple alert for now - can be enhanced with a toast library
     console.log(message);
 }

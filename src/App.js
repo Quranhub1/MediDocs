@@ -11,6 +11,7 @@ import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import Disclaimer from './pages/Disclaimer';
 import Investments from './pages/Investments';
+import Deposit from './pages/Deposit';
 import Header from './components/Header';
 import Footer from './components/Footer';
 
@@ -31,6 +32,7 @@ function App() {
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/disclaimer" element={<Disclaimer />} />
           <Route path="/investments" element={<Investments />} />
+          <Route path="/deposit" element={<Deposit />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <Footer />
