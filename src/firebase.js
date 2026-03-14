@@ -1,12 +1,43 @@
 // Firebase configuration for Zenith Assets
-// Using LOCAL STORAGE ONLY (Firebase disabled due to permission issues)
+// Using studypedia-app Firebase project
 
-// Helper function to get user document from localStorage
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, where, orderBy, onSnapshot } from "firebase/firestore";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
+
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBZLoJZVVCVAWafhd4Oh8bhEGV4waN1B5g",
+  authDomain: "studypedia-app.firebaseapp.com",
+  projectId: "studypedia-app",
+  storageBucket: "studypedia-app.firebasestorage.app",
+  messagingSenderId: "793261754970",
+  appId: "1:793261754970:web:49bbd2bea1ab4d46486663",
+  measurementId: "G-6CTGP0MF8Y"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+// Database References
+const ZENITH_RESOURCES = "ZENITH RESOURCES";
+const Smjhzh926ep3xwRBGzcR = "Smjhzh926ep3xwRBGzcR";
+
+// Collection paths
+const usersCollection = `${ZENITH_RESOURCES}/${Smjhzh926ep3xwRBGzcR}/users`;
+const depositsCollection = `${ZENITH_RESOURCES}/${Smjhzh926ep3xwRBGzcR}/deposits`;
+const withdrawalsCollection = `${ZENITH_RESOURCES}/${Smjhzh926ep3xwRBGzcR}/withdrawals`;
+const investmentsCollection = `${ZENITH_RESOURCES}/${Smjhzh926ep3xwRBGzcR}/investments`;
+const transactionsCollection = `${ZENITH_RESOURCES}/${Smjhzh926ep3xwRBGzcR}/transactions`;
+
+// Helper function to get user document
 export const getUser = async (phone) => {
   try {
-    const userData = localStorage.getItem('user_' + phone);
-    if (userData) {
-      return JSON.parse(userData);
+    const userDoc = await getDoc(doc(db, usersCollection, phone));
+    if (userDoc.exists()) {
+      return { id: userDoc.id, ...userDoc.data() };
     }
     return null;
   } catch (error) {
@@ -15,11 +46,15 @@ export const getUser = async (phone) => {
   }
 };
 
-// Create or update user in localStorage
+// Create or update user
 export const createUser = async (userData) => {
   try {
     const { phone, ...rest } = userData;
-    localStorage.setItem('user_' + phone, JSON.stringify({ phone, ...rest }));
+    await setDoc(doc(db, usersCollection, phone), {
+      ...rest,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
     return { success: true, id: phone };
   } catch (error) {
     console.error("Error creating user:", error);
@@ -30,96 +65,162 @@ export const createUser = async (userData) => {
 // Update user balance and other fields
 export const updateUserBalance = async (phone, newBalance, field = 'balance') => {
   try {
-    const userData = localStorage.getItem('user_' + phone);
-    if (userData) {
-      const user = JSON.parse(userData);
-      user[field] = newBalance;
-      localStorage.setItem('user_' + phone, JSON.stringify(user));
-      
-      // Also update current user if logged in
-      const currentUser = localStorage.getItem('user');
-      if (currentUser) {
-        const parsed = JSON.parse(currentUser);
-        if (parsed.phone === phone) {
-          parsed[field] = newBalance;
-          localStorage.setItem('user', JSON.stringify(parsed));
-        }
-      }
-      return { success: true };
-    }
-    return { success: false };
-  } catch (error) {
-    console.error("Error updating balance:", error);
-    return { success: false };
-  }
-};
-
-// Get all users
-export const getAllUsers = async () => {
-  try {
-    const users = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('user_')) {
-        const userData = localStorage.getItem(key);
-        users.push(JSON.parse(userData));
-      }
-    }
-    return users;
-  } catch (error) {
-    console.error("Error getting all users:", error);
-    return [];
-  }
-};
-
-// Add deposit
-export const addDeposit = async (depositData) => {
-  try {
-    const deposits = JSON.parse(localStorage.getItem('deposits_' + depositData.userId) || '[]');
-    deposits.push(depositData);
-    localStorage.setItem('deposits_' + depositData.userId, JSON.stringify(deposits));
+    await updateDoc(doc(db, usersCollection, phone), {
+      [field]: newBalance,
+      updatedAt: new Date().toISOString()
+    });
     return { success: true };
   } catch (error) {
+    console.error("Error updating balance:", error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Add deposit record
+export const addDeposit = async (depositData) => {
+  try {
+    const depositRef = doc(collection(db, depositsCollection));
+    await setDoc(depositRef, {
+      ...depositData,
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    });
+    return { success: true, id: depositRef.id };
+  } catch (error) {
     console.error("Error adding deposit:", error);
-    return { success: false };
+    return { success: false, error: error.message };
   }
 };
 
 // Get all deposits for a user
 export const getUserDeposits = async (phone) => {
   try {
-    return JSON.parse(localStorage.getItem('deposits_' + phone) || '[]');
+    const q = query(
+      collection(db, depositsCollection),
+      where("userId", "==", phone),
+      orderBy("createdAt", "desc")
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
     console.error("Error getting deposits:", error);
     return [];
   }
 };
 
-// Add withdrawal
+// Add withdrawal record
 export const addWithdrawal = async (withdrawalData) => {
   try {
-    const withdrawals = JSON.parse(localStorage.getItem('withdrawals_' + withdrawalData.userId) || '[]');
-    withdrawals.push(withdrawalData);
-    localStorage.setItem('withdrawals_' + withdrawalData.userId, JSON.stringify(withdrawals));
-    
-    // Also save to admin withdrawals list
-    const adminWithdrawals = JSON.parse(localStorage.getItem('all_withdrawals') || '[]');
-    adminWithdrawals.push(withdrawalData);
-    localStorage.setItem('all_withdrawals', JSON.stringify(adminWithdrawals));
-    
-    return { success: true };
+    const withdrawalRef = doc(collection(db, withdrawalsCollection));
+    await setDoc(withdrawalRef, {
+      ...withdrawalData,
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    });
+    return { success: true, id: withdrawalRef.id };
   } catch (error) {
     console.error("Error adding withdrawal:", error);
-    return { success: false };
+    return { success: false, error: error.message };
   }
 };
 
 // Get all withdrawals for a user
 export const getUserWithdrawals = async (phone) => {
   try {
-    return JSON.parse(localStorage.getItem('withdrawals_' + phone) || '[]');
+    const q = query(
+      collection(db, withdrawalsCollection),
+      where("userId", "==", phone),
+      orderBy("createdAt", "desc")
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
     console.error("Error getting withdrawals:", error);
+    return [];
+  }
+};
+
+// Add investment package
+export const addInvestment = async (investmentData) => {
+  try {
+    const investmentRef = doc(collection(db, investmentsCollection));
+    await setDoc(investmentRef, {
+      ...investmentData,
+      status: 'active',
+      createdAt: new Date().toISOString()
+    });
+    return { success: true, id: investmentRef.id };
+  } catch (error) {
+    console.error("Error adding investment:", error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Get user investments
+export const getUserInvestments = async (phone) => {
+  try {
+    const q = query(
+      collection(db, investmentsCollection),
+      where("userId", "==", phone),
+      orderBy("createdAt", "desc")
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error("Error getting investments:", error);
+    return [];
+  }
+};
+
+// Add transaction record
+export const addTransaction = async (transactionData) => {
+  try {
+    const transactionRef = doc(collection(db, transactionsCollection));
+    await setDoc(transactionRef, {
+      ...transactionData,
+      createdAt: new Date().toISOString()
+    });
+    return { success: true, id: transactionRef.id };
+  } catch (error) {
+    console.error("Error adding transaction:", error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Get all transactions for a user
+export const getUserTransactions = async (phone) => {
+  try {
+    const q = query(
+      collection(db, transactionsCollection),
+      where("userId", "==", phone),
+      orderBy("createdAt", "desc")
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error("Error getting transactions:", error);
+    return [];
+  }
+};
+
+// Get all users (for admin)
+export const getAllUsers = async () => {
+  try {
+    const snapshot = await getDocs(collection(db, usersCollection));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error("Error getting all users:", error);
+    return [];
+  }
+};
+
+// Get all deposits (for admin)
+export const getAllDeposits = async () => {
+  try {
+    const snapshot = await getDocs(query(collection(db, depositsCollection), orderBy("createdAt", "desc")));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error("Error getting all deposits:", error);
     return [];
   }
 };
@@ -127,66 +228,51 @@ export const getUserWithdrawals = async (phone) => {
 // Get all withdrawals (for admin)
 export const getAllWithdrawals = async () => {
   try {
-    return JSON.parse(localStorage.getItem('all_withdrawals') || '[]');
+    const snapshot = await getDocs(query(collection(db, withdrawalsCollection), orderBy("createdAt", "desc")));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
     console.error("Error getting all withdrawals:", error);
     return [];
   }
 };
 
-// Add investment
-export const addInvestment = async (investmentData) => {
+// Update deposit status
+export const updateDepositStatus = async (depositId, status) => {
   try {
-    const investments = JSON.parse(localStorage.getItem('investments_' + investmentData.userId) || '[]');
-    investments.push(investmentData);
-    localStorage.setItem('investments_' + investmentData.userId, JSON.stringify(investments));
+    await updateDoc(doc(db, depositsCollection, depositId), {
+      status: status,
+      updatedAt: new Date().toISOString()
+    });
     return { success: true };
   } catch (error) {
-    console.error("Error adding investment:", error);
-    return { success: false };
+    console.error("Error updating deposit:", error);
+    return { success: false, error: error.message };
   }
 };
 
-// Get user investments
-export const getUserInvestments = async (phone) => {
+// Update withdrawal status
+export const updateWithdrawalStatus = async (withdrawalId, status) => {
   try {
-    return JSON.parse(localStorage.getItem('investments_' + phone) || '[]');
-  } catch (error) {
-    console.error("Error getting investments:", error);
-    return [];
-  }
-};
-
-// Add transaction
-export const addTransaction = async (transactionData) => {
-  try {
-    const transactions = JSON.parse(localStorage.getItem('transactions_' + transactionData.userId) || '[]');
-    transactions.push(transactionData);
-    localStorage.setItem('transactions_' + transactionData.userId, JSON.stringify(transactions));
+    await updateDoc(doc(db, withdrawalsCollection, withdrawalId), {
+      status: status,
+      updatedAt: new Date().toISOString()
+    });
     return { success: true };
   } catch (error) {
-    console.error("Error adding transaction:", error);
-    return { success: false };
+    console.error("Error updating withdrawal:", error);
+    return { success: false, error: error.message };
   }
 };
 
-// Get all transactions for a user
-export const getUserTransactions = async (phone) => {
-  try {
-    return JSON.parse(localStorage.getItem('transactions_' + phone) || '[]');
-  } catch (error) {
-    console.error("Error getting transactions:", error);
-    return [];
-  }
-};
-
-// Subscribe to user changes (not implemented for localStorage)
+// Subscribe to user changes (real-time)
 export const subscribeToUser = (phone, callback) => {
-  // For localStorage, just call callback with current user
-  const userData = localStorage.getItem('user_' + phone);
-  if (userData) {
-    callback(JSON.parse(userData));
-  }
-  // Return empty unsubscribe function
-  return () => {};
+  return onSnapshot(doc(db, usersCollection, phone), (doc) => {
+    if (doc.exists()) {
+      callback({ id: doc.id, ...doc.data() });
+    } else {
+      callback(null);
+    }
+  });
 };
+
+export { db, auth, ZENITH_RESOURCES, Smjhzh926ep3xwRBGzcR };
