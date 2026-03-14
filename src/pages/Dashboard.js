@@ -187,8 +187,11 @@ const Dashboard = () => {
     try {
       const firebaseUser = await getUser(phone);
       if (firebaseUser) {
-        setUser(firebaseUser);
-        localStorage.setItem('zenith_user', JSON.stringify(firebaseUser));
+        // Merge with localStorage data (balance from Firebase takes precedence)
+        const localUser = JSON.parse(localStorage.getItem('zenith_user') || '{}');
+        const mergedUser = { ...localUser, ...firebaseUser };
+        setUser(mergedUser);
+        localStorage.setItem('zenith_user', JSON.stringify(mergedUser));
       }
       
       const txs = await getUserTransactions(phone);

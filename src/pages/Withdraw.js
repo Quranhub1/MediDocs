@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { updateUserBalance, addWithdrawal, addTransaction } from '../firebase';
+import { getUser, updateUserBalance, addWithdrawal, addTransaction } from '../firebase';
 
 const Withdraw = () => {
   const [user, setUser] = useState(null);
@@ -15,7 +15,18 @@ const Withdraw = () => {
   useEffect(() => {
     const userData = localStorage.getItem('zenith_user');
     if (userData) {
-      setUser(JSON.parse(userData));
+      const parsedUser = JSON.parse(userData);
+      // Fetch latest user data from Firebase
+      getUser(parsedUser.phone).then(firebaseUser => {
+        if (firebaseUser) {
+          setUser(firebaseUser);
+          localStorage.setItem('zenith_user', JSON.stringify(firebaseUser));
+        } else {
+          setUser(parsedUser);
+        }
+      }).catch(() => {
+        setUser(parsedUser);
+      });
     } else {
       navigate('/login');
     }
@@ -29,6 +40,13 @@ const Withdraw = () => {
 
     if (!user) {
       setError('Please login to continue');
+      setLoading(false);
+      return;
+    }
+
+    // Check if user is banned
+    if (user.banned) {
+      setError('Your account has been suspended. Please contact admin.');
       setLoading(false);
       return;
     }
