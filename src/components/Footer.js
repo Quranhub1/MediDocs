@@ -1,11 +1,11 @@
 import React from 'react';
-import { Calendar, Clock, DollarSign, Users, HelpCircle, FileText, Mail, Phone } from '@heroicons/react/24/outline';
+import { Calendar, ClockIcon, DollarSign, Users, HelpCircle, FileText, Mail, Phone } from '@heroicons/react/24/outline';
 
 const Footer = () => {
   const footerLinks = [
-    { name: 'Home', path: '/', icon: Clock },
+    { name: 'Home', path: '/', icon: ClockIcon },
     { name: 'Dashboard', path: '/dashboard', icon: DollarSign },
-    { name: 'Videos', path: '/videos', icon: Clock },
+    { name: 'Videos', path: '/videos', icon: ClockIcon },
     { name: 'Referral', path: '/referral', icon: Users },
     { name: 'Withdraw', path: '/withdraw', icon: DollarSign },
     { name: 'FAQ', path: '/faq', icon: HelpCircle },
