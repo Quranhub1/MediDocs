@@ -17,17 +17,18 @@ const Header = () => {
   }, [location]);
   
   const handleLogout = () => {
-    localStorage.removeItem('user');
+    localStorage.removeItem('zenith_user');
     setUser(null);
-    navigate('/login');
+    navigate('/register');
   };
 
   const navLinks = [
     { name: 'Home', path: '/' },
     { name: 'Investments', path: '/investments' },
     { name: 'Dashboard', path: '/dashboard' },
-    { name: 'Referrals', path: '/referrals' },
+    { name: 'Deposit', path: '/deposit' },
     { name: 'Withdraw', path: '/withdraw' },
+    { name: 'Referrals', path: '/referrals' },
   ];
 
   const isActive = (path) => {

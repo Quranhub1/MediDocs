@@ -204,7 +204,7 @@ const Withdraw = () => {
               <input
                 type="tel"
                 name="receivePhone"
-                value={receivePhone || user?.phone || ''}
+                value={receivePhone}
                 onChange={(e) => setReceivePhone(e.target.value)}
                 placeholder="0749846848"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
