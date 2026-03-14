@@ -116,8 +116,13 @@ const Admin = () => {
       return;
     }
 
+    if (!selectedUser.phone) {
+      alert('Invalid user selected');
+      return;
+    }
+
     try {
-      const newBalance = selectedUser.balance + parseFloat(bonusAmount);
+      const newBalance = (selectedUser.balance || 0) + parseFloat(bonusAmount);
       await updateUserBalance(selectedUser.phone, newBalance, 'balance');
       await addTransaction({
         userId: selectedUser.phone,
@@ -156,6 +161,11 @@ const Admin = () => {
           break;
           
         case 'ban':
+          if (!selectedUser?.phone) {
+            alert('Invalid user selected');
+            setActionLoading(false);
+            return;
+          }
           const newBanStatus = !selectedUser.banned;
           await banUser(selectedUser.phone, newBanStatus);
           alert(`User ${newBanStatus ? 'banned' : 'unbanned'} successfully!`);
@@ -168,6 +178,11 @@ const Admin = () => {
             setActionLoading(false);
             return;
           }
+          if (!selectedUser?.phone) {
+            alert('Invalid user selected');
+            setActionLoading(false);
+            return;
+          }
           await updateUserBalance(selectedUser.phone, parseFloat(actionAmount), 'balance');
           alert('Balance updated successfully!');
           break;
@@ -175,6 +190,11 @@ const Admin = () => {
         case 'deduct':
           if (!actionAmount) {
             alert('Please enter an amount');
+            setActionLoading(false);
+            return;
+          }
+          if (!selectedUser?.phone) {
+            alert('Invalid user selected');
             setActionLoading(false);
             return;
           }
