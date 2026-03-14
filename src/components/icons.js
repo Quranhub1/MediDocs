@@ -164,7 +164,6 @@ export {
   CloudDownloadIcon,
   CodeBracketIcon,
   TerminalIcon,
-  DatabaseIcon,
   CircleStackIcon,
   HelpCircle,
   DocumentIcon,
