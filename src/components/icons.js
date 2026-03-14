@@ -1,5 +1,5 @@
 // Custom icons export - from @heroicons/react v2
-// Using ONLY verified icon names
+// Using ONLY verified icon names from the list
 import { 
   HomeIcon,
   ClockIcon,
@@ -12,7 +12,7 @@ import {
   CheckIcon,
   XMarkIcon,
   UserIcon,
-  CogIcon,
+  Cog6ToothIcon,
   Bars3Icon,
   ChevronRightIcon,
   ChevronDownIcon,
@@ -31,7 +31,8 @@ import {
   MagnifyingGlassIcon,
   BellIcon,
   CalendarIcon,
-  ClipboardListIcon,
+  ClipboardDocumentListIcon,
+  ClipboardDocumentCheckIcon,
   CreditCardIcon,
   WalletIcon,
   BanknotesIcon,
@@ -39,7 +40,6 @@ import {
   ShieldCheckIcon,
   UserGroupIcon,
   ChartBarIcon,
-  ClipboardCheckIcon,
   BanIcon,
   ThumbUpIcon,
   ThumbDownIcon,
@@ -63,9 +63,9 @@ import {
   ServerIcon,
   CloudUploadIcon,
   CloudDownloadIcon,
-  CodeIcon,
+  CodeBracketIcon,
   TerminalIcon,
-  DatabaseIcon,
+  CircleStackIcon,
   QuestionMarkCircleIcon,
   DocumentIcon,
 } from '@heroicons/react/24/outline';
@@ -76,12 +76,15 @@ const TrendingDownIcon = ArrowTrendingDownIcon;
 const DollarSignIcon = CurrencyDollarIcon;
 const XIcon = XMarkIcon;
 const MenuIcon = Bars3Icon;
+const CogIcon = Cog6ToothIcon;
 const MailIcon = EnvelopeIcon;
 const HelpCircle = QuestionMarkCircleIcon;
 const FileText = DocumentTextIcon;
 const LocationMarkerIcon = MapPinIcon;
 const RefreshIcon = ArrowPathIcon;
 const SearchIcon = MagnifyingGlassIcon;
+const ClipboardListIcon = ClipboardDocumentListIcon;
+const ClipboardCheckIcon_check = ClipboardDocumentCheckIcon;
 
 export {
   HomeIcon,
@@ -100,6 +103,7 @@ export {
   XMarkIcon,
   UserIcon,
   CogIcon,
+  Cog6ToothIcon,
   MenuIcon,
   Bars3Icon,
   ChevronRightIcon,
@@ -124,6 +128,9 @@ export {
   BellIcon,
   CalendarIcon,
   ClipboardListIcon,
+  ClipboardDocumentListIcon,
+  ClipboardCheckIcon_check,
+  ClipboardDocumentCheckIcon,
   CreditCardIcon,
   WalletIcon,
   BanknotesIcon,
@@ -131,7 +138,6 @@ export {
   ShieldCheckIcon,
   UserGroupIcon,
   ChartBarIcon,
-  ClipboardCheckIcon,
   BanIcon,
   ThumbUpIcon,
   ThumbDownIcon,
@@ -156,9 +162,11 @@ export {
   ServerIcon,
   CloudUploadIcon,
   CloudDownloadIcon,
+  CodeBracketIcon,
   CodeIcon,
   TerminalIcon,
   DatabaseIcon,
+  CircleStackIcon,
   HelpCircle,
   DocumentIcon,
 };
