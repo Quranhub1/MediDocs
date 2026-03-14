@@ -25,11 +25,11 @@ const Dashboard = () => {
     
     setVideos([
       { id: 1, title: 'How to Make Money Online', duration: '5:30', views: '1.2K', earnings: 500, url: 'https://youtu.be/DhEMFeo_gL8' },
-      { id: 2, title: 'Top 10 Investment Tips', duration: '3:45', views: '850', earnings: 300, url: 'https://youtu.be/c82gMUJrrJs' },
-      { id: 3, title: 'Financial Freedom Guide', duration: '7:20', views: '2.1K', earnings: 800, url: 'https://www.youtube.com/shorts/szFfU6Rqwes' },
-      { id: 4, title: 'Passive Income Ideas', duration: '4:15', views: '1.5K', earnings: 600, url: 'https://www.youtube.com/shorts/zpucrzhA0jo' },
+      { id: 2, title: 'Top 10 Investment Tips', duration: '3:45', views: '850', earnings: 300, url: 'https://www.youtube.com/shorts/unWPUqnNG4U' },
+      { id: 3, title: 'Financial Freedom Guide', duration: '7:20', views: '2.1K', earnings: 800, url: 'https://www.youtube.com/shorts/FfgUuVt540Q' },
+      { id: 4, title: 'Passive Income Ideas', duration: '4:15', views: '1.5K', earnings: 600, url: 'https://youtu.be/XOs_X0CB_ms' },
       { id: 5, title: 'Stock Market Basics', duration: '6:00', views: '980', earnings: 400, url: 'https://youtu.be/p7HKvqRI_Bo' },
-      { id: 6, title: 'Money Making Secrets', duration: '5:00', views: '750', earnings: 350, url: 'https://youtu.be/JoTEcJF0Gt0' }
+      { id: 6, title: 'Money Making Secrets', duration: '5:00', views: '750', earnings: 350, url: 'https://youtu.be/zQ0Ojy-0VEs' }
     ]);
     
     setLoading(false);
@@ -141,12 +141,7 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-4">
-            <div className="text-center mb-4">
-              <p className="text-sm text-gray-500">Welcome back</p>
-              <p className="text-lg font-bold text-blue-600">{user.phone}</p>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">UGX {user.balance?.toLocaleString() || 0}</div>
               <div className="text-sm text-gray-600">Total Balance</div>
