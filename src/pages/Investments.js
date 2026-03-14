@@ -171,6 +171,7 @@ const Investments = () => {
       totalDays: totalDays,
       status: 'active',
       locked: selectedPackage.locked || false,
+      lastPayoutDay: 0,
       createdAt: new Date().toISOString(),
       startDate: new Date().toISOString(),
       endDate: new Date(Date.now() + totalDays * 24 * 60 * 60 * 1000).toISOString()

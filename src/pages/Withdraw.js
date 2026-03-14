@@ -60,7 +60,7 @@ const Withdraw = () => {
     
     let lockedAmount = 0;
     investments.forEach(inv => {
-      if (inv.locked && inv.status === 'active') {
+      if (inv.status === 'active' && inv.locked) {
         const endDate = new Date(inv.endDate).getTime();
         if (now < endDate) {
           // Investment is still locked

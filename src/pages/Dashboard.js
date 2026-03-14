@@ -11,6 +11,105 @@ const Dashboard = () => {
   const [transactions, setTransactions] = useState([]);
   const [canWatch, setCanWatch] = useState(true);
   const [cooldownRemaining, setCooldownRemaining] = useState('');
+  const [investmentTimers, setInvestmentTimers] = useState({});
+
+  // Investment timer effect - runs every minute
+  useEffect(() => {
+    if (!user) return;
+
+    const checkInvestments = () => {
+      const userPhone = user.phone;
+      const investments = JSON.parse(localStorage.getItem('investments_' + userPhone) || '[]');
+      const now = Date.now();
+      let balanceChanged = false;
+      let updatedInvestments = [];
+      let newBalance = user.balance;
+
+      investments.forEach((inv, index) => {
+        if (inv.status !== 'active') {
+          updatedInvestments.push(inv);
+          return;
+        }
+
+        const startTime = new Date(inv.startDate).getTime();
+        const endTime = new Date(inv.endDate).getTime();
+        const hoursPassed = (now - startTime) / (1000 * 60 * 60);
+        const daysPassed = Math.floor(hoursPassed / 24);
+        const lastPayoutDay = inv.lastPayoutDay || 0;
+
+        // Check if investment period has ended
+        if (now >= endTime) {
+          // Investment period ended
+          inv.status = 'completed';
+          
+          // For locked investments (packages 2-6), release principal to balance
+          if (inv.locked) {
+            newBalance += inv.amount;
+            balanceChanged = true;
+          }
+          
+          updatedInvestments.push(inv);
+          return;
+        }
+
+        // Check if daily payout is due (every 24 hours)
+        if (daysPassed > lastPayoutDay) {
+          // Add daily earnings to balance
+          newBalance += inv.dailyEarnings;
+          inv.lastPayoutDay = daysPassed;
+          balanceChanged = true;
+          
+          // Add transaction record
+          addTransaction({
+            userId: userPhone,
+            type: 'investment_return',
+            amount: inv.dailyEarnings,
+            description: `Daily return from ${inv.packageName}`
+          }).catch(console.error);
+        }
+
+        // Calculate time remaining
+        const hoursRemaining = 24 - (hoursPassed % 24);
+        const daysRemaining = Math.ceil((endTime - now) / (1000 * 60 * 60 * 24));
+        
+        inv.timeRemaining = {
+          hours: Math.floor(hoursRemaining),
+          days: daysRemaining
+        };
+        
+        updatedInvestments.push(inv);
+      });
+
+      // Save updated investments
+      localStorage.setItem('investments_' + userPhone, JSON.stringify(updatedInvestments));
+
+      // Update balance if changed
+      if (balanceChanged) {
+        const updatedUser = { ...user, balance: newBalance };
+        setUser(updatedUser);
+        localStorage.setItem('zenith_user', JSON.stringify(updatedUser));
+        
+        // Update in Firebase
+        updateUserBalance(userPhone, newBalance, 'balance').catch(console.error);
+      }
+
+      // Update timer display
+      const timers = {};
+      updatedInvestments.forEach(inv => {
+        if (inv.status === 'active' && inv.timeRemaining) {
+          timers[inv.id] = inv.timeRemaining;
+        }
+      });
+      setInvestmentTimers(timers);
+    };
+
+    // Run immediately
+    checkInvestments();
+
+    // Run every minute
+    const interval = setInterval(checkInvestments, 60000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   useEffect(() => {
     const userData = localStorage.getItem('zenith_user');
