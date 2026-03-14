@@ -19,11 +19,12 @@ const Dashboard = () => {
     }
     
     setVideos([
-      { id: 1, title: 'How to Make Money Online', duration: '5:30', views: '1.2K', earnings: 500, url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
-      { id: 2, title: 'Top 10 Investment Tips', duration: '3:45', views: '850', earnings: 300, url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
-      { id: 3, title: 'Financial Freedom Guide', duration: '7:20', views: '2.1K', earnings: 800, url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
-      { id: 4, title: 'Passive Income Ideas', duration: '4:15', views: '1.5K', earnings: 600, url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
-      { id: 5, title: 'Stock Market Basics', duration: '6:00', views: '980', earnings: 400, url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' }
+      { id: 1, title: 'How to Make Money Online', duration: '5:30', views: '1.2K', earnings: 500, url: 'https://youtu.be/DhEMFeo_gL8' },
+      { id: 2, title: 'Top 10 Investment Tips', duration: '3:45', views: '850', earnings: 300, url: 'https://www.youtube.com/shorts/unWPUqnNG4U' },
+      { id: 3, title: 'Financial Freedom Guide', duration: '7:20', views: '2.1K', earnings: 800, url: 'https://www.youtube.com/shorts/FfgUuVt540Q' },
+      { id: 4, title: 'Passive Income Ideas', duration: '4:15', views: '1.5K', earnings: 600, url: 'https://youtu.be/XOs_X0CB_ms' },
+      { id: 5, title: 'Stock Market Basics', duration: '6:00', views: '980', earnings: 400, url: 'https://youtu.be/p7HKvqRI_Bo' },
+      { id: 6, title: 'Money Making Secrets', duration: '5:00', views: '750', earnings: 350, url: 'https://youtu.be/zQ0Ojy-0VEs' }
     ]);
     
     setLoading(false);
