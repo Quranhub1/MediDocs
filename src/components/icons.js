@@ -51,7 +51,7 @@ import {
   IdentificationIcon,
   DocumentTextIcon,
   FolderIcon,
-  ArchiveIcon,
+  ArchiveBoxIcon,
   TrashIcon,
   PencilIcon,
   PlusCircleIcon,
@@ -82,6 +82,7 @@ const HelpCircle = QuestionMarkCircleIcon;
 const FileText = DocumentTextIcon;
 const ThumbUpIcon = HandThumbUpIcon;
 const ThumbDownIcon = HandThumbDownIcon;
+const ArchiveIcon = ArchiveBoxIcon;
 const LocationMarkerIcon = MapPinIcon;
 const RefreshIcon = ArrowPathIcon;
 const SearchIcon = MagnifyingGlassIcon;
