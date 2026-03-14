@@ -1,5 +1,5 @@
 // Custom icons export - from @heroicons/react v2
-// Only using verified icon names
+// Using ONLY verified icon names from the library
 import { 
   HomeIcon,
   ClockIcon,
@@ -20,7 +20,7 @@ import {
   HeartIcon,
   EnvelopeIcon,
   PhoneIcon,
-  LocationMarkerIcon,
+  MapIcon,
   ExclamationCircleIcon,
   InformationCircleIcon,
   ArrowRightIcon,
@@ -79,7 +79,8 @@ const XIcon = XMarkIcon;
 const MenuIcon = Bars3Icon;
 const MailIcon = EnvelopeIcon;
 const HelpCircle = QuestionMarkCircleIcon;
-const FileText = DocumentIcon;
+const FileText = DocumentTextIcon;
+const LocationMarkerIcon = MapIcon;
 
 export {
   HomeIcon,
@@ -107,6 +108,7 @@ export {
   MailIcon,
   EnvelopeIcon,
   PhoneIcon,
+  MapIcon,
   LocationMarkerIcon,
   ExclamationCircleIcon,
   InformationCircleIcon,
