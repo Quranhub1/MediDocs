@@ -13,7 +13,13 @@ const Login = () => {
   useEffect(() => {
     const user = localStorage.getItem('user');
     if (user) {
-      navigate('/dashboard');
+      const parsedUser = JSON.parse(user);
+      // Redirect admin to admin dashboard, others to dashboard
+      if (parsedUser.phone === '0749846848') {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
     }
   }, [navigate]);
 
@@ -28,13 +34,17 @@ const Login = () => {
       return;
     }
 
+    // Check if admin
+    const isAdmin = phone === '0749846848';
+    const redirectPath = isAdmin ? '/admin' : '/dashboard';
+
     try {
       const user = await getUser(phone);
       
       if (user) {
         if (user.password === password) {
           localStorage.setItem('user', JSON.stringify(user));
-          navigate('/dashboard');
+          navigate(redirectPath);
         } else {
           setError('Invalid phone number or password');
         }
@@ -52,7 +62,7 @@ const Login = () => {
         const result = await createUser(newUser);
         if (result.success) {
           localStorage.setItem('user', JSON.stringify(newUser));
-          navigate('/dashboard');
+          navigate(redirectPath);
         } else {
           setError('Login failed. Please try again.');
         }
@@ -64,7 +74,7 @@ const Login = () => {
         const user = JSON.parse(storedUser);
         if (user.password === password) {
           localStorage.setItem('user', JSON.stringify(user));
-          navigate('/dashboard');
+          navigate(redirectPath);
         } else {
           setError('Invalid phone number or password');
         }
@@ -80,7 +90,7 @@ const Login = () => {
         };
         localStorage.setItem('user_' + phone, JSON.stringify(newUser));
         localStorage.setItem('user', JSON.stringify(newUser));
-        navigate('/dashboard');
+        navigate(redirectPath);
       }
     }
 
