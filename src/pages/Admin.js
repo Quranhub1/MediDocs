@@ -48,7 +48,13 @@ const Admin = () => {
       const allDeposits = await getAllDeposits();
       const allWithdrawals = await getAllWithdrawals();
       
-      setUsers(allUsers);
+      // Normalize users - ensure each user has phone field (use id if phone is missing)
+      const normalizedUsers = allUsers.map(user => ({
+        ...user,
+        phone: user.phone || user.id || 'Unknown'
+      }));
+      
+      setUsers(normalizedUsers);
       setDeposits(allDeposits);
       setWithdrawals(allWithdrawals);
     } catch (error) {
