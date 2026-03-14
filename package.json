@@ -24,6 +24,7 @@
   "scripts": {
     "start": "node server.js",
     "heroku-postbuild": "npm run build",
+    "prebuild": "npm run build",
     "dev": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
