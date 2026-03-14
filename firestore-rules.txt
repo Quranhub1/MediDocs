@@ -32,38 +32,34 @@ service cloud.firestore {
       }
     }
     
-    // ZENITH RESOURCES - For Zenith Assets investment platform
-    // Path: ZENITH RESOURCES/{docId}/users, deposits, withdrawals, investments, transactions
+    // ZENITH RESOURCES - OPEN FOR ALL (anyone can read/write)
     match /ZENITH%20RESOURCES/{resourceId} {
-      // Allow read access to everyone (for viewing data)
       allow read: if true;
-      // Allow write access only to admin
-      allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+      allow write: if true;
       
-      // Subcollections under ZENITH RESOURCES/{resourceId}
       match /users/{userId} {
         allow read: if true;
-        allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+        allow write: if true;
       }
       
       match /deposits/{depositId} {
         allow read: if true;
-        allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+        allow write: if true;
       }
       
       match /withdrawals/{withdrawalId} {
         allow read: if true;
-        allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+        allow write: if true;
       }
       
       match /investments/{investmentId} {
         allow read: if true;
-        allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+        allow write: if true;
       }
       
       match /transactions/{transactionId} {
         allow read: if true;
-        allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+        allow write: if true;
       }
     }
     
@@ -72,22 +68,22 @@ service cloud.firestore {
       allow read: if request.auth != null;
     }
     
-    // User payments - users can read their own, admin can read all
+    // User payments - open for all
     match /user_payments/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId 
-                  || request.auth.token.email == 'kaigwaakram123@gmail.com';
-      allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+      allow read: if true;
+      allow write: if true;
     }
     
-    // Allow authenticated users to read their own data
+    // Allow authenticated users to read their own data - open for all
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if true;
+      allow write: if true;
     }
     
-    // Pesapal orders
+    // Pesapal orders - open for all
     match /pesapal_orders/{orderId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+      allow read: if true;
+      allow write: if true;
     }
   }
 }
