@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 const Footer = () => {
   const footerLinks = [
@@ -24,12 +25,12 @@ const Footer = () => {
               Earn money watching videos and invite friends to earn even more with our 10% commission system.
             </p>
             <div className="flex space-x-4">
-              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
+              <Link to="/register" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
                 Join Now
-              </button>
-              <button className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors">
+              </Link>
+              <Link to="/login" className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors">
                 Login
-              </button>
+              </Link>
             </div>
           </div>
 

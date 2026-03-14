@@ -32,7 +32,7 @@ const Home = () => {
               transition={{ duration: 0.6, delay: 0.4 }}
               className="flex flex-col sm:flex-row gap-4 justify-center items-center"
             >
-              <Link to="/login" className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-50 transition">
+              <Link to="/register" className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-50 transition">
                 Get Started
               </Link>
               <Link to="/dashboard" className="bg-transparent text-white border-2 border-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition">
@@ -56,49 +56,29 @@ const Home = () => {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="bg-gray-50 rounded-lg p-6 text-center hover:shadow-lg transition"
-            >
+            <Link to="/register" className="bg-gray-50 rounded-lg p-6 text-center hover:shadow-lg transition block">
               <HomeIcon className="w-12 h-12 text-blue-600 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-gray-900 mb-2">Sign Up</h3>
               <p className="text-gray-600">Create your free account</p>
-            </motion.div>
+            </Link>
 
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="bg-gray-50 rounded-lg p-6 text-center hover:shadow-lg transition"
-            >
+            <Link to="/dashboard" className="bg-gray-50 rounded-lg p-6 text-center hover:shadow-lg transition block">
               <ClockIcon className="w-12 h-12 text-green-600 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-gray-900 mb-2">Watch Videos</h3>
               <p className="text-gray-600">Earn money for each video</p>
-            </motion.div>
+            </Link>
 
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              className="bg-gray-50 rounded-lg p-6 text-center hover:shadow-lg transition"
-            >
+            <Link to="/referrals" className="bg-gray-50 rounded-lg p-6 text-center hover:shadow-lg transition block">
               <UsersIcon className="w-12 h-12 text-purple-600 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-gray-900 mb-2">Refer Friends</h3>
-              <p className="text-gray-600">Get 20% commission</p>
-            </motion.div>
+              <p className="text-gray-600">Get 10% commission</p>
+            </Link>
 
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              className="bg-gray-50 rounded-lg p-6 text-center hover:shadow-lg transition"
-            >
+            <Link to="/withdraw" className="bg-gray-50 rounded-lg p-6 text-center hover:shadow-lg transition block">
               <DollarSignIcon className="w-12 h-12 text-orange-600 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-gray-900 mb-2">Withdraw</h3>
               <p className="text-gray-600">Cash out your earnings</p>
-            </motion.div>
+            </Link>
           </div>
         </div>
       </section>
