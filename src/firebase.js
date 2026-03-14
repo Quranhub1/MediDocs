@@ -109,6 +109,10 @@ export const addDeposit = async (depositData) => {
 
 // Get all deposits for a user
 export const getUserDeposits = async (phone) => {
+  if (!phone) {
+    console.error("getUserDeposits called with undefined phone");
+    return [];
+  }
   try {
     const q = query(
       collection(db, depositsCollection),
@@ -173,6 +177,10 @@ export const addWithdrawal = async (withdrawalData) => {
 
 // Get all withdrawals for a user
 export const getUserWithdrawals = async (phone) => {
+  if (!phone) {
+    console.error("getUserWithdrawals called with undefined phone");
+    return [];
+  }
   try {
     const q = query(
       collection(db, withdrawalsCollection),
@@ -223,8 +231,10 @@ export const updateWithdrawalStatus = async (withdrawalId, status) => {
 // Add investment
 export const addInvestment = async (investmentData) => {
   try {
-    await setDoc(doc(db, investmentsCollection, investmentData.id || Date.now().toString()), {
+    const investmentId = investmentData?.id ? String(investmentData.id) : Date.now().toString();
+    await setDoc(doc(db, investmentsCollection, investmentId), {
       ...investmentData,
+      id: investmentId,
       createdAt: new Date().toISOString()
     });
     return { success: true };
@@ -236,6 +246,10 @@ export const addInvestment = async (investmentData) => {
 
 // Get user investments
 export const getUserInvestments = async (phone) => {
+  if (!phone) {
+    console.error("getUserInvestments called with undefined phone");
+    return [];
+  }
   try {
     const q = query(
       collection(db, investmentsCollection),
