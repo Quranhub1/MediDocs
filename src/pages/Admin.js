@@ -26,8 +26,9 @@ const Admin = () => {
       const parsedUser = JSON.parse(userData);
       setUser(parsedUser);
       
-      // Only allow admin access
-      if (parsedUser.phone !== '0749846848') {
+      // Only allow admin access (support multiple formats)
+      const adminNumbers = ['0749846848', '256749846848', '+256749846848'];
+      if (!adminNumbers.includes(parsedUser.phone)) {
         alert('Access denied. Admin only.');
         window.location.href = '/dashboard';
         return;
