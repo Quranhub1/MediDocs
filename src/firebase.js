@@ -34,6 +34,10 @@ const transactionsCollection = `${ZENITH_RESOURCES}/${Smjhzh926ep3xwRBGzcR}/tran
 
 // Helper function to get user document
 export const getUser = async (phone) => {
+  if (!phone) {
+    console.error("getUser called with undefined phone");
+    return null;
+  }
   try {
     const userDoc = await getDoc(doc(db, usersCollection, phone));
     if (userDoc.exists()) {
@@ -300,6 +304,10 @@ export const addTransaction = async (transactionData) => {
 
 // Get all transactions for a user
 export const getUserTransactions = async (phone) => {
+  if (!phone) {
+    console.error("getUserTransactions called with undefined phone");
+    return [];
+  }
   try {
     const q = query(
       collection(db, transactionsCollection),
