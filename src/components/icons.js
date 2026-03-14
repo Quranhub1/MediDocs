@@ -58,7 +58,7 @@ import {
   MinusCircleIcon,
   XCircleIcon,
   CheckCircleIcon,
-  CursorClickIcon,
+  CursorArrowRaysIcon,
   ExclamationTriangleIcon,
   ServerIcon,
   CloudUploadIcon,
@@ -83,6 +83,7 @@ const FileText = DocumentTextIcon;
 const ThumbUpIcon = HandThumbUpIcon;
 const ThumbDownIcon = HandThumbDownIcon;
 const ArchiveIcon = ArchiveBoxIcon;
+const CursorClickIcon = CursorArrowRaysIcon;
 const LocationMarkerIcon = MapPinIcon;
 const RefreshIcon = ArrowPathIcon;
 const SearchIcon = MagnifyingGlassIcon;
