@@ -1,4 +1,5 @@
 // Custom icons export - from @heroicons/react v2
+// Using ONLY verified icon names
 import { 
   HomeIcon,
   ClockIcon,
@@ -26,9 +27,8 @@ import {
   ArrowLeftIcon,
   ArrowUpIcon,
   ArrowDownIcon,
-  RefreshIcon,
-  SearchIcon,
-  FilterIcon,
+  ArrowPathIcon,
+  MagnifyingGlassIcon,
   BellIcon,
   CalendarIcon,
   ClipboardListIcon,
@@ -80,6 +80,8 @@ const MailIcon = EnvelopeIcon;
 const HelpCircle = QuestionMarkCircleIcon;
 const FileText = DocumentTextIcon;
 const LocationMarkerIcon = MapPinIcon;
+const RefreshIcon = ArrowPathIcon;
+const SearchIcon = MagnifyingGlassIcon;
 
 export {
   HomeIcon,
@@ -116,8 +118,9 @@ export {
   ArrowUpIcon,
   ArrowDownIcon,
   RefreshIcon,
+  ArrowPathIcon,
   SearchIcon,
-  FilterIcon,
+  MagnifyingGlassIcon,
   BellIcon,
   CalendarIcon,
   ClipboardListIcon,
