@@ -42,6 +42,11 @@ const Referrals = () => {
     setLoading(false);
   };
 
+  // Get user's referral code (use phone or referralCode)
+  const getReferralCode = () => {
+    return user?.phone || user?.referralCode || 'N/A';
+  };
+
   // Get base URL - use environment variable or fallback to current location
   const getBaseUrl = () => {
     if (process.env.REACT_APP_BASE_URL) {
@@ -52,7 +57,7 @@ const Referrals = () => {
   };
 
   const referralLink = user ? 
-    `${getBaseUrl()}/register?ref=${user.phone}` : 
+    `${getBaseUrl()}/register?ref=${getReferralCode()}` : 
     `${getBaseUrl()}/register`;
 
   const handleShareWhatsApp = () => {
@@ -139,7 +144,7 @@ const Referrals = () => {
         >
           <h2 className="text-xl font-bold text-gray-900 mb-4">Your Referral Code</h2>
           <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 text-center">
-            <span className="text-3xl font-bold text-green-600">{user.phone}</span>
+            <span className="text-3xl font-bold text-green-600">{getReferralCode()}</span>
             <p className="text-sm text-gray-600 mt-2">Share this code with friends</p>
           </div>
         </motion.div>
