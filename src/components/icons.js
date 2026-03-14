@@ -13,7 +13,7 @@ import {
   XMarkIcon,
   UserIcon,
   CogIcon,
-  MenuIcon,
+  Bars3Icon,
   ChevronRightIcon,
   ChevronDownIcon,
   StarIcon,
@@ -76,6 +76,7 @@ const TrendingUpIcon = ArrowTrendingUpIcon;
 const TrendingDownIcon = ArrowTrendingDownIcon;
 const DollarSignIcon = CurrencyDollarIcon;
 const XIcon = XMarkIcon;
+const MenuIcon = Bars3Icon;
 
 export {
   HomeIcon,
@@ -95,6 +96,7 @@ export {
   UserIcon,
   CogIcon,
   MenuIcon,
+  Bars3Icon,
   ChevronRightIcon,
   ChevronDownIcon,
   StarIcon,
