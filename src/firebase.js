@@ -112,14 +112,15 @@ export const getUserDeposits = async (phone) => {
   try {
     const q = query(
       collection(db, depositsCollection),
-      where("userId", "==", phone),
-      orderBy("createdAt", "desc")
+      where("userId", "==", phone)
     );
     const snapshot = await getDocs(q);
     const deposits = [];
     snapshot.forEach((doc) => {
       deposits.push({ id: doc.id, ...doc.data() });
     });
+    // Sort by createdAt descending manually
+    deposits.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     return deposits;
   } catch (error) {
     console.error("Error getting deposits:", error);
@@ -175,14 +176,15 @@ export const getUserWithdrawals = async (phone) => {
   try {
     const q = query(
       collection(db, withdrawalsCollection),
-      where("userId", "==", phone),
-      orderBy("createdAt", "desc")
+      where("userId", "==", phone)
     );
     const snapshot = await getDocs(q);
     const withdrawals = [];
     snapshot.forEach((doc) => {
       withdrawals.push({ id: doc.id, ...doc.data() });
     });
+    // Sort by createdAt descending manually
+    withdrawals.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     return withdrawals;
   } catch (error) {
     console.error("Error getting withdrawals:", error);
@@ -237,14 +239,15 @@ export const getUserInvestments = async (phone) => {
   try {
     const q = query(
       collection(db, investmentsCollection),
-      where("userId", "==", phone),
-      orderBy("createdAt", "desc")
+      where("userId", "==", phone)
     );
     const snapshot = await getDocs(q);
     const investments = [];
     snapshot.forEach((doc) => {
       investments.push({ id: doc.id, ...doc.data() });
     });
+    // Sort by createdAt descending manually
+    investments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     return investments;
   } catch (error) {
     console.error("Error getting investments:", error);
@@ -311,14 +314,15 @@ export const getUserTransactions = async (phone) => {
   try {
     const q = query(
       collection(db, transactionsCollection),
-      where("userId", "==", phone),
-      orderBy("createdAt", "desc")
+      where("userId", "==", phone)
     );
     const snapshot = await getDocs(q);
     const transactions = [];
     snapshot.forEach((doc) => {
       transactions.push({ id: doc.id, ...doc.data() });
     });
+    // Sort by createdAt descending manually
+    transactions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     return transactions;
   } catch (error) {
     console.error("Error getting transactions:", error);
