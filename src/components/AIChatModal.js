@@ -4,6 +4,10 @@ const AIChatModal = ({ show, onClose }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [useOpenAI, setUseOpenAI] = useState(false);
+
+  // Check if OpenAI API key is available
+  const openAIApiKey = process.env.REACT_APP_OPENAI_API_KEY;
 
   useEffect(() => {
     if (show) {
@@ -31,7 +35,33 @@ const AIChatModal = ({ show, onClose }) => {
     setIsLoading(true);
 
     try {
-      const botResponse = await simulateAIResponse(input);
+      let botResponse;
+      
+      if (openAIApiKey) {
+        // Use OpenAI API
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${openAIApiKey}`
+          },
+          body: JSON.stringify({
+            model: 'gpt-3.5-turbo',
+            messages: [
+              { role: 'system', content: 'You are a helpful medical study assistant for Ugandan students. Provide accurate, educational responses about medical topics.' },
+              ...messages.map(m => ({ role: m.isUser ? 'user' : 'assistant', content: m.text })),
+              { role: 'user', content: input }
+            ],
+            max_tokens: 500
+          })
+        });
+        
+        const data = await response.json();
+        botResponse = data.choices?.[0]?.message?.content || "I'm sorry, I couldn't generate a response.";
+      } else {
+        // Use simulated AI responses
+        botResponse = await simulateAIResponse(input);
+      }
       
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
@@ -40,9 +70,11 @@ const AIChatModal = ({ show, onClose }) => {
       }]);
     } catch (error) {
       console.error('AI chat error:', error);
+      // Fallback to simulated response on error
+      const fallbackResponse = await simulateAIResponse(input);
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
-        text: "I'm sorry, I encountered an error. Please try again.",
+        text: fallbackResponse,
         isUser: false
       }]);
     } finally {
