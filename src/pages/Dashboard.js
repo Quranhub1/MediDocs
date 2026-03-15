@@ -225,7 +225,10 @@ const Dashboard = () => {
     // Open YouTube video in new window
     window.open(video.url, '_blank', 'width=800,height=600');
     
-    if (user) {
+    // Ask user to confirm they've watched the video
+    const hasWatched = window.confirm(`Please watch the entire video.\n\nAfter watching, click OK to claim your reward of UGX ${earnings}.\n\nClick Cancel if you haven't finished watching.`);
+    
+    if (hasWatched && user) {
       const newBalance = user.balance + earnings;
       const updatedUser = { ...user, balance: newBalance, lastVideoWatch: now };
       
@@ -255,6 +258,8 @@ const Dashboard = () => {
         setCooldownRemaining('48 hours');
         alert(`You earned UGX ${earnings}! You can watch another video in 48 hours. Your new balance is UGX ${newBalance}`);
       }
+    } else if (!hasWatched) {
+      alert("No problem! Come back after you've finished watching the video.");
     }
   };
 
