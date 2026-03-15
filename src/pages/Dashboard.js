@@ -288,6 +288,14 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      {/* User Info Header */}
+      <div className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+          <div className="text-center">
+            <div className="text-lg font-semibold text-gray-800">Logged in as: {user.phone || user.id}</div>
+          </div>
+        </div>
+      </div>
       <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 py-4">
