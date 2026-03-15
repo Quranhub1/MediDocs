@@ -169,7 +169,7 @@ const Investments = () => {
     // Create investment record
     const investment = {
       id: Date.now(),
-      userId: user.phone,
+      userId: user.phone || user.id,
       packageId: selectedPackage.id,
       packageName: selectedPackage.name,
       amount: amount,
@@ -188,9 +188,10 @@ const Investments = () => {
     };
 
     // Save to local storage
-    const investments = JSON.parse(localStorage.getItem('investments_' + user.phone) || '[]');
+    const userPhone = user.phone || user.id;
+    const investments = JSON.parse(localStorage.getItem('investments_' + userPhone) || '[]');
     investments.push(investment);
-    localStorage.setItem('investments_' + user.phone, JSON.stringify(investments));
+    localStorage.setItem('investments_' + userPhone, JSON.stringify(investments));
     
     // Save to Firebase
     try {
@@ -201,7 +202,7 @@ const Investments = () => {
         amount: amount,
         description: `Investment in ${selectedPackage.name}`
       });
-      await updateUserBalance(user.phone, newBalance, 'balance');
+      await updateUserBalance(userPhone, newBalance, 'balance');
     } catch (error) {
       console.error('Error saving to Firebase:', error);
     }
