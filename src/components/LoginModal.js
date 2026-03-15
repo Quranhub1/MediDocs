@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 
-const LoginModal = ({ show, onClose, onLogin, onSwitchToRegister }) => {
+const LoginModal = ({ show, onClose, onSwitchToRegister }) => {
+  const { login } = useAuth();
   const [formState, setFormState] = useState({
     email: '',
     password: ''
@@ -17,27 +19,20 @@ const LoginModal = ({ show, onClose, onLogin, onSwitchToRegister }) => {
     if (error) setError('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError('');
     
-    setTimeout(() => {
-      console.log('Login attempt:', formState);
-      
-      if (formState.email && formState.password) {
-        const mockUser = {
-          email: formState.email,
-          uid: 'mock-user-id',
-          displayName: formState.email.split('@')[0]
-        };
-        onLogin(mockUser);
-      } else {
-        setError('Please fill in all fields');
-      }
-      
-      setIsSubmitting(false);
-    }, 1000);
+    const result = await login(formState.email, formState.password);
+    
+    if (result.success) {
+      onClose();
+    } else {
+      setError(result.error);
+    }
+    
+    setIsSubmitting(false);
   };
 
   if (!show) return null;

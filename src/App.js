@@ -9,10 +9,10 @@ import RegisterModal from './components/RegisterModal';
 import PaymentModal from './components/PaymentModal';
 import ContactModal from './components/ContactModal';
 import AIChatModal from './components/AIChatModal';
-import AuthContext from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
-function App() {
-  const [user, setUser] = useState(null);
+function AppContent() {
+  const { currentUser, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentView, setCurrentView] = useState('home');
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -24,19 +24,9 @@ function App() {
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
 
-  const handleLogin = (userData) => {
-    setUser(userData);
+  const handleLogout = async () => {
+    await logout();
     setShowLoginModal(false);
-  };
-
-  const handleLogout = () => {
-    setUser(null);
-    setShowLoginModal(false);
-    setShowRegisterModal(false);
-  };
-
-  const handleRegister = (userData) => {
-    setUser(userData);
     setShowRegisterModal(false);
   };
 
@@ -53,12 +43,12 @@ function App() {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login: handleLogin, logout: handleLogout }}>
+    <>
       <div className="min-h-screen bg-gray-50 pb-16 lg:pb-0">
         {/* Main Content Wrapper */}
         <div className="flex flex-col min-h-screen">
           <Header 
-            user={user} 
+            user={currentUser} 
             currentView={currentView}
             onViewChange={handleViewChange}
             onLoginClick={() => setShowLoginModal(true)}
@@ -82,7 +72,7 @@ function App() {
             <div className="w-full">
               <MainContent 
                 view={currentView} 
-                user={user}
+                user={currentUser}
                 onLoginClick={() => setShowLoginModal(true)}
                 onRegisterClick={() => setShowRegisterModal(true)}
                 onPaymentClick={() => setShowPaymentModal(true)}
@@ -137,7 +127,6 @@ function App() {
         <LoginModal 
           show={showLoginModal} 
           onClose={() => setShowLoginModal(false)}
-          onLogin={handleLogin}
           onSwitchToRegister={() => {
             setShowLoginModal(false);
             setShowRegisterModal(true);
@@ -147,7 +136,6 @@ function App() {
         <RegisterModal 
           show={showRegisterModal} 
           onClose={() => setShowRegisterModal(false)}
-          onRegister={handleRegister}
           onSwitchToLogin={() => {
             setShowRegisterModal(false);
             setShowLoginModal(true);
@@ -169,7 +157,15 @@ function App() {
           onClose={() => setShowAIChatModal(false)}
         />
       </div>
-    </AuthContext.Provider>
+    </>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 

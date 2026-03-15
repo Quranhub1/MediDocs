@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 
-const RegisterModal = ({ show, onClose, onRegister, onSwitchToLogin }) => {
+const RegisterModal = ({ show, onClose, onSwitchToLogin }) => {
+  const { register } = useAuth();
   const [formState, setFormState] = useState({
+    name: '',
     email: '',
     password: '',
     confirmPassword: ''
@@ -18,10 +21,16 @@ const RegisterModal = ({ show, onClose, onRegister, onSwitchToLogin }) => {
     if (error) setError('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError('');
+    
+    if (!formState.name) {
+      setError('Please enter your name');
+      setIsSubmitting(false);
+      return;
+    }
     
     if (!formState.email) {
       setError('Please enter your email');
@@ -47,18 +56,15 @@ const RegisterModal = ({ show, onClose, onRegister, onSwitchToLogin }) => {
       return;
     }
     
-    setTimeout(() => {
-      console.log('Registration attempt:', formState);
-      
-      const mockUser = {
-        email: formState.email,
-        uid: 'mock-user-id',
-        displayName: formState.email.split('@')[0]
-      };
-      onRegister(mockUser);
-      
-      setIsSubmitting(false);
-    }, 1000);
+    const result = await register(formState.email, formState.password, formState.name);
+    
+    if (result.success) {
+      onClose();
+    } else {
+      setError(result.error);
+    }
+    
+    setIsSubmitting(false);
   };
 
   if (!show) return null;
@@ -90,6 +96,22 @@ const RegisterModal = ({ show, onClose, onRegister, onSwitchToLogin }) => {
           )}
           
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="register-name" className="block text-sm font-medium text-gray-700 mb-2">
+                Full Name
+              </label>
+              <input
+                type="text"
+                id="register-name"
+                name="name"
+                value={formState.name}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                placeholder="Enter your full name"
+              />
+            </div>
+            
             <div>
               <label htmlFor="register-email" className="block text-sm font-medium text-gray-700 mb-2">
                 Email Address
