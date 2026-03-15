@@ -13,6 +13,7 @@ const Dashboard = () => {
   const [cooldownRemaining, setCooldownRemaining] = useState('');
   const [investmentTimers, setInvestmentTimers] = useState({});
   const [userInvestments, setUserInvestments] = useState([]);
+  const [watchingVideo, setWatchingVideo] = useState(null);
 
   // Investment timer effect - runs every minute
   useEffect(() => {
@@ -219,47 +220,48 @@ const Dashboard = () => {
       return;
     }
     
-    const earnings = video.earnings;
-    const now = new Date().toISOString();
-    
     // Open YouTube video in new window
     window.open(video.url, '_blank', 'width=800,height=600');
     
-    // Ask user to confirm they've watched the video
-    const hasWatched = window.confirm(`Please watch the entire video.\n\nAfter watching, click OK to claim your reward of UGX ${earnings}.\n\nClick Cancel if you haven't finished watching.`);
+    // Set the video as currently watching - user can claim reward after watching
+    setWatchingVideo(video);
+  };
+  
+  const handleClaimReward = async () => {
+    if (!watchingVideo || !user) return;
     
-    if (hasWatched && user) {
-      const newBalance = user.balance + earnings;
-      const updatedUser = { ...user, balance: newBalance, lastVideoWatch: now };
+    const earnings = watchingVideo.earnings;
+    const now = new Date().toISOString();
+    const newBalance = user.balance + earnings;
+    const updatedUser = { ...user, balance: newBalance, lastVideoWatch: now };
+    
+    try {
+      const newVideosWatched = (user.videosWatched || 0) + 1;
+      await updateUserBalance(user.phone, newBalance, 'balance');
+      await updateUserBalance(user.phone, now, 'lastVideoWatch');
+      await updateUserBalance(user.phone, newVideosWatched, 'videosWatched');
+      await addTransaction({
+        userId: user.phone,
+        type: 'earnings',
+        amount: earnings,
+        description: `Video watch earnings: ${watchingVideo.title}`
+      });
       
-      try {
-        const newVideosWatched = (user.videosWatched || 0) + 1;
-        await updateUserBalance(user.phone, newBalance, 'balance');
-        await updateUserBalance(user.phone, now, 'lastVideoWatch');
-        await updateUserBalance(user.phone, newVideosWatched, 'videosWatched');
-        await addTransaction({
-          userId: user.phone,
-          type: 'earnings',
-          amount: earnings,
-          description: `Video watch earnings: ${video.title}`
-        });
-        
-        setUser({...updatedUser, videosWatched: newVideosWatched});
-        localStorage.setItem('zenith_user', JSON.stringify({...updatedUser, videosWatched: newVideosWatched}));
-        setCanWatch(false);
-        setCooldownRemaining('48 hours');
-        alert(`You earned UGX ${earnings}! You can watch another video in 48 hours. Your new balance is UGX ${newBalance}`);
-      } catch (error) {
-        console.error("Error updating balance:", error);
-        const newVideosWatched = (user.videosWatched || 0) + 1;
-        setUser({...updatedUser, videosWatched: newVideosWatched});
-        localStorage.setItem('zenith_user', JSON.stringify({...updatedUser, videosWatched: newVideosWatched}));
-        setCanWatch(false);
-        setCooldownRemaining('48 hours');
-        alert(`You earned UGX ${earnings}! You can watch another video in 48 hours. Your new balance is UGX ${newBalance}`);
-      }
-    } else if (!hasWatched) {
-      alert("No problem! Come back after you've finished watching the video.");
+      setUser({...updatedUser, videosWatched: newVideosWatched});
+      localStorage.setItem('zenith_user', JSON.stringify({...updatedUser, videosWatched: newVideosWatched}));
+      setCanWatch(false);
+      setCooldownRemaining('48 hours');
+      setWatchingVideo(null);
+      alert(`You earned UGX ${earnings}! You can watch another video in 48 hours. Your new balance is UGX ${newBalance}`);
+    } catch (error) {
+      console.error("Error updating balance:", error);
+      const newVideosWatched = (user.videosWatched || 0) + 1;
+      setUser({...updatedUser, videosWatched: newVideosWatched});
+      localStorage.setItem('zenith_user', JSON.stringify({...updatedUser, videosWatched: newVideosWatched}));
+      setCanWatch(false);
+      setCooldownRemaining('48 hours');
+      setWatchingVideo(null);
+      alert(`You earned UGX ${earnings}! You can watch another video in 48 hours. Your new balance is UGX ${newBalance}`);
     }
   };
 
@@ -336,6 +338,21 @@ const Dashboard = () => {
           className="mb-8"
         >
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Available Videos</h2>
+          {/* Claim Reward Banner */}
+          {watchingVideo && (
+            <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white p-4 rounded-lg mb-6 flex flex-col md:flex-row items-center justify-between">
+              <div className="mb-3 md:mb-0">
+                <p className="font-semibold">You've watched: {watchingVideo.title}</p>
+                <p className="text-sm">Reward: UGX {watchingVideo.earnings}</p>
+              </div>
+              <button
+                onClick={handleClaimReward}
+                className="bg-white text-green-600 px-6 py-2 rounded-lg font-semibold hover:bg-gray-100 transition"
+              >
+                Claim Reward
+              </button>
+            </div>
+          )}
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {videos.map((video) => (
               <motion.div 
