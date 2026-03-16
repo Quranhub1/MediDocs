@@ -2,28 +2,32 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // RESOURCES_STUDYPEDIA collection structure
-    // RESOURCES_STUDYPEDIA/{course}/courses/{semester}/courseunit/{unit}/documents/{document}
+    // Allow anyone to read courses (top-level collection)
     match /RESOURCES_STUDYPEDIA/{courseId} {
-      // Course level - read all, write admin
       allow read: if true;
-      allow write: if request.auth != null && request.auth.token.admin == true;
+      allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
       
-      // Semesters under course
-      match /courses/{semesterId} {
-        allow read: if true;
-        allow write: if request.auth != null && request.auth.token.admin == true;
+      // semesters subcollection
+      match /semesters/{semesterId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
         
-        // Course units under semester
-        match /courseunit/{unitId} {
-          allow read: if true;
-          allow write: if request.auth != null && request.auth.token.admin == true;
+        // courseunits nested subcollection
+        match /courseunits/{unitId} {
+          allow read: if request.auth != null;
+          allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
           
-          // Documents under unit
-          match /documents/{documentId} {
-            allow read: if true;  // Public for all users
-            allow write: if request.auth != null && request.auth.token.admin == true;
+          // documents nested under courseunits
+          match /documents/{docId} {
+            allow read: if request.auth != null;
+            allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
           }
+        }
+        
+        // documents subcollection under semesters
+        match /documents/{docId} {
+          allow read: if request.auth != null;
+          allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
         }
       }
     }

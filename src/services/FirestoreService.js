@@ -9,11 +9,11 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 
-// Collection paths
+// Collection path
 export const RESOURCES_COLLECTION = 'RESOURCES_STUDYPEDIA';
 
 // Fetch all documents from nested structure
-// Path: RESOURCES_STUDYPEDIA/{course}/courses/{semester}/courseunit/{unit}/documents
+// Path: RESOURCES_STUDYPEDIA/{course}/semesters/{semester}/courseunits/{unit}/documents
 export const fetchAllDocuments = async (maxItems = 50) => {
   try {
     const allDocuments = [];
@@ -24,39 +24,58 @@ export const fetchAllDocuments = async (maxItems = 50) => {
     
     for (const courseDoc of coursesSnapshot.docs) {
       const courseId = courseDoc.id;
+      const courseName = courseDoc.data().name || courseId;
       
       // Get semesters under each course
-      const semestersRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/courses`);
+      const semestersRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/semesters`);
       const semestersSnapshot = await getDocs(semestersRef);
       
       for (const semesterDoc of semestersSnapshot.docs) {
         const semesterId = semesterDoc.id;
+        const semesterName = semesterDoc.data().name || semesterId;
         
         // Get course units under each semester
-        const unitsRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/courses/${semesterId}/courseunit`);
+        const unitsRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/semesters/${semesterId}/courseunits`);
         const unitsSnapshot = await getDocs(unitsRef);
         
         for (const unitDoc of unitsSnapshot.docs) {
           const unitId = unitDoc.id;
+          const unitName = unitDoc.data().name || unitId;
           
           // Get documents under each unit
-          const docsRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/courses/${semesterId}/courseunit/${unitId}/documents`);
+          const docsRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/semesters/${semesterId}/courseunits/${unitId}/documents`);
           const docsSnapshot = await getDocs(query(docsRef, orderBy('createdAt', 'desc'), limit(maxItems)));
           
           docsSnapshot.forEach((doc) => {
             allDocuments.push({
               id: doc.id,
               ...doc.data(),
-              // Add path info for display
               courseId,
               semesterId,
               unitId,
-              courseName: courseDoc.data().name || courseId,
-              semesterName: semesterDoc.data().name || semesterId,
-              unitName: unitDoc.data().name || unitId
+              courseName,
+              semesterName,
+              unitName
             });
           });
         }
+        
+        // Also get documents directly under semester (if any)
+        const semDocsRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/semesters/${semesterId}/documents`);
+        const semDocsSnapshot = await getDocs(query(semDocsRef, orderBy('createdAt', 'desc'), limit(maxItems)));
+        
+        semDocsSnapshot.forEach((doc) => {
+          allDocuments.push({
+            id: doc.id,
+            ...doc.data(),
+            courseId,
+            semesterId,
+            unitId: null,
+            courseName,
+            semesterName,
+            unitName: null
+          });
+        });
       }
     }
     
@@ -79,19 +98,21 @@ export const fetchDocumentsByCourse = async (courseId, maxItems = 20) => {
   try {
     const allDocuments = [];
     
-    const semestersRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/courses`);
+    const semestersRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/semesters`);
     const semestersSnapshot = await getDocs(semestersRef);
     
     for (const semesterDoc of semestersSnapshot.docs) {
       const semesterId = semesterDoc.id;
+      const semesterName = semesterDoc.data().name || semesterId;
       
-      const unitsRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/courses/${semesterId}/courseunit`);
+      const unitsRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/semesters/${semesterId}/courseunits`);
       const unitsSnapshot = await getDocs(unitsRef);
       
       for (const unitDoc of unitsSnapshot.docs) {
         const unitId = unitDoc.id;
+        const unitName = unitDoc.data().name || unitId;
         
-        const docsRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/courses/${semesterId}/courseunit/${unitId}/documents`);
+        const docsRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/semesters/${semesterId}/courseunits/${unitId}/documents`);
         const docsSnapshot = await getDocs(query(docsRef, orderBy('createdAt', 'desc'), limit(maxItems)));
         
         docsSnapshot.forEach((doc) => {
@@ -102,8 +123,8 @@ export const fetchDocumentsByCourse = async (courseId, maxItems = 20) => {
             semesterId,
             unitId,
             courseName: courseId,
-            semesterName: semesterDoc.data().name || semesterId,
-            unitName: unitDoc.data().name || unitId
+            semesterName,
+            unitName
           });
         });
       }
@@ -137,7 +158,7 @@ export const fetchAllCourses = async () => {
   }
 };
 
-// Legacy support - fetch from RESOURCES_STUDYPEDIA directly
+// Legacy support
 export const fetchResources = async (maxItems = 20) => {
   return fetchAllDocuments(maxItems);
 };
