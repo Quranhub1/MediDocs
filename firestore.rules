@@ -2,38 +2,41 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Allow anyone to read public documents
-    match /public/{documentId} {
+    // RESOURCES_STUDYPEDIA collection structure
+    // RESOURCES_STUDYPEDIA/{course}/courses/{semester}/courseunit/{unit}/documents/{document}
+    match /RESOURCES_STUDYPEDIA/{courseId} {
+      // Course level - read all, write admin
       allow read: if true;
       allow write: if request.auth != null && request.auth.token.admin == true;
+      
+      // Semesters under course
+      match /courses/{semesterId} {
+        allow read: if true;
+        allow write: if request.auth != null && request.auth.token.admin == true;
+        
+        // Course units under semester
+        match /courseunit/{unitId} {
+          allow read: if true;
+          allow write: if request.auth != null && request.auth.token.admin == true;
+          
+          // Documents under unit
+          match /documents/{documentId} {
+            allow read: if true;  // Public for all users
+            allow write: if request.auth != null && request.auth.token.admin == true;
+          }
+        }
+      }
     }
     
-    // Resources collection - study materials for students
-    match /RESOURCES_STUDYPEDIA/{documentId} {
-      allow read: if true;  // Public for all users
-      allow write: if request.auth != null && request.auth.token.admin == true;
-    }
-    
-    // User profiles - users can read/write their own
+    // User profiles
     match /users/{userId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // User chat messages - only the user can read/write their own messages
+    // User chat messages
     match /chats/{userId}/messages/{messageId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-    
-    // Documents/Courses (legacy support)
-    match /documents/{documentId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.token.admin == true;
-    }
-    
-    match /courses/{courseId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.token.admin == true;
     }
   }
 }

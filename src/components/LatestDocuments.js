@@ -25,22 +25,24 @@ const LatestDocuments = ({ documents, onDocumentClick, onDownloadClick }) => {
   };
 
   const getThumbnailUrl = (doc) => {
-    // Check for dedicated thumbnail fields first
-    if (doc.thumbnail) return doc.thumbnail;
+    // Check for thumbnail fields - prioritize in order
     if (doc.thumbnailUrl) return doc.thumbnailUrl;
+    if (doc.thumbnail) return doc.thumbnail;
+    if (doc.imageUrl) return doc.imageUrl;
+    if (doc.image) return doc.image;
+    if (doc.coverImage) return doc.coverImage;
     if (doc.previewImage) return doc.previewImage;
+    if (doc.url) return doc.url;
+    if (doc.fileUrl) return doc.fileUrl;
     
-    // Fallback to filePath-based detection
-    if (!doc.filePath) return null;
-    
-    const extension = doc.filePath.split('.').pop().toLowerCase();
-    
-    // If it's an image file, use it as thumbnail
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension)) {
-      return doc.filePath;
+    // If there's a filePath that's an image, use it
+    if (doc.filePath) {
+      const extension = doc.filePath.split('.').pop().toLowerCase();
+      if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension)) {
+        return doc.filePath;
+      }
     }
     
-    // For PDFs and documents, return null to show icon instead
     return null;
   };
 
