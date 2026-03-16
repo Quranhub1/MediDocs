@@ -8,7 +8,7 @@ import LoginModal from './components/LoginModal';
 import RegisterModal from './components/RegisterModal';
 import PaymentModal from './components/PaymentModal';
 import ContactModal from './components/ContactModal';
-import AIChatModal from './components/AIChatModal';
+import AIStudyAssistant from './components/AIStudyAssistant';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
 function AppContent() {
@@ -152,10 +152,29 @@ function AppContent() {
           onClose={() => setShowContactModal(false)}
         />
         
-        <AIChatModal 
+        <AIStudyAssistant 
           show={showAIChatModal} 
           onClose={() => setShowAIChatModal(false)}
+          user={currentUser}
         />
+        
+        {/* Floating AI Assistant Button */}
+        <button
+          onClick={() => setShowAIChatModal(true)}
+          className="fixed bottom-20 right-6 z-40 w-16 h-16 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform animate-bounce"
+          style={{ animation: 'pulse 2s infinite' }}
+        >
+          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+          </svg>
+        </button>
+        
+        <style>{`
+          @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            50% { box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); }
+          }
+        `}</style>
       </div>
     </>
   );
