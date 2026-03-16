@@ -2,28 +2,28 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // RESOURCES_STUDYPEDIA/{resourceId}/courses/{courseId}/semesters/{semesterId}/course_unit/{unitId}/documents/{docId}
-    match /RESOURCES_STUDYPEDIA/{resourceId} {
+    // RESOURCES_STUDYPEDIA/{courseId}/semesters/{semesterId}/courseunits/{unitId}/documents/{docId}
+    match /RESOURCES_STUDYPEDIA/{courseId} {
       allow read: if true;
       allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
       
-      match /courses/{courseId} {
+      match /semesters/{semesterId} {
         allow read: if request.auth != null;
         allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
         
-        match /semesters/{semesterId} {
+        match /courseunits/{unitId} {
           allow read: if request.auth != null;
           allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
           
-          match /course_unit/{unitId} {
+          match /documents/{docId} {
             allow read: if request.auth != null;
             allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
-            
-            match /documents/{docId} {
-              allow read: if request.auth != null;
-              allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
-            }
           }
+        }
+        
+        match /documents/{docId} {
+          allow read: if request.auth != null;
+          allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
         }
       }
     }
