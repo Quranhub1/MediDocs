@@ -5,41 +5,34 @@ service cloud.firestore {
     // Allow anyone to read courses (top-level collection)
     match /RESOURCES_STUDYPEDIA/{courseId} {
       allow read: if true;
-      allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+      allow write: if request.auth != null && request.auth.token.email == 'admin@studypedia.ug';
       
-      // semesters subcollection
+      // Allow authenticated users to read semesters, course_units, documents
       match /semesters/{semesterId} {
         allow read: if request.auth != null;
-        allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
-        
-        // courseunits nested subcollection
-        match /courseunits/{unitId} {
-          allow read: if request.auth != null;
-          allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
-          
-          // documents nested under courseunits
-          match /documents/{docId} {
-            allow read: if request.auth != null;
-            allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
-          }
-        }
-        
-        // documents subcollection under semesters
-        match /documents/{docId} {
-          allow read: if request.auth != null;
-          allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
-        }
+        allow write: if request.auth != null && request.auth.token.email == 'admin@studypedia.ug';
+      }
+      
+      match /course_units/{unitId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.token.email == 'admin@studypedia.ug';
+      }
+      
+      match /documents/{docId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.token.email == 'admin@studypedia.ug';
       }
     }
     
-    // User profiles
-    match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+    // User payments - users can read their own, admin can read all
+    match /user_payments/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId 
+                  || request.auth.token.email == 'admin@studypedia.ug';
+      allow write: if request.auth != null && request.auth.token.email == 'admin@studypedia.ug';
     }
     
-    // User chat messages
-    match /chats/{userId}/messages/{messageId} {
+    // Allow authenticated users to read their own data
+    match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
