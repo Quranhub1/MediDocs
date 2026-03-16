@@ -1,0 +1,244 @@
+/* Custom styles for the Studypedia React App */
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Active menu item highlight */
+.active-menu {
+  background-color: #dbeafe !important;
+  color: #2563eb !important;
+  font-weight: 600;
+}
+
+/* Latest docs slide animation */
+.slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Carousel dot styles */
+.carousel-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #cbd5e1;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.carousel-dot.active {
+  background-color: #3b82f6;
+  transform: scale(1.2);
+}
+
+.carousel-dot:hover {
+  background-color: #64748b;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  /* Sidebar narrower on mobile */
+  #sidebar {
+    width: 85% !important;
+    max-width: 280px !important;
+  }
+  
+  /* All Modals - full screen on mobile */
+  #login-modal > div,
+  #register-modal > div,
+  #payment-modal > div,
+  #contact-modal > div,
+  #ai-chat-modal > div,
+  #ai-response-modal > div {
+    max-width: 95% !important;
+    width: 95% !important;
+    max-height: 90vh !important;
+    margin: 0.5rem !important;
+    overflow-y: auto !important;
+  }
+  
+  /* Modal text sizes */
+  #login-modal .text-xl,
+  #register-modal .text-xl,
+  #payment-modal .text-xl,
+  #contact-modal .text-xl,
+  #ai-chat-modal .text-xl {
+    font-size: 1rem !important;
+  }
+  
+  #login-modal .text-lg,
+  #register-modal .text-lg,
+  #payment-modal .text-lg,
+  #contact-modal .text-lg,
+  #ai-chat-modal .text-lg {
+    font-size: 0.875rem !important;
+  }
+  
+  /* Modal padding */
+  #login-modal .p-6,
+  #register-modal .p-6,
+  #payment-modal .p-6,
+  #contact-modal .p-6,
+  #ai-chat-modal .p-6,
+  #ai-chat-modal .p-4 {
+    padding: 0.75rem !important;
+  }
+  
+  /* Modal inputs */
+  #login-modal input,
+  #register-modal input,
+  #payment-modal input,
+  #contact-modal input,
+  #ai-chat-modal input {
+    font-size: 0.875rem !important;
+    padding: 0.5rem !important;
+  }
+  
+  /* Modal buttons */
+  #login-modal button,
+  #register-modal button,
+  #payment-modal button,
+  #contact-modal button,
+  #ai-chat-modal button {
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.75rem !important;
+  }
+  
+  /* Smaller text sizes on mobile */
+  h1 {
+    font-size: 2rem !important;
+  }
+  
+  h2 {
+    font-size: 1.5rem !important;
+  }
+  
+  h3 {
+    font-size: 1.25rem !important;
+  }
+  
+  p {
+    font-size: 0.875rem !important;
+  }
+  
+  /* Smaller padding on mobile */
+  .p-8 {
+    padding: 1rem !important;
+  }
+  
+  .p-6 {
+    padding: 0.75rem !important;
+  }
+  
+  .p-4 {
+    padding: 0.5rem !important;
+  }
+  
+  /* Smaller margins on mobile */
+  .mb-8 {
+    margin-bottom: 1rem !important;
+  }
+  
+  .mb-6 {
+    margin-bottom: 0.75rem !important;
+  }
+  
+  .mb-4 {
+    margin-bottom: 0.5rem !important;
+  }
+  
+  .mt-8 {
+    margin-top: 1rem !important;
+  }
+  
+  .mt-12 {
+    margin-top: 1.5rem !important;
+  }
+  
+  /* Smaller buttons on mobile */
+  .py-3 {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+  
+  .py-4 {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+  
+  .px-6 {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  
+  .px-8 {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  
+  /* Smaller logo on mobile */
+  .w-32.h-32 {
+    width: 5rem !important;
+    height: 5rem !important;
+  }
+  
+  /* Stack buttons vertically on mobile */
+  .flex-col.md\:flex-row {
+    flex-direction: column !important;
+  }
+  
+  .flex-col.md\:flex-row.gap-4 {
+    gap: 0.5rem !important;
+  }
+  
+  /* Smaller latest docs section on mobile */
+  #latest-docs-section,
+  #latest-docs-carousel {
+    margin-top: 0.5rem !important;
+    padding: 0.5rem !important;
+  }
+  
+  /* Smaller document cards on mobile */
+  .bg-gradient-to-br.from-white.to-blue-50 {
+    padding: 0.75rem !important;
+    flex-direction: column !important;
+  }
+  
+  /* Smaller font for document titles on mobile */
+  .text-lg {
+    font-size: 1rem !important;
+  }
+  
+  /* Smaller buttons in document cards */
+  .rounded-full {
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.75rem !important;
+  }
+  
+  /* Make content containers full width on mobile */
+  .max-w-4xl {
+    max-width: 95% !important;
+  }
+  
+  /* Smaller course/semester buttons on mobile */
+  .grid-cols-1.sm\:grid-cols-2.md\:grid-cols-3 {
+    grid-template-columns: 1fr !important;
+  }
+  
+  /* Adjust main content padding on mobile */
+  .p-8.bg-white {
+    padding: 0.75rem !important;
+  }
+}
