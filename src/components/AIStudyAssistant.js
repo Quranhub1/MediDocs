@@ -89,15 +89,15 @@ const AIStudyAssistant = ({ show, onClose, user }) => {
       let botResponse;
 
       if (openAIApiKey) {
-        // Use OpenAI API
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        // Use Groq API (free, fast)
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${openAIApiKey}`
           },
           body: JSON.stringify({
-            model: 'gpt-3.5-turbo',
+            model: 'llama-3.1-70b-versatile',
             messages: [
               { 
                 role: 'system', 
@@ -404,7 +404,7 @@ Please try rephrasing your question or ask about one of these topics!`;
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
-              Using built-in medical knowledge. Add OpenAI key for advanced AI.
+              Using built-in medical knowledge. Add Groq key for advanced AI.
             </div>
           )}
           <div className="flex space-x-2">
