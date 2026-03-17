@@ -82,34 +82,45 @@ const isLatestDocument = (createdAt, hoursThreshold = 72) => {
   return hoursDifference <= hoursThreshold;
 };
 
-// Fetch all courses with enhanced caching
+// Fetch all courses with proper indexing
 export const fetchCourses = async (forceRefresh = false) => {
   if (!forceRefresh) {
     const cached = getCache(CACHE_KEYS.COURSES);
     if (cached) {
       console.log('Returning cached courses');
-      return { success: true, data: cached.data };
+      return cached.data;
     }
   }
 
   try {
     console.log('Fetching courses from Firestore...');
     const coursesRef = collection(db, RESOURCES_COLLECTION);
+
+    // Use a simple query that doesn't require composite indexing
+    // Filter courses by type on the client side to avoid index requirements
     const querySnapshot = await getDocs(coursesRef);
-    
-    const courses = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      isLatest: isLatestDocument(doc.data().createdAt)
-    }));
+
+    const courses = querySnapshot.docs
+      .map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        isLatest: isLatestDocument(doc.data().createdAt)
+      }))
+      .filter(doc => doc.type === 'course') // Filter on client side
+      .sort((a, b) => {
+        // Sort by createdAt descending on client side
+        const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+        const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+        return dateB - dateA;
+      });
 
     // Cache the results
     setCache(CACHE_KEYS.COURSES, courses, MAX_CACHE_SIZE);
-    
-    return { success: true, data: courses };
+
+    return courses;
   } catch (error) {
     console.error('Error fetching courses:', error);
-    return { success: false, error: error.message, data: [] };
+    throw error;
   }
 };
 
@@ -165,9 +176,9 @@ export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => 
           const unitId = unitDoc.id;
           const unitName = unitDoc.data().name || unitId;
           
-          // Get documents under each courseunit
+          // Get documents under each courseunit - without query ordering
           const docsRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/semesters/${semesterId}/courseunits/${unitId}/documents`);
-          const docsSnapshot = await getDocs(query(docsRef, orderBy('createdAt', 'desc')));
+          const docsSnapshot = await getDocs(docsRef);
           
           docsSnapshot.forEach((doc) => {
             const docData = doc.data();
@@ -193,9 +204,9 @@ export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => 
           });
         }
         
-        // Also get documents directly under semesters
+        // Also get documents directly under semesters - without query ordering
         const semDocsRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/semesters/${semesterId}/documents`);
-        const semDocsSnapshot = await getDocs(query(semDocsRef, orderBy('createdAt', 'desc')));
+        const semDocsSnapshot = await getDocs(semDocsRef);
         
         semDocsSnapshot.forEach((doc) => {
           const docData = doc.data();
