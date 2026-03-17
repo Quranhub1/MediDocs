@@ -1,6 +1,6 @@
 import React from 'react';
 
-const CourseGrid = ({ courses }) => {
+const CourseGrid = ({ courses, onBrowseClick }) => {
   return (
     <section className="py-12 px-4">
       <div className="max-w-7xl mx-auto">
@@ -80,6 +80,7 @@ const CourseGrid = ({ courses }) => {
                     course.id === 'dip1' ? 'bg-cyan-500 hover:bg-cyan-600 text-white' :
                     'bg-blue-500 hover:bg-blue-600 text-white'
                   } shadow-md hover:shadow-lg transform hover:scale-105`}
+                  onClick={() => onBrowseClick && onBrowseClick(course)}
                 >
                   Browse Materials
                 </button>

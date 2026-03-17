@@ -8,7 +8,7 @@ import HeroSection from './HeroSection';
 import StatsSection from './StatsSection';
 import { fetchResources, fetchCourses } from '../services/FirestoreService';
 
-const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick, onContactClick, onAIChatClick }) => {
+const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick, onContactClick, onAIChatClick, setView }) => {
   const [latestDocuments, setLatestDocuments] = useState([]);
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -138,14 +138,14 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
               onDocumentClick={(doc) => console.log('Document clicked:', doc)}
               onDownloadClick={(doc) => console.log('Download clicked:', doc)}
             />
-            <CourseGrid courses={courses} />
+            <CourseGrid courses={courses} onBrowseClick={() => setView && setView('courses')} />
           </div>
         </div>
       );
     case 'courses':
       return (
         <div className="space-y-0">
-          <CourseGrid courses={courses} />
+          <CourseGrid courses={courses} onBrowseClick={() => setView && setView('courses')} />
         </div>
       );
     case 'about':
@@ -165,7 +165,7 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
               onDocumentClick={(doc) => console.log('Document clicked:', doc)}
               onDownloadClick={(doc) => console.log('Download clicked:', doc)}
             />
-            <CourseGrid courses={courses} />
+            <CourseGrid courses={courses} onBrowseClick={() => setView && setView('courses')} />
           </div>
         </div>
       );

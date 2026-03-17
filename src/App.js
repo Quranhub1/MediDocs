@@ -73,6 +73,7 @@ function AppContent() {
               <MainContent 
                 view={currentView} 
                 user={currentUser}
+                setView={handleViewChange}
                 onLoginClick={() => setShowLoginModal(true)}
                 onRegisterClick={() => setShowRegisterModal(true)}
                 onPaymentClick={() => setShowPaymentModal(true)}
