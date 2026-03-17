@@ -42,8 +42,8 @@ service cloud.firestore {
     }
     
     // ========== MEDIDOCS APP RULES ==========
-    // RESOURCES_MEDIDOCS/{courseId}/semesters/{semesterId}/courseunits/{unitId}/documents/{docId}
-    match /RESOURCES_MEDIDOCS/{courseId} {
+    // RESOURCES_STUDYPEDIA/{courseId}/semesters/{semesterId}/courseunits/{unitId}/documents/{docId}
+    match /RESOURCES_STUDYPEDIA/{courseId} {
       allow read: if true;
       allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
       

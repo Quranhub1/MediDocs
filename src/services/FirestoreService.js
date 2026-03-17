@@ -10,6 +10,11 @@ import { db } from '../firebase';
 
 export const RESOURCES_COLLECTION = 'RESOURCES_STUDYPEDIA';
 
+// Simple in-memory cache
+let coursesCache = null;
+let coursesCacheTime = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 // Helper function to determine if a document should be marked as 'latest' based on recency
 const isLatestDocument = (createdAt, hoursThreshold = 72) => {
   if (!createdAt) return false;
@@ -19,6 +24,46 @@ const isLatestDocument = (createdAt, hoursThreshold = 72) => {
   const hoursDifference = (now - docDate) / (1000 * 60 * 60);
   
   return hoursDifference <= hoursThreshold;
+};
+
+// Fetch courses with caching
+export const fetchCourses = async (forceRefresh = false) => {
+  const now = Date.now();
+  
+  // Return cached data if valid
+  if (!forceRefresh && coursesCache && (now - coursesCacheTime) < CACHE_DURATION) {
+    return { success: true, data: coursesCache, fromCache: true };
+  }
+  
+  try {
+    const coursesRef = collection(db, RESOURCES_COLLECTION);
+    const snapshot = await getDocs(coursesRef);
+    const courses = [];
+    snapshot.forEach((doc) => courses.push({ id: doc.id, ...doc.data() }));
+    
+    // Update cache
+    coursesCache = courses;
+    coursesCacheTime = now;
+    
+    return { success: true, data: courses };
+  } catch (error) {
+    console.error('Error fetching courses:', error);
+    return { success: false, error: error.message, data: [] };
+  }
+};
+
+// Fetch semesters for a specific course
+const fetchSemesters = async (courseId) => {
+  try {
+    const semestersRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/semesters`);
+    const snapshot = await getDocs(semestersRef);
+    const semesters = [];
+    snapshot.forEach((doc) => semesters.push({ id: doc.id, ...doc.data() }));
+    return semesters;
+  } catch (error) {
+    console.error('Error fetching semesters:', error);
+    return [];
+  }
 };
 
 // Path: RESOURCES_STUDYPEDIA/{courseId}/semesters/{semesterId}/courseunits/{unitId}/documents/{docId}
@@ -126,14 +171,8 @@ export const fetchAllDocuments = async (maxItems = 50) => {
 
 export const fetchResources = async (maxItems = 20) => fetchAllDocuments(maxItems);
 
-export const fetchCourses = async () => {
-  try {
-    const coursesRef = collection(db, RESOURCES_COLLECTION);
-    const snapshot = await getDocs(coursesRef);
-    const courses = [];
-    snapshot.forEach((doc) => courses.push({ id: doc.id, ...doc.data() }));
-    return { success: true, data: courses };
-  } catch (error) {
-    return { success: false, error: error.message, data: [] };
-  }
+// Clear cache (useful for logout or refresh)
+export const clearCache = () => {
+  coursesCache = null;
+  coursesCacheTime = 0;
 };
