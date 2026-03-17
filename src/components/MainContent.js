@@ -90,14 +90,22 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
   };
 
   const handleDownload = (doc) => {
-    if (doc.fileUrl) {
-      window.open(doc.fileUrl, '_blank');
+    // Check various possible field names for file URL
+    const url = doc.fileUrl || doc.url || doc.downloadUrl || doc.file || doc.link;
+    if (url) {
+      window.open(url, '_blank');
+    } else {
+      alert('No download link available for this document');
     }
   };
 
   const handleReadOnline = (doc) => {
-    if (doc.viewUrl || doc.fileUrl) {
-      window.open(doc.viewUrl || doc.fileUrl, '_blank');
+    // Check various possible field names for view/read URL
+    const url = doc.viewUrl || doc.readUrl || doc.previewUrl || doc.fileUrl || doc.url || doc.link;
+    if (url) {
+      window.open(url, '_blank');
+    } else {
+      alert('No read online link available for this document');
     }
   };
 
