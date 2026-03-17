@@ -2,81 +2,21 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // ========== STUDYPEDIA APP RULES ==========
-    // RESOURCES_STUDYPEDIA/{courseId}/semesters/{semesterId}/courseunits/{unitId}/documents/{docId}
-    match /RESOURCES_STUDYPEDIA/{courseId} {
+    // All resources - public read, admin write
+    match /RESOURCES_STUDYPEDIA/{document=**} {
       allow read: if true;
       allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
-      
-      match /semesters/{semesterId} {
-        allow read: if true; // Public read access
-        allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
-        
-        match /courseunits/{unitId} {
-          allow read: if true; // Public read access
-          allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
-          
-          match /documents/{docId} {
-            allow read: if true; // Public read access
-            allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
-          }
-        }
-        
-        match /documents/{docId} {
-          allow read: if true; // Public read access
-          allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
-        }
-      }
     }
     
-    // User payments for Studypedia
+    // User payments
     match /user_payments/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId 
-                  || request.auth.token.email == 'kaigwaakram123@gmail.com';
+                  || request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
       allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
     }
     
-    // Users for Studypedia
+    // Users
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-    
-    // ========== MEDIDOCS APP RULES ==========
-    // RESOURCES_STUDYPEDIA/{courseId}/semesters/{semesterId}/courseunits/{unitId}/documents/{docId}
-    match /RESOURCES_STUDYPEDIA/{courseId} {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
-      
-      match /semesters/{semesterId} {
-        allow read: if true;
-        allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
-        
-        match /courseunits/{unitId} {
-          allow read: if true;
-          allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
-          
-          match /documents/{docId} {
-            allow read: if true;
-            allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
-          }
-        }
-        
-        match /documents/{docId} {
-          allow read: if true;
-          allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
-        }
-      }
-    }
-    
-    // User payments for Medidocs
-    match /user_payments_medidocs/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId 
-                  || request.auth.token.email == 'kaigwaakram123@gmail.com';
-      allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
-    }
-    
-    // Users for Medidocs
-    match /users_medidocs/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
