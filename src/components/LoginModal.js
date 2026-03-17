@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 const LoginModal = ({ show, onClose, onSwitchToRegister }) => {
-  const { login } = useAuth();
+  const { login, googleLogin } = useAuth();
   const [formState, setFormState] = useState({
     email: '',
     password: ''
@@ -25,6 +25,21 @@ const LoginModal = ({ show, onClose, onSwitchToRegister }) => {
     setError('');
     
     const result = await login(formState.email, formState.password);
+    
+    if (result.success) {
+      onClose();
+    } else {
+      setError(result.error);
+    }
+    
+    setIsSubmitting(false);
+  };
+
+  const handleGoogleLogin = async () => {
+    setIsSubmitting(true);
+    setError('');
+    
+    const result = await googleLogin();
     
     if (result.success) {
       onClose();
@@ -120,6 +135,8 @@ const LoginModal = ({ show, onClose, onSwitchToRegister }) => {
           {/* Social Login */}
           <button
             id="google-login-btn"
+            onClick={handleGoogleLogin}
+            disabled={isSubmitting}
             className="w-full flex items-center justify-center bg-white border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700 py-3 px-4 rounded-xl transition-colors"
           >
             <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
