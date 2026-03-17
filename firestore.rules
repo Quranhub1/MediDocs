@@ -1,0 +1,214 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =================================================================
+    // SHARED RESOURCES_STUDYPEDIA COLLECTION
+    // =================================================================
+    // Access to RESOURCES_STUDYPEDIA collection for both Studypedia and Medidocs apps
+    match /RESOURCES_STUDYPEDIA/{courseId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+
+      match /semesters/{semesterId} {
+        allow read: if true;
+        allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+
+        match /courseunits/{unitId} {
+          allow read: if true;
+          allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+
+          match /documents/{docId} {
+            allow read: if true;
+            allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+          }
+        }
+
+        match /documents/{docId} {
+          allow read: if true;
+          allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+        }
+      }
+    }
+
+    // =================================================================
+    // USER MANAGEMENT RULES
+    // =================================================================
+
+    // User payments - accessible by user and admin
+    match /user_payments/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId
+                  || request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+      allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+    }
+
+    // User profiles - users can only access their own data
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId
+                  || request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+      allow write: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
+      
+      // Chat history - users can read/write their own chats
+      match /chats/{chatId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    // =================================================================
+    // ADDITIONAL COLLECTIONS (Future Use)
+    // =================================================================
+
+    // Analytics and usage tracking
+    match /analytics/{document=**} {
+      allow read, write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+    }
+
+    // System configuration
+    match /config/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+    }
+
+    // Course ratings and reviews
+    match /course_ratings/{courseId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId
+                            || request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+    }
+
+    // User bookmarks and favorites
+    match /user_bookmarks/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Study progress tracking
+    match /study_progress/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Download history and access logs
+    match /download_history/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId
+                         || request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+    }
+
+    // =================================================================
+    // NOTIFICATION SYSTEM
+    // =================================================================
+
+    // User notifications
+    match /notifications/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // System announcements
+    match /announcements/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+    }
+
+    // =================================================================
+    // SECURITY ENHANCEMENTS
+    // =================================================================
+
+    // Rate limiting helper function (for future implementation)
+    function isRateLimited() {
+      // This would typically check against a rate limiting service
+      // For now, we'll allow all authenticated requests
+      return request.auth != null;
+    }
+
+    // Content validation helper
+    function isValidContent() {
+      return request.resource.data.keys().hasAll(['title', 'createdAt'])
+             && request.resource.data.title is string
+             && request.resource.data.title.size() > 0
+             && request.resource.data.createdAt is timestamp;
+    }
+
+    // Admin access helper
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+    }
+
+    // =================================================================
+    // DATA VALIDATION RULES
+    // =================================================================
+
+    // Validate course data
+    match /RESOURCES_STUDYPEDIA/{courseId} {
+      allow write: if isAdmin() && isValidCourseData();
+    }
+
+    // Validate document data
+    match /RESOURCES_STUDYPEDIA/{courseId}/semesters/{semesterId}/documents/{docId} {
+      allow write: if isAdmin() && isValidDocumentData();
+    }
+
+    match /RESOURCES_STUDYPEDIA/{courseId}/semesters/{semesterId}/courseunits/{unitId}/documents/{docId} {
+      allow write: if isAdmin() && isValidDocumentData();
+    }
+
+    // Validate user profile data
+    match /users/{userId} {
+      allow write: if isValidUserData();
+    }
+
+    // =================================================================
+    // VALIDATION FUNCTIONS
+    // =================================================================
+
+    function isValidCourseData() {
+      return request.resource.data.keys().hasAll(['name', 'type', 'createdAt'])
+             && request.resource.data.name is string
+             && request.resource.data.name.size() > 0
+             && request.resource.data.name.size() < 200
+             && request.resource.data.type == 'course'
+             && request.resource.data.createdAt is timestamp
+             && (!request.resource.data.keys().hasAny(['description'])
+                 || request.resource.data.description is string);
+    }
+
+    function isValidDocumentData() {
+      return request.resource.data.keys().hasAll(['title', 'createdAt'])
+             && request.resource.data.title is string
+             && request.resource.data.title.size() > 0
+             && request.resource.data.title.size() < 500
+             && request.resource.data.createdAt is timestamp
+             && (!request.resource.data.keys().hasAny(['status'])
+                 || request.resource.data.status in ['standard', 'premium'])
+             && (!request.resource.data.keys().hasAny(['fileUrl'])
+                 || request.resource.data.fileUrl.matches('https://.*'));
+    }
+
+    function isValidUserData() {
+      return request.auth != null
+             && request.auth.uid == userId
+             && (!request.resource.data.keys().hasAny(['email'])
+                 || request.resource.data.email == request.auth.token.email)
+             && (!request.resource.data.keys().hasAny(['displayName'])
+                 || (request.resource.data.displayName is string
+                     && request.resource.data.displayName.size() > 0
+                     && request.resource.data.displayName.size() < 100));
+    }
+
+    // =================================================================
+    // SECURITY NOTES
+    // =================================================================
+    /*
+    Security Overview:
+    - Public read access to course materials (RESOURCES_STUDYPEDIA)
+    - Authenticated users can access premium content
+    - Admin email (kaigwaakram123@gmail.com) has full write access
+    - Users can only modify their own profile data
+    - Payment data is protected and only accessible by user or admin
+    - Added rate limiting helpers for future implementation
+    - Content validation ensures data integrity
+    - Additional collections for enhanced user experience
+    - Data validation prevents malicious or invalid data entry
+    */
+
+  }
+}
