@@ -319,15 +319,20 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
                         {doc.status === 'premium' ? 'Premium' : 'Free'}
                       </span>
                       
-                      {/* Time */}
-                      {doc.createdAt && (
-                        <span className="flex items-center">
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                          </svg>
-                          {doc.createdAt.toDate ? doc.createdAt.toDate().toLocaleDateString() : new Date(doc.createdAt).toLocaleDateString()}
-                        </span>
-                      )}
+                      {/* Latest/Old indicator */}
+                      {doc.createdAt && (() => {
+                        const docDate = doc.createdAt.toDate ? doc.createdAt.toDate() : new Date(doc.createdAt);
+                        const now = new Date();
+                        const hoursDiff = (now - docDate) / (1000 * 60 * 60);
+                        const isLatest = hoursDiff <= 72; // 72 hours = 3 days
+                        return (
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            isLatest ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                          }`}>
+                            {isLatest ? 'Latest' : 'Old'}
+                          </span>
+                        );
+                      })()}
                     </div>
                     
                     {/* Action Buttons */}
