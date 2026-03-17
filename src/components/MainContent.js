@@ -91,7 +91,7 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
 
   const handleDownload = (doc) => {
     // Check various possible field names for file URL
-    const url = doc.fileUrl || doc.url || doc.downloadUrl || doc.file || doc.link;
+    const url = doc.filepath || doc.fileUrl || doc.url || doc.downloadUrl || doc.file || doc.link;
     if (url) {
       window.open(url, '_blank');
     } else {
@@ -101,7 +101,7 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
 
   const handleReadOnline = (doc) => {
     // Check various possible field names for view/read URL
-    const url = doc.viewUrl || doc.readUrl || doc.previewUrl || doc.fileUrl || doc.url || doc.link;
+    const url = doc.viewUrl || doc.readUrl || doc.previewUrl || doc.filepath || doc.fileUrl || doc.url || doc.link;
     if (url) {
       window.open(url, '_blank');
     } else {
@@ -289,8 +289,48 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
               <div className="space-y-4">
                 {documents.map((doc) => (
                   <div key={doc.id} className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-                    <h3 className="text-lg font-bold text-gray-800">{doc.title || doc.name || doc.id}</h3>
-                    {doc.description && <p className="text-gray-600 mt-2">{doc.description}</p>}
+                    {/* Thumbnail */}
+                    {(doc.thumbnail || doc.image) && (
+                      <div className="mb-4">
+                        <img 
+                          src={doc.thumbnail || doc.image} 
+                          alt={doc.title || 'Document thumbnail'}
+                          className="w-full h-48 object-cover rounded-lg"
+                        />
+                      </div>
+                    )}
+                    
+                    {/* Title */}
+                    <h3 className="text-lg font-bold text-gray-800">
+                      {doc.title || doc.name || doc.id}
+                    </h3>
+                    
+                    {/* Description */}
+                    {doc.description && (
+                      <p className="text-gray-600 mt-2">{doc.description}</p>
+                    )}
+                    
+                    {/* Meta info */}
+                    <div className="flex flex-wrap gap-4 mt-3 text-sm text-gray-500">
+                      {/* Status */}
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        doc.status === 'premium' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {doc.status === 'premium' ? 'Premium' : 'Free'}
+                      </span>
+                      
+                      {/* Time */}
+                      {doc.createdAt && (
+                        <span className="flex items-center">
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                          </svg>
+                          {doc.createdAt.toDate ? doc.createdAt.toDate().toLocaleDateString() : new Date(doc.createdAt).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Action Buttons */}
                     <div className="flex gap-3 mt-4">
                       <button 
                         onClick={() => handleDownload(doc)}
