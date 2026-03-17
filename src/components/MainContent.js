@@ -6,28 +6,52 @@ import ContactSection from './ContactSection';
 import PrivacySection from './PrivacySection';
 import HeroSection from './HeroSection';
 import StatsSection from './StatsSection';
-
-// Default courses - show immediately without Firebase
-const DEFAULT_COURSES = [
-  { id: 'clt1', name: 'Certificate in Clinical Medicine', stats: '4 Semesters', icon: 'stethoscope' },
-  { id: 'clt2', name: 'Certificate in Laboratory Technology', stats: '4 Semesters', icon: 'flask' },
-  { id: 'dip1', name: 'Diploma in Nursing', stats: '6 Semesters', icon: 'heart-pulse' },
-  { id: 'dip2', name: 'Diploma in Pharmacy', stats: '6 Semesters', icon: 'microscope' },
-  { id: 'dip3', name: 'Diploma in Medical Records', stats: '4 Semesters', icon: 'stethoscope' },
-  { id: 'dip4', name: 'Diploma in Public Health', stats: '4 Semesters', icon: 'heart-pulse' },
-  { id: 'cert1', name: 'Certificate in HIV/AIDS Care', stats: '2 Semesters', icon: 'flask' },
-  { id: 'cert2', name: 'Certificate in Community Health', stats: '2 Semesters', icon: 'microscope' }
-];
+import { fetchCourses, fetchResources } from '../services/FirestoreService';
 
 const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick, onContactClick, onAIChatClick, setView }) => {
-  const [latestDocuments] = useState([]);
-  const [courses] = useState(DEFAULT_COURSES);
-  const [loading] = useState(false); // Never show loading - always show default
+  const [latestDocuments, setLatestDocuments] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [selectedSemester, setSelectedSemester] = useState(null);
   const [selectedUnit, setSelectedUnit] = useState(null);
 
-  // Show courses immediately - no Firebase loading
+  useEffect(() => {
+    let mounted = true;
+    
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Fetch courses
+        const coursesResult = await fetchCourses();
+        if (mounted && coursesResult.success) {
+          setCourses(coursesResult.data);
+        }
+        
+        // Fetch resources
+        const resourcesResult = await fetchResources(12);
+        if (mounted && resourcesResult.success) {
+          setLatestDocuments(resourcesResult.data);
+        }
+      } catch (err) {
+        if (mounted) {
+          console.error('Error fetching data:', err);
+          setError(err.message);
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+    
+    fetchData();
+    
+    return () => { mounted = false; };
+  }, [user]);
 
   if (loading) {
     return (
