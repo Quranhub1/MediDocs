@@ -10,10 +10,66 @@ import { db } from '../firebase';
 
 export const RESOURCES_COLLECTION = 'RESOURCES_STUDYPEDIA';
 
-// Simple in-memory cache
-let coursesCache = null;
-let coursesCacheTime = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+// Enhanced caching system with localStorage persistence
+const CACHE_KEYS = {
+  COURSES: 'studypedia_courses_cache',
+  DOCUMENTS: 'studypedia_documents_cache'
+};
+
+const CACHE_DURATION = {
+  COURSES: 10 * 60 * 1000, // 10 minutes for courses
+  DOCUMENTS: 5 * 60 * 1000  // 5 minutes for documents
+};
+
+const MAX_CACHE_SIZE = 50; // Maximum items to cache
+
+// Cache management utilities
+const getCache = (key) => {
+  try {
+    const cached = localStorage.getItem(key);
+    if (!cached) return null;
+    
+    const { data, timestamp, maxItems } = JSON.parse(cached);
+    const now = Date.now();
+    
+    // Check if cache is expired
+    if (now - timestamp > CACHE_DURATION[key === CACHE_KEYS.COURSES ? 'COURSES' : 'DOCUMENTS']) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    
+    return { data, timestamp, maxItems };
+  } catch (error) {
+    console.warn('Cache read error:', error);
+    return null;
+  }
+};
+
+const setCache = (key, data, maxItems = null) => {
+  try {
+    // Limit cache size if specified
+    const cacheData = maxItems ? data.slice(0, maxItems) : data;
+    
+    const cacheEntry = {
+      data: cacheData,
+      timestamp: Date.now(),
+      maxItems
+    };
+    
+    localStorage.setItem(key, JSON.stringify(cacheEntry));
+  } catch (error) {
+    console.warn('Cache write error:', error);
+  }
+};
+
+const clearCache = (key = null) => {
+  if (key) {
+    localStorage.removeItem(key);
+  } else {
+    localStorage.removeItem(CACHE_KEYS.COURSES);
+    localStorage.removeItem(CACHE_KEYS.DOCUMENTS);
+  }
+};
 
 // Helper function to determine if a document should be marked as 'latest' based on recency
 const isLatestDocument = (createdAt, hoursThreshold = 72) => {
@@ -26,29 +82,35 @@ const isLatestDocument = (createdAt, hoursThreshold = 72) => {
   return hoursDifference <= hoursThreshold;
 };
 
-// Fetch courses with caching
+// Fetch all courses with enhanced caching
 export const fetchCourses = async (forceRefresh = false) => {
-  const now = Date.now();
-  
-  // Return cached data if valid
-  if (!forceRefresh && coursesCache && (now - coursesCacheTime) < CACHE_DURATION) {
-    return { success: true, data: coursesCache, fromCache: true };
+  if (!forceRefresh) {
+    const cached = getCache(CACHE_KEYS.COURSES);
+    if (cached) {
+      console.log('Returning cached courses');
+      return cached.data;
+    }
   }
-  
+
   try {
+    console.log('Fetching courses from Firestore...');
     const coursesRef = collection(db, RESOURCES_COLLECTION);
-    const snapshot = await getDocs(coursesRef);
-    const courses = [];
-    snapshot.forEach((doc) => courses.push({ id: doc.id, ...doc.data() }));
+    const q = query(coursesRef, where('type', '==', 'course'), orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
     
-    // Update cache
-    coursesCache = courses;
-    coursesCacheTime = now;
+    const courses = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      isLatest: isLatestDocument(doc.data().createdAt)
+    }));
+
+    // Cache the results
+    setCache(CACHE_KEYS.COURSES, courses, MAX_CACHE_SIZE);
     
-    return { success: true, data: courses };
+    return courses;
   } catch (error) {
     console.error('Error fetching courses:', error);
-    return { success: false, error: error.message, data: [] };
+    throw error;
   }
 };
 
@@ -67,8 +129,17 @@ const fetchSemesters = async (courseId) => {
 };
 
 // Path: RESOURCES_STUDYPEDIA/{courseId}/semesters/{semesterId}/courseunits/{unitId}/documents/{docId}
-export const fetchAllDocuments = async (maxItems = 50) => {
+export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => {
+  if (!forceRefresh) {
+    const cached = getCache(CACHE_KEYS.DOCUMENTS);
+    if (cached) {
+      console.log('Returning cached documents');
+      return { success: true, data: cached.data };
+    }
+  }
+
   try {
+    console.log('Fetching documents from Firestore...');
     const allDocuments = [];
     
     // Get all courses (top-level)
@@ -162,7 +233,12 @@ export const fetchAllDocuments = async (maxItems = 50) => {
     // Filter to show only 'premium' or 'latest' status documents
     const filteredDocuments = allDocuments.filter(doc => doc.status === 'premium');
     
-    return { success: true, data: filteredDocuments.slice(0, maxItems) };
+    const result = { success: true, data: filteredDocuments.slice(0, maxItems) };
+    
+    // Cache the results
+    setCache(CACHE_KEYS.DOCUMENTS, result.data, MAX_CACHE_SIZE);
+    
+    return result;
   } catch (error) {
     console.error('Error fetching documents:', error);
     return { success: false, error: error.message, data: [] };
@@ -172,7 +248,4 @@ export const fetchAllDocuments = async (maxItems = 50) => {
 export const fetchResources = async (maxItems = 20) => fetchAllDocuments(maxItems);
 
 // Clear cache (useful for logout or refresh)
-export const clearCache = () => {
-  coursesCache = null;
-  coursesCacheTime = 0;
-};
+export { clearCache };
