@@ -6,56 +6,28 @@ import ContactSection from './ContactSection';
 import PrivacySection from './PrivacySection';
 import HeroSection from './HeroSection';
 import StatsSection from './StatsSection';
-import { fetchResources, fetchCourses } from '../services/FirestoreService';
+
+// Default courses - show immediately without Firebase
+const DEFAULT_COURSES = [
+  { id: 'clt1', name: 'Certificate in Clinical Medicine', stats: '4 Semesters', icon: 'stethoscope' },
+  { id: 'clt2', name: 'Certificate in Laboratory Technology', stats: '4 Semesters', icon: 'flask' },
+  { id: 'dip1', name: 'Diploma in Nursing', stats: '6 Semesters', icon: 'heart-pulse' },
+  { id: 'dip2', name: 'Diploma in Pharmacy', stats: '6 Semesters', icon: 'microscope' },
+  { id: 'dip3', name: 'Diploma in Medical Records', stats: '4 Semesters', icon: 'stethoscope' },
+  { id: 'dip4', name: 'Diploma in Public Health', stats: '4 Semesters', icon: 'heart-pulse' },
+  { id: 'cert1', name: 'Certificate in HIV/AIDS Care', stats: '2 Semesters', icon: 'flask' },
+  { id: 'cert2', name: 'Certificate in Community Health', stats: '2 Semesters', icon: 'microscope' }
+];
 
 const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick, onContactClick, onAIChatClick, setView }) => {
-  const [latestDocuments, setLatestDocuments] = useState([]);
-  const [courses, setCourses] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [latestDocuments] = useState([]);
+  const [courses] = useState(DEFAULT_COURSES);
+  const [loading] = useState(false); // Never show loading - always show default
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [selectedSemester, setSelectedSemester] = useState(null);
   const [selectedUnit, setSelectedUnit] = useState(null);
 
-  useEffect(() => {
-    fetchData();
-  }, [user]);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      
-      // Fetch courses from Firebase
-      const coursesResult = await fetchCourses();
-      
-      if (coursesResult.success && coursesResult.data.length > 0) {
-        setCourses(coursesResult.data);
-      } else {
-        // Use default courses if none in Firestore
-        setCourses([
-          { id: 'clt1', name: 'Certificate in Clinical Medicine', stats: '4 Semesters', icon: 'stethoscope' },
-          { id: 'clt2', name: 'Certificate in Laboratory Technology', stats: '4 Semesters', icon: 'flask' },
-          { id: 'dip1', name: 'Diploma in Nursing', stats: '6 Semesters', icon: 'heart-pulse' },
-          { id: 'dip2', name: 'Diploma in Pharmacy', stats: '6 Semesters', icon: 'microscope' }
-        ]);
-      }
-      
-      // Fetch documents from Firebase - always fetch latest premium documents
-      const resourcesResult = await fetchResources(12);
-      setLatestDocuments(resourcesResult.success ? resourcesResult.data : []);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      // Use default courses on error
-      setCourses([
-        { id: 'clt1', name: 'Certificate in Clinical Medicine', stats: '4 Semesters', icon: 'stethoscope' },
-        { id: 'clt2', name: 'Certificate in Laboratory Technology', stats: '4 Semesters', icon: 'flask' },
-        { id: 'dip1', name: 'Diploma in Nursing', stats: '6 Semesters', icon: 'heart-pulse' },
-        { id: 'dip2', name: 'Diploma in Pharmacy', stats: '6 Semesters', icon: 'microscope' }
-      ]);
-      setLatestDocuments([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Show courses immediately - no Firebase loading
 
   if (loading) {
     return (
