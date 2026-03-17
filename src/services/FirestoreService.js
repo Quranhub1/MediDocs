@@ -88,15 +88,14 @@ export const fetchCourses = async (forceRefresh = false) => {
     const cached = getCache(CACHE_KEYS.COURSES);
     if (cached) {
       console.log('Returning cached courses');
-      return cached.data;
+      return { success: true, data: cached.data };
     }
   }
 
   try {
     console.log('Fetching courses from Firestore...');
     const coursesRef = collection(db, RESOURCES_COLLECTION);
-    const q = query(coursesRef, where('type', '==', 'course'), orderBy('createdAt', 'desc'));
-    const querySnapshot = await getDocs(q);
+    const querySnapshot = await getDocs(coursesRef);
     
     const courses = querySnapshot.docs.map(doc => ({
       id: doc.id,
@@ -107,10 +106,10 @@ export const fetchCourses = async (forceRefresh = false) => {
     // Cache the results
     setCache(CACHE_KEYS.COURSES, courses, MAX_CACHE_SIZE);
     
-    return courses;
+    return { success: true, data: courses };
   } catch (error) {
     console.error('Error fetching courses:', error);
-    throw error;
+    return { success: false, error: error.message, data: [] };
   }
 };
 

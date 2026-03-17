@@ -1,0 +1,29 @@
+# Robots.txt for MediDocs Uganda
+# Medical Education Platform
+
+User-agent: *
+Allow: /
+
+# Allow all important pages
+Allow: /courses
+Allow: /materials
+Allow: /search
+Allow: /about
+Allow: /contact
+
+# Disallow admin and private areas (if any)
+Disallow: /admin/
+Disallow: /private/
+Disallow: /api/
+
+# Disallow duplicate or development files
+Disallow: /*.json$
+Disallow: /*.md$
+Disallow: /src/
+Disallow: /node_modules/
+
+# Sitemap location
+Sitemap: https://medidocs-uganda.vercel.app/sitemap.xml
+
+# Crawl delay (optional - helps with server load)
+Crawl-delay: 1
