@@ -15,25 +15,31 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [user]);
 
   const fetchData = async () => {
     try {
-      // Try to fetch from Firestore first
-      const resourcesResult = await fetchResources(12);
-      const coursesResult = await fetchCourses(10);
-      
-      if (resourcesResult.success && resourcesResult.data.length > 0) {
-        setLatestDocuments(resourcesResult.data);
+      // Only fetch from Firestore if user is authenticated
+      if (user) {
+        const resourcesResult = await fetchResources(12);
+        const coursesResult = await fetchCourses(10);
+        
+        if (resourcesResult.success && resourcesResult.data.length > 0) {
+          setLatestDocuments(resourcesResult.data);
+        } else {
+          // Fallback to mock data
+          setLatestDocuments(getMockDocuments());
+        }
+        
+        if (coursesResult.success && coursesResult.data.length > 0) {
+          setCourses(coursesResult.data);
+        } else {
+          // Fallback to mock data
+          setCourses(getMockCourses());
+        }
       } else {
-        // Fallback to mock data
+        // Use mock data when not authenticated
         setLatestDocuments(getMockDocuments());
-      }
-      
-      if (coursesResult.success && coursesResult.data.length > 0) {
-        setCourses(coursesResult.data);
-      } else {
-        // Fallback to mock data
         setCourses(getMockCourses());
       }
     } catch (error) {
