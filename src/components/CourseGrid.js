@@ -17,7 +17,6 @@ const CourseGrid = ({ courses, onBrowseClick }) => {
               key={course.id} 
               className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 overflow-hidden group cursor-pointer"
               onClick={() => {
-                alert('Clicked: ' + course.name);
                 if (onBrowseClick) onBrowseClick(course);
               }}
             >
@@ -87,10 +86,7 @@ const CourseGrid = ({ courses, onBrowseClick }) => {
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    alert('Browse clicked for: ' + course.name);
-                    if (onBrowseClick) {
-                      onBrowseClick(course);
-                    }
+                    if (onBrowseClick) onBrowseClick(course);
                   }}
                 >
                   Browse Materials
