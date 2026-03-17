@@ -15,7 +15,11 @@ const CourseGrid = ({ courses, onBrowseClick }) => {
           {courses.map((course) => (
             <div 
               key={course.id} 
-              className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 overflow-hidden group"
+              className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 overflow-hidden group cursor-pointer"
+              onClick={() => {
+                alert('Clicked: ' + course.name);
+                if (onBrowseClick) onBrowseClick(course);
+              }}
             >
               {/* Card Header with gradient */}
               <div className={`h-3 bg-gradient-to-r ${
