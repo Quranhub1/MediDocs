@@ -2,7 +2,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // ========== STUDYPEDIA RULES (Authentication Required) ==========
     // RESOURCES_STUDYPEDIA/{courseId}/semesters/{semesterId}/courseunits/{unitId}/documents/{docId}
     match /RESOURCES_STUDYPEDIA/{courseId} {
       allow read: if true;
@@ -29,7 +28,19 @@ service cloud.firestore {
       }
     }
     
-    // ========== MEDIDOCS RULES (Public Read Access) ==========
+    // User payments
+    match /user_payments/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId 
+                  || request.auth.token.email == 'kaigwaakram123@gmail.com';
+      allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+    }
+    
+    // Users
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // ========== MEDIDOCS RULES ==========
     // RESOURCES_MEDIDOCS/{courseId}/semesters/{semesterId}/courseunits/{unitId}/documents/{docId}
     match /RESOURCES_MEDIDOCS/{courseId} {
       allow read: if true;
@@ -54,18 +65,6 @@ service cloud.firestore {
           allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
         }
       }
-    }
-    
-    // User payments
-    match /user_payments/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId 
-                  || request.auth.token.email == 'kaigwaakram123@gmail.com';
-      allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
-    }
-    
-    // Users
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
