@@ -82,61 +82,89 @@ const isLatestDocument = (createdAt, hoursThreshold = 72) => {
   return hoursDifference <= hoursThreshold;
 };
 
-// Fetch all courses with proper indexing
-export const fetchCourses = async (forceRefresh = false) => {
+// Fetch all courses - simple fetch
+const fetchCourses = async (forceRefresh = false) => {
   if (!forceRefresh) {
     const cached = getCache(CACHE_KEYS.COURSES);
     if (cached) {
       console.log('Returning cached courses');
-      return cached.data;
+      return { success: true, data: cached.data };
     }
   }
 
   try {
     console.log('Fetching courses from Firestore...');
     const coursesRef = collection(db, RESOURCES_COLLECTION);
-
-    // Use a simple query that doesn't require composite indexing
-    // Filter courses by type on the client side to avoid index requirements
     const querySnapshot = await getDocs(coursesRef);
-
-    const courses = querySnapshot.docs
-      .map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        isLatest: isLatestDocument(doc.data().createdAt)
-      }))
-      .filter(doc => doc.type === 'course') // Filter on client side
-      .sort((a, b) => {
-        // Sort by createdAt descending on client side
-        const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
-        const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
-        return dateB - dateA;
-      });
+    
+    const courses = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
 
     // Cache the results
     setCache(CACHE_KEYS.COURSES, courses, MAX_CACHE_SIZE);
-
-    return courses;
+    
+    return { success: true, data: courses };
   } catch (error) {
     console.error('Error fetching courses:', error);
-    throw error;
+    return { success: false, error: error.message, data: [] };
   }
 };
 
 // Fetch semesters for a specific course
-const fetchSemesters = async (courseId) => {
+export const fetchSemesters = async (courseId) => {
   try {
+    console.log('Fetching semesters for course:', courseId);
     const semestersRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/semesters`);
     const snapshot = await getDocs(semestersRef);
-    const semesters = [];
-    snapshot.forEach((doc) => semesters.push({ id: doc.id, ...doc.data() }));
-    return semesters;
+    const semesters = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    return { success: true, data: semesters };
   } catch (error) {
     console.error('Error fetching semesters:', error);
-    return [];
+    return { success: false, error: error.message, data: [] };
   }
 };
+
+// Fetch courseunits for a specific semester
+export const fetchCourseUnits = async (courseId, semesterId) => {
+  try {
+    console.log('Fetching courseunits for semester:', semesterId);
+    const unitsRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/semesters/${semesterId}/courseunits`);
+    const snapshot = await getDocs(unitsRef);
+    const units = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    return { success: true, data: units };
+  } catch (error) {
+    console.error('Error fetching courseunits:', error);
+    return { success: false, error: error.message, data: [] };
+  }
+};
+
+// Fetch documents for a specific courseunit
+export const fetchDocuments = async (courseId, semesterId, unitId) => {
+  try {
+    console.log('Fetching documents for unit:', unitId);
+    const docsRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/semesters/${semesterId}/courseunits/${unitId}/documents`);
+    const snapshot = await getDocs(docsRef);
+    const documents = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    return { success: true, data: documents };
+  } catch (error) {
+    console.error('Error fetching documents:', error);
+    return { success: false, error: error.message, data: [] };
+  }
+};
+
+// Legacy function - exports for backward compatibility
+export { fetchCourses };
 
 // Path: RESOURCES_STUDYPEDIA/{courseId}/semesters/{semesterId}/courseunits/{unitId}/documents/{docId}
 export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => {

@@ -6,58 +6,116 @@ import ContactSection from './ContactSection';
 import PrivacySection from './PrivacySection';
 import HeroSection from './HeroSection';
 import StatsSection from './StatsSection';
-import { fetchCourses, fetchResources } from '../services/FirestoreService';
+import { fetchCourses, fetchSemesters, fetchCourseUnits, fetchDocuments } from '../services/FirestoreService';
 
 const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick, onContactClick, onAIChatClick, setView }) => {
   const [latestDocuments, setLatestDocuments] = useState([]);
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [subLoading, setSubLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [selectedSemester, setSelectedSemester] = useState(null);
   const [selectedUnit, setSelectedUnit] = useState(null);
+  const [semesters, setSemesters] = useState([]);
+  const [courseUnits, setCourseUnits] = useState([]);
+  const [documents, setDocuments] = useState([]);
 
+  // Fetch initial data when user logs in
   useEffect(() => {
-    // Only fetch data if user is logged in
     if (!user) {
       setLoading(false);
       return;
     }
-    
-    let mounted = true;
-    
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Fetch courses
-        const coursesResult = await fetchCourses();
-        if (mounted && coursesResult.success) {
-          setCourses(coursesResult.data);
-        }
-        
-        // Fetch resources
-        const resourcesResult = await fetchResources(12);
-        if (mounted && resourcesResult.success) {
-          setLatestDocuments(resourcesResult.data);
-        }
-      } catch (err) {
-        if (mounted) {
-          console.error('Error fetching data:', err);
-          setError(err.message);
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
-    
-    fetchData();
-    
-    return () => { mounted = false; };
+    loadCourses();
   }, [user]);
+
+  const loadCourses = async () => {
+    try {
+      setLoading(true);
+      const result = await fetchCourses();
+      if (result.success) {
+        setCourses(result.data);
+      }
+    } catch (err) {
+      console.error('Error loading courses:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCourseClick = async (course) => {
+    setSelectedCourse(course);
+    setSelectedSemester(null);
+    setSelectedUnit(null);
+    setSemesters([]);
+    setCourseUnits([]);
+    setDocuments([]);
+    setSubLoading(true);
+    setView('semesters');
+    
+    const result = await fetchSemesters(course.id);
+    if (result.success) {
+      setSemesters(result.data);
+    }
+    setSubLoading(false);
+  };
+
+  const handleSemesterClick = async (semester) => {
+    setSelectedSemester(semester);
+    setSelectedUnit(null);
+    setCourseUnits([]);
+    setDocuments([]);
+    setSubLoading(true);
+    setView('courseunits');
+    
+    const result = await fetchCourseUnits(selectedCourse.id, semester.id);
+    if (result.success) {
+      setCourseUnits(result.data);
+    }
+    setSubLoading(false);
+  };
+
+  const handleUnitClick = async (unit) => {
+    setSelectedUnit(unit);
+    setDocuments([]);
+    setSubLoading(true);
+    setView('documents');
+    
+    const result = await fetchDocuments(selectedCourse.id, selectedSemester.id, unit.id);
+    if (result.success) {
+      setDocuments(result.data);
+    }
+    setSubLoading(false);
+  };
+
+  const handleDownload = (doc) => {
+    if (doc.fileUrl) {
+      window.open(doc.fileUrl, '_blank');
+    }
+  };
+
+  const handleReadOnline = (doc) => {
+    if (doc.viewUrl || doc.fileUrl) {
+      window.open(doc.viewUrl || doc.fileUrl, '_blank');
+    }
+  };
+
+  const goBack = () => {
+    if (view === 'documents' && selectedSemester) {
+      setSelectedUnit(null);
+      setDocuments([]);
+      setView('courseunits');
+    } else if (view === 'courseunits' && selectedCourse) {
+      setSelectedSemester(null);
+      setCourseUnits([]);
+      setView('semesters');
+    } else if (view === 'semesters') {
+      setSelectedCourse(null);
+      setSemesters([]);
+      setView('courses');
+    }
+  };
 
   if (loading) {
     return (
@@ -113,16 +171,12 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
               onDocumentClick={(doc) => console.log('Document clicked:', doc)}
               onDownloadClick={(doc) => console.log('Download clicked:', doc)}
             />
-            <CourseGrid courses={courses} onBrowseClick={(course) => { setSelectedCourse(course); setView && setView('semesters'); }} />
+            <CourseGrid courses={courses} onBrowseClick={handleCourseClick} />
           </div>
         </div>
       );
     case 'courses':
-      return (
-        <div className="space-y-0">
-          <CourseGrid courses={courses} onBrowseClick={(course) => { setSelectedCourse(course); setView && setView('semesters'); }} />
-        </div>
-      );
+      return <CourseGrid courses={courses} onBrowseClick={handleCourseClick} />;
     case 'semesters':
       return (
         <div className="min-h-screen bg-gray-50 py-8">
@@ -139,10 +193,123 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
             <h2 className="text-3xl font-bold text-gray-800 mb-6">
               {selectedCourse?.name || 'Select a Course'}
             </h2>
-            <div className="bg-white rounded-2xl shadow-lg p-6">
-              <p className="text-gray-600">Semesters for: {selectedCourse?.id}</p>
-              <p className="text-sm text-gray-400 mt-2">Fetching from: RESOURCES_STUDYPEDIA/{selectedCourse?.id || 'courseId'}/semesters</p>
-            </div>
+            {subLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {semesters.map((semester) => (
+                  <div 
+                    key={semester.id}
+                    onClick={() => handleSemesterClick(semester)}
+                    className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg cursor-pointer transition-all border border-gray-100"
+                  >
+                    <h3 className="text-lg font-bold text-gray-800">{semester.name || semester.id}</h3>
+                    <p className="text-gray-500 text-sm mt-2">Click to view course units</p>
+                  </div>
+                ))}
+                {semesters.length === 0 && (
+                  <p className="text-gray-500">No semesters found for this course.</p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    case 'courseunits':
+      return (
+        <div className="min-h-screen bg-gray-50 py-8">
+          <div className="max-w-7xl mx-auto px-4">
+            <button 
+              onClick={goBack}
+              className="mb-6 flex items-center text-emerald-600 hover:text-emerald-700"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path>
+              </svg>
+              Back to Semesters
+            </button>
+            <h2 className="text-3xl font-bold text-gray-800 mb-6">
+              {selectedSemester?.name || 'Select a Semester'}
+            </h2>
+            {subLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {courseUnits.map((unit) => (
+                  <div 
+                    key={unit.id}
+                    onClick={() => handleUnitClick(unit)}
+                    className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg cursor-pointer transition-all border border-gray-100"
+                  >
+                    <h3 className="text-lg font-bold text-gray-800">{unit.name || unit.id}</h3>
+                    <p className="text-gray-500 text-sm mt-2">Click to view documents</p>
+                  </div>
+                ))}
+                {courseUnits.length === 0 && (
+                  <p className="text-gray-500">No course units found for this semester.</p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    case 'documents':
+      return (
+        <div className="min-h-screen bg-gray-50 py-8">
+          <div className="max-w-7xl mx-auto px-4">
+            <button 
+              onClick={goBack}
+              className="mb-6 flex items-center text-emerald-600 hover:text-emerald-700"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path>
+              </svg>
+              Back to Course Units
+            </button>
+            <h2 className="text-3xl font-bold text-gray-800 mb-6">
+              {selectedUnit?.name || 'Documents'}
+            </h2>
+            {subLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {documents.map((doc) => (
+                  <div key={doc.id} className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
+                    <h3 className="text-lg font-bold text-gray-800">{doc.title || doc.name || doc.id}</h3>
+                    {doc.description && <p className="text-gray-600 mt-2">{doc.description}</p>}
+                    <div className="flex gap-3 mt-4">
+                      <button 
+                        onClick={() => handleDownload(doc)}
+                        className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 flex items-center"
+                      >
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        Download
+                      </button>
+                      <button 
+                        onClick={() => handleReadOnline(doc)}
+                        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center"
+                      >
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                        </svg>
+                        Read Online
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {documents.length === 0 && (
+                  <p className="text-gray-500">No documents found for this course unit.</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       );
@@ -163,7 +330,7 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
               onDocumentClick={(doc) => console.log('Document clicked:', doc)}
               onDownloadClick={(doc) => console.log('Download clicked:', doc)}
             />
-            <CourseGrid courses={courses} onBrowseClick={(course) => { setSelectedCourse(course); setView && setView('semesters'); }} />
+            <CourseGrid courses={courses} onBrowseClick={handleCourseClick} />
           </div>
         </div>
       );
