@@ -22,17 +22,36 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
 
   const fetchData = async () => {
     try {
+      setLoading(true);
+      
       // Fetch courses from Firebase
-      const coursesResult = await fetchCourses(10);
-      setCourses(coursesResult.success ? coursesResult.data : []);
+      const coursesResult = await fetchCourses();
+      
+      if (coursesResult.success && coursesResult.data.length > 0) {
+        setCourses(coursesResult.data);
+      } else {
+        // Use default courses if none in Firestore
+        setCourses([
+          { id: 'clt1', name: 'Certificate in Clinical Medicine', stats: '4 Semesters', icon: 'stethoscope' },
+          { id: 'clt2', name: 'Certificate in Laboratory Technology', stats: '4 Semesters', icon: 'flask' },
+          { id: 'dip1', name: 'Diploma in Nursing', stats: '6 Semesters', icon: 'heart-pulse' },
+          { id: 'dip2', name: 'Diploma in Pharmacy', stats: '6 Semesters', icon: 'microscope' }
+        ]);
+      }
       
       // Fetch documents from Firebase - always fetch latest premium documents
       const resourcesResult = await fetchResources(12);
       setLatestDocuments(resourcesResult.success ? resourcesResult.data : []);
     } catch (error) {
       console.error('Error fetching data:', error);
+      // Use default courses on error
+      setCourses([
+        { id: 'clt1', name: 'Certificate in Clinical Medicine', stats: '4 Semesters', icon: 'stethoscope' },
+        { id: 'clt2', name: 'Certificate in Laboratory Technology', stats: '4 Semesters', icon: 'flask' },
+        { id: 'dip1', name: 'Diploma in Nursing', stats: '6 Semesters', icon: 'heart-pulse' },
+        { id: 'dip2', name: 'Diploma in Pharmacy', stats: '6 Semesters', icon: 'microscope' }
+      ]);
       setLatestDocuments([]);
-      setCourses([]);
     } finally {
       setLoading(false);
     }
