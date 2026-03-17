@@ -2,46 +2,47 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // ========== STUDYPEDIA APP RULES ==========
     // RESOURCES_STUDYPEDIA/{courseId}/semesters/{semesterId}/courseunits/{unitId}/documents/{docId}
     match /RESOURCES_STUDYPEDIA/{courseId} {
       allow read: if true;
       allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
       
       match /semesters/{semesterId} {
-        allow read: if request.auth != null;
+        allow read: if true; // Public read access
         allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
         
         match /courseunits/{unitId} {
-          allow read: if request.auth != null;
+          allow read: if true; // Public read access
           allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
           
           match /documents/{docId} {
-            allow read: if request.auth != null;
+            allow read: if true; // Public read access
             allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
           }
         }
         
         match /documents/{docId} {
-          allow read: if request.auth != null;
+          allow read: if true; // Public read access
           allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
         }
       }
     }
     
-    // User payments
+    // User payments for Studypedia
     match /user_payments/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId 
                   || request.auth.token.email == 'kaigwaakram123@gmail.com';
       allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
     }
     
-    // Users
+    // Users for Studypedia
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // ========== MEDIDOCS RULES ==========
-    // RESOURCES_STUDYPEDIA/{courseId}/semesters/{semesterId}/courseunits/{unitId}/documents/{docId}
+    // ========== MEDIDOCS APP RULES ==========
+    // RESOURCES_MEDIDOCS/{courseId}/semesters/{semesterId}/courseunits/{unitId}/documents/{docId}
     match /RESOURCES_MEDIDOCS/{courseId} {
       allow read: if true;
       allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
@@ -65,6 +66,18 @@ service cloud.firestore {
           allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
         }
       }
+    }
+    
+    // User payments for Medidocs
+    match /user_payments_medidocs/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId 
+                  || request.auth.token.email == 'kaigwaakram123@gmail.com';
+      allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+    }
+    
+    // Users for Medidocs
+    match /users_medidocs/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
