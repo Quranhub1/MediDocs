@@ -80,7 +80,14 @@ const CourseGrid = ({ courses, onBrowseClick }) => {
                     course.id === 'dip1' ? 'bg-cyan-500 hover:bg-cyan-600 text-white' :
                     'bg-blue-500 hover:bg-blue-600 text-white'
                   } shadow-md hover:shadow-lg transform hover:scale-105`}
-                  onClick={() => onBrowseClick && onBrowseClick(course)}
+                  onClick={() => {
+                    if (onBrowseClick) {
+                      onBrowseClick(course);
+                    } else {
+                      // Fallback: use custom event
+                      window.dispatchEvent(new CustomEvent('browseCourse', { detail: course }));
+                    }
+                  }}
                 >
                   Browse Materials
                 </button>

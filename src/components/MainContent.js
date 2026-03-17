@@ -19,32 +19,29 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
 
   const fetchData = async () => {
     try {
-      // Only fetch from Firestore if user is authenticated
+      // Always try to fetch courses (they're publicly readable)
+      const coursesResult = await fetchCourses(10);
+      
+      if (coursesResult.success && coursesResult.data.length > 0) {
+        setCourses(coursesResult.data);
+      } else {
+        setCourses(getMockCourses());
+      }
+      
+      // Only fetch documents if user is authenticated
       if (user) {
         const resourcesResult = await fetchResources(12);
-        const coursesResult = await fetchCourses(10);
         
         if (resourcesResult.success && resourcesResult.data.length > 0) {
           setLatestDocuments(resourcesResult.data);
         } else {
-          // Fallback to mock data
           setLatestDocuments(getMockDocuments());
         }
-        
-        if (coursesResult.success && coursesResult.data.length > 0) {
-          setCourses(coursesResult.data);
-        } else {
-          // Fallback to mock data
-          setCourses(getMockCourses());
-        }
       } else {
-        // Use mock data when not authenticated
         setLatestDocuments(getMockDocuments());
-        setCourses(getMockCourses());
       }
     } catch (error) {
       console.error('Error fetching data:', error);
-      // Use mock data on error
       setLatestDocuments(getMockDocuments());
       setCourses(getMockCourses());
     } finally {
