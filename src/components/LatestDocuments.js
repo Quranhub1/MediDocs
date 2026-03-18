@@ -30,22 +30,22 @@ const LatestDocuments = ({ documents, user }) => {
   };
 
   const handleReadOnline = (doc) => {
-    // Use filepath for read online URL
+    // Use filepath for read online URL - open in same tab
     const url = doc.filepath;
     if (url) {
-      window.open(url, '_blank');
+      window.location.href = url;
     } else {
       alert('No read online link available for this document');
     }
   };
 
   const handleDownload = (doc) => {
-    // Use filepath for download URL
+    // Use filepath - open in same tab
     const url = doc.filepath;
     if (url) {
-      window.open(url, '_blank');
+      window.location.href = url;
     } else {
-      alert('No download link available for this document');
+      alert('No link available for this document');
     }
   };
 
