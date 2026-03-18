@@ -52,8 +52,8 @@ const Header = ({
         {/* Top Bar */}
         <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-1 px-4">
           <div className="max-w-7xl mx-auto flex justify-between items-center text-xs">
-            <span className="flex items-center gap-1">📞 +256 772 345 678</span>
-            <span className="flex items-center gap-1">📧 support@medidocs.ug</span>
+            <span className="flex items-center gap-1">📞 +256 749 846 848</span>
+            <span className="flex items-center gap-1">📧 kaigwaakram123@gmail.com</span>
           </div>
         </div>
         
@@ -174,8 +174,8 @@ const Header = ({
       {/* Top Bar */}
       <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-1 px-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center text-xs">
-          <span className="flex items-center gap-1">📞 +256 772 345 678</span>
-          <span className="flex items-center gap-1">📧 support@medidocs.ug</span>
+          <span className="flex items-center gap-1">📞 +256 749 846 848</span>
+          <span className="flex items-center gap-1">📧 kaigwaakram123@gmail.com</span>
         </div>
       </div>
       

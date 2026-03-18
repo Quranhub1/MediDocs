@@ -76,6 +76,18 @@ const PrivacySection = () => {
           </p>
           
           <h3 className="text-lg font-semibold text-gray-800 mb-3">
+            Contact Us
+          </h3>
+          <p className="text-gray-700 mb-4">
+            If you have any questions about this Privacy Policy, please contact us:
+          </p>
+          <ul className="list-disc list-inside space-y-2 text-gray-700 mb-4">
+            <li><strong>Email:</strong> kaigwaakram123@gmail.com</li>
+            <li><strong>Phone:</strong> +256 749 846 848</li>
+            <li><strong>Location:</strong> Kampala, Uganda</li>
+          </ul>
+          
+          <h3 className="text-lg font-semibold text-gray-800 mb-3">
             Changes to This Privacy Policy
           </h3>
           <p className="text-gray-700">

@@ -111,8 +111,8 @@ function AppContent() {
                 <div>
                   <h4 className="font-bold text-lg mb-4">Contact</h4>
                   <ul className="space-y-2 text-sm text-emerald-100">
-                    <li>Email: support@medidocs.ug</li>
-                    <li>Phone: +256 772 345 678</li>
+                    <li>Email: kaigwaakram123@gmail.com</li>
+                    <li>Phone: +256 749 846 848</li>
                     <li>Kampala, Uganda</li>
                   </ul>
                 </div>

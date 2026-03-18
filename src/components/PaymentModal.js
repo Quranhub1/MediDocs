@@ -156,7 +156,7 @@ const PaymentModal = ({ show, onClose }) => {
           
           {/* Contact */}
           <div className="mt-6 pt-4 border-t text-center text-sm text-gray-500">
-            <p>Need help? Contact: <a href="tel:+256772345678" className="text-emerald-600 font-medium">+256 772 345 678</a></p>
+            <p>Need help? Contact: <a href="tel:+256749846848" className="text-emerald-600 font-medium">+256 749 846 848</a></p>
           </div>
         </div>
       </div>
