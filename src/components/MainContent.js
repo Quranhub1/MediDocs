@@ -6,14 +6,13 @@ import ContactSection from './ContactSection';
 import PrivacySection from './PrivacySection';
 import HeroSection from './HeroSection';
 import StatsSection from './StatsSection';
-import { fetchCourses, fetchSemesters, fetchCourseUnits, fetchDocuments } from '../services/FirestoreService';
+import { fetchCourses, fetchSemesters, fetchCourseUnits, fetchDocuments, fetchAllDocuments } from '../services/FirestoreService';
 
 const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick, onContactClick, onAIChatClick, setView }) => {
-  const [latestDocuments, setLatestDocuments] = useState([]);
   const [courses, setCourses] = useState([]);
+  const [latestDocuments, setLatestDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [subLoading, setSubLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [selectedSemester, setSelectedSemester] = useState(null);
   const [selectedUnit, setSelectedUnit] = useState(null);
@@ -28,7 +27,19 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
       return;
     }
     loadCourses();
+    loadLatestDocuments();
   }, [user]);
+
+  const loadLatestDocuments = async () => {
+    try {
+      const result = await fetchAllDocuments(10);
+      if (result.success) {
+        setLatestDocuments(result.data);
+      }
+    } catch (err) {
+      console.error('Error loading latest documents:', err);
+    }
+  };
 
   const loadCourses = async () => {
     try {

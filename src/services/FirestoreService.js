@@ -1,10 +1,6 @@
 import { 
   collection, 
-  getDocs, 
-  query, 
-  orderBy, 
-  limit,
-  where 
+  getDocs 
 } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -69,11 +65,6 @@ const clearCache = (key = null) => {
     localStorage.removeItem(CACHE_KEYS.COURSES);
     localStorage.removeItem(CACHE_KEYS.DOCUMENTS);
   }
-};
-
-// Helper function to determine if a document should be marked as 'latest' - now uses time field directly
-const isLatestDocument = (time) => {
-  return time === 'latest';
 };
 
 // Fetch all courses - simple fetch
