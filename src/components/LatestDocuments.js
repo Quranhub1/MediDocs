@@ -130,8 +130,8 @@ const LatestDocuments = ({ documents, user }) => {
 
                 {/* Action Buttons */}
                 <div className="flex space-x-2">
-                  {doc.status === 'premium' && !user ? (
-                    // Premium document - show upgrade button for non-authenticated users
+{doc.status === 'premium' && (!user || !user.subscriptionApproved) ? (
+                    // Premium document - show upgrade button for non-authenticated or non-approved users
                     <button
                       onClick={() => alert('Please login and subscribe to access premium documents')}
                       className="flex-1 px-4 py-2.5 bg-gradient-to-r from-gray-500 to-gray-600 text-white text-sm font-medium rounded-xl transition-all duration-200 cursor-not-allowed opacity-50"
@@ -139,7 +139,7 @@ const LatestDocuments = ({ documents, user }) => {
                       Read Online
                     </button>
                   ) : (
-                    // Free or authenticated user - show normal buttons
+                    // Free or authenticated user with approved subscription - show normal buttons
                     <>
                       <button
                         onClick={() => handleReadOnline(doc)}
