@@ -92,7 +92,7 @@ const AIChatModal = ({ show, onClose }) => {
     } else if (lowerQuestion.includes('physiology') || lowerQuestion.includes('function')) {
       return "Physiology is the study of how living organisms function. It examines the mechanical, physical, and biochemical processes that keep organisms alive.";
     } else if (lowerQuestion.includes('clt') || lowerQuestion.includes('laboratory')) {
-      return "CLT (Certificate in Laboratory Technology) covers laboratory safety, equipment use, specimen collection, basic hematology, clinical chemistry, microbiology, histopathology, and quality control.";
+      return "Certificate in Laboratory Technology covers laboratory safety, equipment use, specimen collection, basic hematology, clinical chemistry, microbiology, histopathology, and quality control.";
     } else if (lowerQuestion.includes('nursing') || lowerQuestion.includes('patient care')) {
       return "Nursing fundamentals include patient assessment, vital signs, medication administration, wound care, infection control, patient communication, and ethical considerations.";
     } else if (lowerQuestion.includes('past paper') || lowerQuestion.includes('exam')) {

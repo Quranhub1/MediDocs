@@ -12,9 +12,9 @@ const PrivacySection = () => {
             Introduction
           </h3>
           <p className="text-gray-700 mb-4">
-            Studypedia Uganda ("we", "our", "us") is committed to protecting your privacy. 
+            MediDocs Uganda ("we", "our", "us") is committed to protecting your privacy. 
             This Privacy Policy explains how we collect, use, disclose, and safeguard your 
-            information when you visit our website studypedia-uganda.com, use our services, 
+            information when you visit our website medidocs-uganda.com, use our services, 
             or otherwise interact with us.
           </p>
           

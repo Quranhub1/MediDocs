@@ -1,12 +1,12 @@
-# Studypedia Uganda - React Version
+# MediDocs Uganda - React Version
 
-This is a React conversion of the Studypedia Uganda medical education platform. The original HTML/CSS/JS implementation has been refactored into a modern React application with improved structure, maintainability, and a more stylish design.
+This is a React conversion of the MediDocs Uganda medical education platform. The original HTML/CSS/JS implementation has been refactored into a modern React application with improved structure, maintainability, and a more stylish design.
 
 ## Features
 
 - **User Authentication**: Login/Register with email/password and Google authentication
 - **AI Search**: AI-powered study assistance using Groq API (proxied through backend)
-- **Course Browser**: Browse CLT and Diploma courses with visual icons
+- **Course Browser**: Browse Certificate and Diploma courses with visual icons
 - **Latest Documents**: View latest study materials with thumbnail support
 - **Document Interaction**: Read online or download study materials
 - **Manual Payment System**: Simple manual payment process for premium access (no API integration)
@@ -86,7 +86,7 @@ The LatestDocuments component now supports intelligent thumbnail display:
 
 ## Backend Integration
 
-This React app is designed to work with the existing Studypedia backend deployed on Render.com at:
+This React app is designed to work with the existing MediDocs backend deployed on Render.com at:
 `https://studypedia-server-1.onrender.com`
 
 The app makes API calls to:
@@ -116,7 +116,7 @@ Instead of complex API integrations with payment gateways, the application now u
 1. Clone the repository:
    ```bash
    git clone <repository-url>
-   cd studypedia-react
+   cd medidocs-react
    ```
 
 2. Install dependencies:

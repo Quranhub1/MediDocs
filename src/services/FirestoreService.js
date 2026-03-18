@@ -12,8 +12,8 @@ export const RESOURCES_COLLECTION = 'RESOURCES_STUDYPEDIA';
 
 // Enhanced caching system with localStorage persistence
 const CACHE_KEYS = {
-  COURSES: 'studypedia_courses_cache',
-  DOCUMENTS: 'studypedia_documents_cache'
+  COURSES: 'medidocs_courses_cache',
+  DOCUMENTS: 'medidocs_documents_cache'
 };
 
 const CACHE_DURATION = {

@@ -108,7 +108,7 @@ const AIStudyAssistant = ({ show, onClose, user }) => {
 - Pathology (disease processes)
 - Clinical skills (patient assessment, vital signs, history taking)
 - Medical terminology
-- Exam preparation for Ugandan medical students (CLT, Nursing, Clinical Medicine)
+- Exam preparation for Ugandan medical students (Certificate, Nursing, Clinical Medicine)
 
 Provide accurate, educational, and easy-to-understand explanations. Use examples relevant to the Ugandan healthcare context when possible. Keep responses concise but informative.`
               },
@@ -251,7 +251,7 @@ What nursing topic would you like to explore?`;
 4. **High-Yield Topics:** Focus on common conditions
 5. **Group Study:** Discuss with classmates
 
-**Common Topics CLT/Nursing:**
+**Common Topics:**
 - Anatomy basics
 - Physiology processes
 - Pharmacology fundamentals
