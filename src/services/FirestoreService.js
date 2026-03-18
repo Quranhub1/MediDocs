@@ -71,15 +71,9 @@ const clearCache = (key = null) => {
   }
 };
 
-// Helper function to determine if a document should be marked as 'latest' based on recency
-const isLatestDocument = (createdAt, hoursThreshold = 72) => {
-  if (!createdAt) return false;
-  
-  const docDate = createdAt?.toDate?.() || new Date(createdAt);
-  const now = new Date();
-  const hoursDifference = (now - docDate) / (1000 * 60 * 60);
-  
-  return hoursDifference <= hoursThreshold;
+// Helper function to determine if a document should be marked as 'latest' - now uses time field directly
+const isLatestDocument = (time) => {
+  return time === 'latest';
 };
 
 // Fetch all courses - simple fetch
@@ -210,18 +204,13 @@ export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => 
           
           docsSnapshot.forEach((doc) => {
             const docData = doc.data();
-            const documentStatus = docData.status || 'standard';
-            
-            // Mark as 'latest' if it's recent, otherwise keep the existing status or mark as 'standard'
-            let finalStatus = documentStatus === 'premium' ? 'premium' : 'standard';
-            if (isLatestDocument(docData.createdAt)) {
-              finalStatus = 'premium';
-            }
+            // Use status field directly (premium/free)
+            const documentStatus = docData.status || 'free';
             
             allDocuments.push({
               id: doc.id,
               ...docData,
-              status: finalStatus,
+              status: documentStatus,
               courseId,
               semesterId,
               unitId,
@@ -238,18 +227,13 @@ export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => 
         
         semDocsSnapshot.forEach((doc) => {
           const docData = doc.data();
-          const documentStatus = docData.status || 'standard';
-          
-          // Mark as 'latest' if it's recent, otherwise keep the existing status or mark as 'standard'
-          let finalStatus = documentStatus === 'premium' ? 'premium' : 'standard';
-          if (isLatestDocument(docData.createdAt)) {
-            finalStatus = 'premium';
-          }
+          // Use status field directly (premium/free)
+          const documentStatus = docData.status || 'free';
           
           allDocuments.push({
             id: doc.id,
             ...docData,
-            status: finalStatus,
+            status: documentStatus,
             courseId,
             semesterId,
             unitId: null,
@@ -261,15 +245,15 @@ export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => 
       }
     }
     
-    // Sort by createdAt descending to get latest first
+    // Sort by time field - show latest first
     allDocuments.sort((a, b) => {
-      const dateA = a.createdAt?.toDate?.() || new Date(0);
-      const dateB = b.createdAt?.toDate?.() || new Date(0);
-      return dateB - dateA;
+      if (a.time === 'latest' && b.time !== 'latest') return -1;
+      if (a.time !== 'latest' && b.time === 'latest') return 1;
+      return 0;
     });
     
-    // Filter to show only 'premium' or 'latest' status documents
-    const filteredDocuments = allDocuments.filter(doc => doc.status === 'premium');
+    // Filter to show documents with time='latest' or status='free'
+    const filteredDocuments = allDocuments.filter(doc => doc.time === 'latest' || doc.status === 'free');
     
     const result = { success: true, data: filteredDocuments.slice(0, maxItems) };
     

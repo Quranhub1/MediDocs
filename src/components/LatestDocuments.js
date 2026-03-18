@@ -25,30 +25,13 @@ const LatestDocuments = ({ documents, user }) => {
   };
 
   const getThumbnailUrl = (doc) => {
-    // Check for thumbnail fields - prioritize in order
-    if (doc.thumbnailUrl) return doc.thumbnailUrl;
-    if (doc.thumbnail) return doc.thumbnail;
-    if (doc.imageUrl) return doc.imageUrl;
-    if (doc.image) return doc.image;
-    if (doc.coverImage) return doc.coverImage;
-    if (doc.previewImage) return doc.previewImage;
-    if (doc.url) return doc.url;
-    if (doc.fileUrl) return doc.fileUrl;
-
-    // If there's a filePath that's an image, use it
-    if (doc.filePath) {
-      const extension = doc.filePath.split('.').pop().toLowerCase();
-      if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension)) {
-        return doc.filePath;
-      }
-    }
-
-    return null;
+    // Use thumbnail field directly
+    return doc.thumbnail || null;
   };
 
   const handleReadOnline = (doc) => {
-    // Check various possible field names for view/read URL
-    const url = doc.viewUrl || doc.readUrl || doc.previewUrl || doc.filepath || doc.fileUrl || doc.url || doc.link;
+    // Use filepath for read online URL
+    const url = doc.filepath;
     if (url) {
       window.open(url, '_blank');
     } else {
@@ -57,8 +40,8 @@ const LatestDocuments = ({ documents, user }) => {
   };
 
   const handleDownload = (doc) => {
-    // Check various possible field names for file URL
-    const url = doc.filepath || doc.fileUrl || doc.url || doc.downloadUrl || doc.file || doc.link;
+    // Use filepath for download URL
+    const url = doc.filepath;
     if (url) {
       window.open(url, '_blank');
     } else {
@@ -66,9 +49,10 @@ const LatestDocuments = ({ documents, user }) => {
     }
   };
 
-// Filter documents to show only latest documents (status: 'latest') and premium documents for subscribed users
+// Filter documents based on time field (latest/old) and status (premium/free)
   const filteredDocuments = documents.filter(doc => {
-    if (doc.status === 'latest') return true; // Always show latest documents
+    if (doc.time === 'latest') return true; // Always show latest documents
+    if (doc.status === 'free') return true; // Always show free documents
     if (user && doc.status === 'premium' && user.subscriptionApproved) return true; // Show premium documents only to subscribed users with approved subscription
     return false;
   });
@@ -111,7 +95,7 @@ const LatestDocuments = ({ documents, user }) => {
                 <div className="absolute top-3 right-3">
                   <span
                     className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      doc.status === 'latest'
+                      doc.time === 'latest'
                         ? 'bg-emerald-500 text-white'
                         : doc.status === 'premium'
                           ? user
@@ -120,7 +104,7 @@ const LatestDocuments = ({ documents, user }) => {
                           : 'bg-gray-500 text-white'
                     }`}
                   >
-                    {doc.status.charAt(0).toUpperCase() + doc.status.slice(1)}
+                    {doc.time === 'latest' ? 'Latest' : doc.status === 'premium' ? 'Premium' : 'Free'}
                   </span>
                 </div>
               </div>

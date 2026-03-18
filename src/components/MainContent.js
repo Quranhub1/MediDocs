@@ -90,8 +90,8 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
   };
 
   const handleDownload = (doc) => {
-    // Check various possible field names for file URL
-    const url = doc.filepath || doc.fileUrl || doc.url || doc.downloadUrl || doc.file || doc.link;
+    // Use filepath for download URL
+    const url = doc.filepath;
     if (url) {
       window.open(url, '_blank');
     } else {
@@ -100,8 +100,8 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
   };
 
   const handleReadOnline = (doc) => {
-    // Check various possible field names for view/read URL
-    const url = doc.viewUrl || doc.readUrl || doc.previewUrl || doc.filepath || doc.fileUrl || doc.url || doc.link;
+    // Use filepath for read online URL
+    const url = doc.filepath;
     if (url) {
       window.open(url, '_blank');
     } else {
@@ -290,10 +290,10 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
                 {documents.map((doc) => (
                   <div key={doc.id} className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
                     {/* Thumbnail */}
-                    {(doc.thumbnail || doc.image) && (
+                    {(doc.thumbnail) && (
                       <div className="mb-4">
                         <img 
-                          src={doc.thumbnail || doc.image} 
+                          src={doc.thumbnail} 
                           alt={doc.title || 'Document thumbnail'}
                           className="w-full h-48 object-cover rounded-lg"
                         />
@@ -302,7 +302,7 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
                     
                     {/* Title */}
                     <h3 className="text-lg font-bold text-gray-800">
-                      {doc.title || doc.name || doc.id}
+                      {doc.title || doc.id}
                     </h3>
                     
                     {/* Description */}
@@ -319,20 +319,14 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
                         {doc.status === 'premium' ? 'Premium' : 'Free'}
                       </span>
                       
-                      {/* Latest/Old indicator */}
-                      {doc.createdAt && (() => {
-                        const docDate = doc.createdAt.toDate ? doc.createdAt.toDate() : new Date(doc.createdAt);
-                        const now = new Date();
-                        const hoursDiff = (now - docDate) / (1000 * 60 * 60);
-                        const isLatest = hoursDiff <= 72; // 72 hours = 3 days
-                        return (
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            isLatest ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                          }`}>
-                            {isLatest ? 'Latest' : 'Old'}
-                          </span>
-                        );
-                      })()}
+                      {/* Latest/Old indicator - using time field */}
+                      {doc.time && (
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          doc.time === 'latest' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                        }`}>
+                          {doc.time === 'latest' ? 'Latest' : 'Old'}
+                        </span>
+                      )}
                     </div>
                     
                     {/* Action Buttons */}
