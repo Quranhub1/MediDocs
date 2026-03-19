@@ -51,8 +51,11 @@ const LatestDocuments = ({ documents, user, onViewChange }) => {
 
 // Filter documents based on time field - only show latest documents
   const filteredDocuments = documents.filter(doc => {
+    console.log('Document:', doc.name, 'time:', doc.time);
     return doc.time === 'latest';
   });
+  
+  console.log('Total docs:', documents.length, 'Filtered:', filteredDocuments.length);
 
   return (
     <section className="py-12 px-4">
