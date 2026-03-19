@@ -3,22 +3,21 @@ import React, { useState, useEffect } from 'react';
 const DocumentCarousel = ({ documents }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Filter to only show documents with time='latest', or fallback to recent documents
+  // Filter to only show documents with time='latest', or fallback to all documents
   const getDisplayDocs = () => {
-    if (!documents || documents.length === 0) return [];
+    // If documents is undefined or not an array, return empty array
+    if (!documents || !Array.isArray(documents) || documents.length === 0) {
+      return [];
+    }
     
-    const latestDocs = documents.filter(doc => doc.time === 'latest');
+    // First try to get documents with time='latest'
+    const latestDocs = documents.filter(doc => doc && doc.time === 'latest');
     if (latestDocs.length > 0) {
       return latestDocs;
     }
     
-    // Sort by createdAt to show most recent documents
-    const sortedDocs = [...documents].sort((a, b) => {
-      const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
-      const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
-      return dateB - dateA; // Most recent first
-    });
-    return sortedDocs;
+    // If no 'latest' docs, return all documents (fallback)
+    return documents;
   };
   
   const displayDocs = getDisplayDocs();
@@ -46,7 +45,10 @@ const DocumentCarousel = ({ documents }) => {
   }, [displayDocs]);
   
   // If no documents at all, return null
-  if (displayDocs.length === 0) return null;
+  // For debugging: show a message when no documents
+  if (!displayDocs || displayDocs.length === 0) {
+    return null; // Carousel hidden when no documents
+  }
 
   const currentDoc = displayDocs[currentIndex];
 
