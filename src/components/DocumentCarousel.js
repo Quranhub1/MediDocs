@@ -14,10 +14,12 @@ const DocumentCarousel = ({ documents }) => {
   const getDisplayDocs = () => {
     // If documents is undefined or not an array, return empty array
     if (!documents || !Array.isArray(documents)) {
+      console.log('Documents is not an array or is empty');
       return [];
     }
     // Filter to only show documents with time='latest'
     const latestDocs = documents.filter(doc => doc && doc.time === 'latest');
+    console.log('Latest docs filtered:', latestDocs.length, latestDocs.map(d => ({id: d.id, time: d.time})));
     return latestDocs;
   };
   
@@ -46,7 +48,9 @@ const DocumentCarousel = ({ documents }) => {
   }, [displayDocs]);
   
   // If no documents at all, return null
+  console.log('displayDocs before check:', displayDocs?.length);
   if (!displayDocs || displayDocs.length === 0) {
+    console.log('Returning null - no displayDocs');
     return null;
   }
   
@@ -56,6 +60,7 @@ const DocumentCarousel = ({ documents }) => {
   }
 
   const currentDoc = displayDocs[currentIndex];
+  console.log('Display docs:', displayDocs.length, 'currentIndex:', currentIndex, 'currentDoc:', currentDoc);
 
   const handleReadOnline = (doc) => {
     const url = doc.filePath;
