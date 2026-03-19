@@ -281,10 +281,10 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
                     <div 
                       key={unit.id}
                       onClick={() => handleUnitClick(unit)}
-                      className="bg-gradient-to-br from-teal-400 to-cyan-500 p-6 rounded-xl shadow-lg hover:shadow-2xl hover:scale-105 cursor-pointer transition-all duration-300 border border-teal-300"
+                      className="bg-gradient-to-br from-emerald-400 to-teal-500 p-6 rounded-xl shadow-lg hover:shadow-2xl hover:scale-105 cursor-pointer transition-all duration-300 border border-emerald-300"
                     >
                       <h3 className="text-lg font-bold text-white">{unit.name || unit.id}</h3>
-                      <p className="text-teal-100 text-sm mt-2">Click to view documents</p>
+                      <p className="text-emerald-100 text-sm mt-2">Click to view documents</p>
                     </div>
                   ))}
                   {courseUnits.length === 0 && (
