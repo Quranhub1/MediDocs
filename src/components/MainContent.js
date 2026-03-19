@@ -296,6 +296,66 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
           </div>
         </div>
       );
+    case 'documents':
+      return (
+        <div className="relative min-h-screen">
+          <BackgroundImages />
+          <div className="relative z-10 bg-white/90 backdrop-blur-sm min-h-screen py-8">
+            <div className="max-w-7xl mx-auto px-4">
+              <button 
+                onClick={goBack}
+                className="mb-6 flex items-center text-emerald-600 hover:text-emerald-700"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+                Back to Course Units
+              </button>
+              <h2 className="text-3xl font-bold text-gray-800 mb-6">
+                {selectedUnit?.name || 'Documents'}
+              </h2>
+              {subLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {documents.map((doc) => (
+                    <div 
+                      key={doc.id}
+                      className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all border border-gray-100"
+                    >
+                      <h3 className="text-lg font-bold text-gray-800 mb-2">{doc.title || doc.id}</h3>
+                      <p className="text-gray-500 text-sm mb-4">{doc.description || 'No description'}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {doc.filePath && (
+                          <button
+                            onClick={() => handleReadOnline(doc)}
+                            className="px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm hover:bg-emerald-600"
+                          >
+                            Read Online
+                          </button>
+                        )}
+                        {doc.filePath && (
+                          <button
+                            onClick={() => handleDownload(doc)}
+                            className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600"
+                          >
+                            Download
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {documents.length === 0 && (
+                    <p className="text-gray-500">No documents found for this course unit.</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
     case 'about':
       return <AboutSection />;
     case 'contact':
