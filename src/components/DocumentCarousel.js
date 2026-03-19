@@ -4,7 +4,11 @@ const DocumentCarousel = ({ documents }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   
   // Debug: log documents received
-  console.log('Carousel received documents:', documents?.length || 0, documents);
+  console.log('Carousel received documents:', documents?.length || 0);
+  if (documents && documents.length > 0) {
+    console.log('Sample doc:', JSON.stringify(documents[0]));
+    console.log('Checking time field:', documents.map(d => ({ id: d.id, time: d.time })));
+  }
 
   // Show only documents with time='latest'
   const getDisplayDocs = () => {
