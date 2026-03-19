@@ -20,24 +20,28 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
   const [courseUnits, setCourseUnits] = useState([]);
   const [documents, setDocuments] = useState([]);
 
-  // Fetch initial data when user logs in
+  // Fetch initial data when app loads
   useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-    loadCourses();
+    // Load latest documents regardless of login status
     loadLatestDocuments();
+    
+    // Load courses only when user logs in
+    if (user) {
+      loadCourses();
+    }
   }, [user]);
 
   const loadLatestDocuments = async () => {
     try {
-      const result = await fetchAllDocuments(10);
+      setLoading(true);
+      const result = await fetchAllDocuments(10, true); // forceRefresh to bypass cache
       if (result.success) {
         setLatestDocuments(result.data);
       }
     } catch (err) {
       console.error('Error loading latest documents:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
