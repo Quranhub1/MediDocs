@@ -167,11 +167,17 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
 
   // Show carousel even for non-logged in users
   if (view === 'home') {
-    console.log('Home view - latestDocuments:', latestDocuments.length);
+    console.log('Home view - latestDocuments:', latestDocuments.length, 'loading:', loading);
     return (
       <div>
         <HeroSection user={user} onLoginClick={onLoginClick} onRegisterClick={onRegisterClick} />
-        <DocumentCarousel documents={latestDocuments} />
+        {loading ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+          </div>
+        ) : (
+          <DocumentCarousel documents={latestDocuments} />
+        )}
         {!user && (
           <div className="max-w-2xl mx-auto px-4 py-8 text-center">
             <p className="text-gray-600 mb-4">Login to access all documents</p>
