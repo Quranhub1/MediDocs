@@ -97,7 +97,7 @@ const DocumentCarousel = ({ documents }) => {
         
         {/* Left/Right Arrows */}
         <button
-          onClick={() => setCurrentIndex((currentIndex - 1 + latestDocs.length) % latestDocs.length)}
+          onClick={() => setCurrentIndex((currentIndex - 1 + displayDocs.length) % displayDocs.length)}
           className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-colors"
         >
           <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -105,7 +105,7 @@ const DocumentCarousel = ({ documents }) => {
           </svg>
         </button>
         <button
-          onClick={() => setCurrentIndex((currentIndex + 1) % latestDocs.length)}
+          onClick={() => setCurrentIndex((currentIndex + 1) % displayDocs.length)}
           className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-colors"
         >
           <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">

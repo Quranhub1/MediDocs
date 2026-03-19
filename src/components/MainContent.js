@@ -153,6 +153,42 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
     );
   }
 
+  // Show carousel even for non-logged in users
+  if (view === 'home' && latestDocuments.length > 0) {
+    return (
+      <div>
+        <HeroSection user={user} onLoginClick={onLoginClick} onRegisterClick={onRegisterClick} />
+        <DocumentCarousel documents={latestDocuments} />
+        {!user && (
+          <div className="max-w-2xl mx-auto px-4 py-8 text-center">
+            <p className="text-gray-600 mb-4">Login to access all documents</p>
+            <button 
+              onClick={onLoginClick}
+              className="px-6 py-3 bg-emerald-500 text-white rounded-xl font-medium hover:bg-emerald-600 transition-colors"
+            >
+              Login
+            </button>
+          </div>
+        )}
+        {user && (
+          <>
+            <StatsSection />
+            <div className="space-y-0">
+              <LatestDocuments 
+                documents={latestDocuments} 
+                user={user}
+                onViewChange={setView}
+                onDocumentClick={(doc) => console.log('Document clicked:', doc)}
+                onDownloadClick={(doc) => console.log('Download clicked:', doc)}
+              />
+              <CourseGrid courses={courses} onBrowseClick={handleCourseClick} />
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
   // Show login prompt if not logged in
   if (!user) {
     return (
@@ -189,7 +225,6 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
       return (
         <div className="space-y-0">
           <HeroSection user={user} onLoginClick={onLoginClick} onRegisterClick={onRegisterClick} />
-          <DocumentCarousel documents={latestDocuments} />
           <StatsSection />
           <div className="space-y-0">
             <LatestDocuments 
