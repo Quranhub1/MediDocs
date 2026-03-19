@@ -179,8 +179,7 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
                 documents={latestDocuments} 
                 user={user}
                 onViewChange={setView}
-                onDocumentClick={(doc) => {}}
-                onDownloadClick={(doc) => {}}
+                onPaymentClick={onPaymentClick}
               />
               <CourseGrid courses={courses} onBrowseClick={handleCourseClick} />
             </div>

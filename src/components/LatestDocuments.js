@@ -1,6 +1,6 @@
 import React from 'react';
 
-const LatestDocuments = ({ documents, user, onViewChange }) => {
+const LatestDocuments = ({ documents, user, onViewChange, onPaymentClick }) => {
   const getFileTypeIcon = (filePath) => {
     if (!filePath) return '📄';
 
@@ -161,18 +161,18 @@ const LatestDocuments = ({ documents, user, onViewChange }) => {
 
                 {/* Action Buttons */}
                 <div className="flex space-x-2">
-{doc.status === 'premium' && (!user || !user.subscriptionApproved) ? (
-                    // Premium document - show both buttons (disabled) for non-authenticated or non-approved users
+{(!user || (doc.status === 'premium' && user && !user.subscriptionApproved)) ? (
+                    // Not logged in OR premium document without subscription - show payment prompt
                     <>
                       <button
-                        onClick={() => alert('Please login and subscribe to access premium documents')}
-                        className="flex-1 px-4 py-2.5 bg-gradient-to-r from-gray-500 to-gray-600 text-white text-sm font-medium rounded-xl transition-all duration-200 cursor-not-allowed opacity-50"
+                        onClick={() => onPaymentClick ? onPaymentClick() : alert('Please login and subscribe to access premium documents')}
+                        className="flex-1 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-sm font-medium rounded-xl transition-all duration-200"
                       >
                         Read Online
                       </button>
                       <button
-                        onClick={() => alert('Please login and subscribe to access premium documents')}
-                        className="flex-1 px-4 py-2.5 bg-white border-2 border-gray-400 text-gray-500 text-sm font-medium rounded-xl cursor-not-allowed opacity-50"
+                        onClick={() => onPaymentClick ? onPaymentClick() : alert('Please login and subscribe to access premium documents')}
+                        className="flex-1 px-4 py-2.5 bg-white border-2 border-amber-500 text-amber-600 hover:bg-amber-50 text-sm font-medium rounded-xl transition-all duration-200"
                       >
                         Download
                       </button>
