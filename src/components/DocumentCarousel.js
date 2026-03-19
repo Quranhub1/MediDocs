@@ -2,21 +2,16 @@ import React, { useState, useEffect } from 'react';
 
 const DocumentCarousel = ({ documents }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  
+  // Debug: log documents received
+  console.log('Carousel received documents:', documents?.length || 0, documents);
 
-  // Filter to only show documents with time='latest', or fallback to all documents
+  // Always show all documents passed to the carousel
   const getDisplayDocs = () => {
     // If documents is undefined or not an array, return empty array
-    if (!documents || !Array.isArray(documents) || documents.length === 0) {
+    if (!documents || !Array.isArray(documents)) {
       return [];
     }
-    
-    // First try to get documents with time='latest'
-    const latestDocs = documents.filter(doc => doc && doc.time === 'latest');
-    if (latestDocs.length > 0) {
-      return latestDocs;
-    }
-    
-    // If no 'latest' docs, return all documents (fallback)
     return documents;
   };
   
