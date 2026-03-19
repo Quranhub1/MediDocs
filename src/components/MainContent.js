@@ -101,8 +101,8 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
   };
 
   const handleDownload = (doc) => {
-    // Use filepath for read online URL - open in same tab
-    const url = doc.filepath;
+    // Use filePath for read online URL - open in same tab
+    const url = doc.filePath;
     if (url) {
       window.location.href = url;
     } else {
@@ -111,8 +111,8 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
   };
 
   const handleReadOnline = (doc) => {
-    // Use filepath for read online URL - open in same tab
-    const url = doc.filepath;
+    // Use filePath for read online URL - open in same tab
+    const url = doc.filePath;
     if (url) {
       window.location.href = url;
     } else {
