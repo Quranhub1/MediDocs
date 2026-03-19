@@ -40,7 +40,7 @@ const DocumentCarousel = ({ documents }) => {
       setCurrentIndex((prevIndex) => {
         return (prevIndex + 1) % displayDocs.length;
       });
-    }, 5000);
+    }, 15000);
 
     return () => clearInterval(interval);
   }, [displayDocs]);
