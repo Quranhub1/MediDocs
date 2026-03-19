@@ -21,11 +21,13 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
   const [semesters, setSemesters] = useState([]);
   const [courseUnits, setCourseUnits] = useState([]);
   const [documents, setDocuments] = useState([]);
+  const [refreshKey, setRefreshKey] = useState(0); // For forcing refresh
 
   // Fetch initial data when app loads
   useEffect(() => {
     // Load latest documents regardless of login status
-    loadLatestDocuments();
+    // Use force refresh (true) to ensure we get latest data from Firestore
+    loadLatestDocuments(true);
     
     // Load courses only when user logs in
     if (user) {
@@ -33,11 +35,11 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
     }
   }, [user]);
 
-  const loadLatestDocuments = async () => {
+  const loadLatestDocuments = async (forceRefresh = false) => {
     try {
       setLoading(true);
-      // Use caching (false) for faster initial load
-      const result = await fetchAllDocuments(10, false);
+      // Use forceRefresh to bypass cache and get fresh data from Firestore
+      const result = await fetchAllDocuments(10, forceRefresh);
       console.log('Fetch result:', result);
       console.log('Documents loaded:', result.data?.length || 0);
       if (result.data && result.data.length > 0) {

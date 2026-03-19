@@ -6,6 +6,7 @@ import {
   doc as docRef, 
   updateDoc, 
   deleteDoc,
+  addDoc,
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -14,6 +15,9 @@ const AdminDashboard = ({ user, onViewChange }) => {
   const [activeTab, setActiveTab] = useState('documents');
   const [documents, setDocuments] = useState([]);
   const [users, setUsers] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [semesters, setSemesters] = useState([]);
+  const [units, setUnits] = useState([]);
   const [stats, setStats] = useState({
     totalDocuments: 0,
     totalUsers: 0,
@@ -22,6 +26,21 @@ const AdminDashboard = ({ user, onViewChange }) => {
   });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Add document form state
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newDoc, setNewDoc] = useState({
+    title: '',
+    filePath: '',
+    thumbnailUrl: '',
+    description: '',
+    time: 'normal',
+    status: 'free',
+    courseId: '',
+    semesterId: '',
+    unitId: ''
+  });
+  const [addingDoc, setAddingDoc] = useState(false);
 
   // Admin phone number from environment or default
   const ADMIN_PHONE = '256749846848';
@@ -42,7 +61,8 @@ const AdminDashboard = ({ user, onViewChange }) => {
     try {
       await Promise.all([
         loadDocuments(),
-        loadUsers()
+        loadUsers(),
+        loadCourses()
       ]);
     } catch (error) {
       console.error('Error loading admin data:', error);
@@ -52,14 +72,19 @@ const AdminDashboard = ({ user, onViewChange }) => {
 
   const loadDocuments = async () => {
     try {
-      // Use the shared fetch function with caching
-      const result = await fetchAllDocuments(100, false);
+      // Use force refresh to get real-time data from Firestore
+      const result = await fetchAllDocuments(100, true);
+      
+      console.log('Admin - Documents fetched from Firestore:', result.data?.length || 0);
       
       if (result.success && result.data) {
         const allDocs = result.data.map(doc => ({
           ...doc,
           fullPath: doc.fullPath || `RESOURCES_STUDYPEDIA/${doc.courseId}/semesters/${doc.semesterId}/courseunits/${doc.unitId}/documents/${doc.id}`
         }));
+        
+        console.log('Admin - Total docs processed:', allDocs.length);
+        console.log('Admin - Sample doc:', allDocs[0] ? JSON.stringify(allDocs[0]) : 'none');
         
         setDocuments(allDocs);
         
@@ -72,6 +97,8 @@ const AdminDashboard = ({ user, onViewChange }) => {
           latestDocuments: latestDocs,
           premiumDocuments: premiumDocs
         }));
+        
+        console.log('Admin - Stats updated:', { total: allDocs.length, latest: latestDocs, premium: premiumDocs });
       }
     } catch (error) {
       console.error('Error loading documents:', error);
@@ -86,6 +113,10 @@ const AdminDashboard = ({ user, onViewChange }) => {
         id: d.id,
         ...d.data()
       }));
+      
+      console.log('Admin - Users loaded:', usersList.length);
+      console.log('Admin - Users data:', usersList);
+      
       setUsers(usersList);
       setStats(prev => ({
         ...prev,
@@ -93,6 +124,165 @@ const AdminDashboard = ({ user, onViewChange }) => {
       }));
     } catch (error) {
       console.error('Error loading users:', error);
+    }
+  };
+
+  // Load courses for dropdown
+  const loadCourses = async () => {
+    try {
+      const coursesRef = collection(db, 'RESOURCES_STUDYPEDIA');
+      const coursesSnapshot = await getDocs(coursesRef);
+      const coursesList = coursesSnapshot.docs.map(d => ({
+        id: d.id,
+        name: d.data().name || d.id
+      }));
+      setCourses(coursesList);
+      console.log('Admin - Courses loaded:', coursesList.length);
+    } catch (error) {
+      console.error('Error loading courses:', error);
+    }
+  };
+
+  // Create new course
+  const createCourse = async () => {
+    const name = prompt('Enter new course name:');
+    if (!name) return;
+    const id = name.toLowerCase().replace(/\s+/g, '_');
+    try {
+      await addDoc(collection(db, 'RESOURCES_STUDYPEDIA'), { name, createdAt: serverTimestamp() });
+      alert('Course created successfully!');
+      loadCourses();
+      setNewDoc({ ...newDoc, courseId: id });
+    } catch (error) {
+      console.error('Error creating course:', error);
+      alert('Failed to create course: ' + error.message);
+    }
+  };
+
+  // Create new semester
+  const createSemester = async () => {
+    if (!newDoc.courseId) {
+      alert('Please select a course first');
+      return;
+    }
+    const name = prompt('Enter new semester name (e.g., Semester 1):');
+    if (!name) return;
+    const id = name.toLowerCase().replace(/\s+/g, '_');
+    try {
+      await addDoc(collection(db, `RESOURCES_STUDYPEDIA/${newDoc.courseId}/semesters`), { name, createdAt: serverTimestamp() });
+      alert('Semester created successfully!');
+      loadSemesters(newDoc.courseId);
+      setNewDoc({ ...newDoc, semesterId: id });
+    } catch (error) {
+      console.error('Error creating semester:', error);
+      alert('Failed to create semester: ' + error.message);
+    }
+  };
+
+  // Create new unit
+  const createUnit = async () => {
+    if (!newDoc.courseId || !newDoc.semesterId) {
+      alert('Please select course and semester first');
+      return;
+    }
+    const name = prompt('Enter new unit name (e.g., Anatomy):');
+    if (!name) return;
+    const id = name.toLowerCase().replace(/\s+/g, '_');
+    try {
+      await addDoc(collection(db, `RESOURCES_STUDYPEDIA/${newDoc.courseId}/semesters/${newDoc.semesterId}/courseunits`), { name, createdAt: serverTimestamp() });
+      alert('Unit created successfully!');
+      loadUnits(newDoc.courseId, newDoc.semesterId);
+      setNewDoc({ ...newDoc, unitId: id });
+    } catch (error) {
+      console.error('Error creating unit:', error);
+      alert('Failed to create unit: ' + error.message);
+    }
+  };
+
+  // Load semesters when course is selected
+  const loadSemesters = async (courseId) => {
+    if (!courseId) {
+      setSemesters([]);
+      setUnits([]);
+      return;
+    }
+    try {
+      const semestersRef = collection(db, `RESOURCES_STUDYPEDIA/${courseId}/semesters`);
+      const semestersSnapshot = await getDocs(semestersRef);
+      const semestersList = semestersSnapshot.docs.map(d => ({
+        id: d.id,
+        name: d.data().name || d.id
+      }));
+      setSemesters(semestersList);
+      setUnits([]);
+      console.log('Admin - Semesters loaded:', semestersList.length);
+    } catch (error) {
+      console.error('Error loading semesters:', error);
+    }
+  };
+
+  // Load units when semester is selected
+  const loadUnits = async (courseId, semesterId) => {
+    if (!courseId || !semesterId) {
+      setUnits([]);
+      return;
+    }
+    try {
+      const unitsRef = collection(db, `RESOURCES_STUDYPEDIA/${courseId}/semesters/${semesterId}/courseunits`);
+      const unitsSnapshot = await getDocs(unitsRef);
+      const unitsList = unitsSnapshot.docs.map(d => ({
+        id: d.id,
+        name: d.data().name || d.id
+      }));
+      setUnits(unitsList);
+      console.log('Admin - Units loaded:', unitsList.length);
+    } catch (error) {
+      console.error('Error loading units:', error);
+    }
+  };
+
+  // Add new document
+  const addDocument = async (e) => {
+    e.preventDefault();
+    
+    if (!newDoc.courseId || !newDoc.semesterId || !newDoc.unitId) {
+      alert('Please select Course, Semester, and Unit');
+      return;
+    }
+    
+    setAddingDoc(true);
+    try {
+      const docRef = collection(db, `RESOURCES_STUDYPEDIA/${newDoc.courseId}/semesters/${newDoc.semesterId}/courseunits/${newDoc.unitId}/documents`);
+      
+      await addDoc(docRef, {
+        title: newDoc.title,
+        filePath: newDoc.filePath,
+        thumbnailUrl: newDoc.thumbnailUrl || '',
+        description: newDoc.description || '',
+        time: newDoc.time,
+        status: newDoc.status,
+        createdAt: serverTimestamp()
+      });
+      
+      alert('Document added successfully!');
+      setNewDoc({
+        title: '',
+        filePath: '',
+        thumbnailUrl: '',
+        description: '',
+        time: 'normal',
+        status: 'free',
+        courseId: '',
+        semesterId: '',
+        unitId: ''
+      });
+      setShowAddForm(false);
+      loadData(); // Refresh the document list
+    } catch (error) {
+      console.error('Error adding document:', error);
+      alert('Failed to add document: ' + error.message);
+    } finally {
+      setAddingDoc(false);
     }
   };
 
@@ -139,27 +329,37 @@ const AdminDashboard = ({ user, onViewChange }) => {
 
   // Approve user subscription
   const approveSubscription = async (userId) => {
+    if (!userId) {
+      alert('Invalid user ID');
+      return;
+    }
     try {
+      console.log('Approving subscription for user:', userId);
       const userDocRef = docRef(db, 'users', userId);
-      await updateDoc(userDocRef, { subscriptionApproved: true });
-      alert('Subscription approved!');
+      await updateDoc(userDocRef, { subscriptionApproved: true, subscriptionStatus: 'active' });
+      alert('Subscription approved successfully!');
       loadData();
     } catch (error) {
       console.error('Error approving subscription:', error);
-      alert('Failed to approve subscription');
+      alert('Failed to approve subscription: ' + error.message);
     }
   };
 
   // Ban/Unban user
   const toggleUserBan = async (userId, currentStatus) => {
+    if (!userId) {
+      alert('Invalid user ID');
+      return;
+    }
     try {
+      console.log('Toggling ban for user:', userId, 'Current status:', currentStatus);
       const userDocRef = docRef(db, 'users', userId);
       await updateDoc(userDocRef, { banned: !currentStatus });
-      alert(`User ${currentStatus ? 'unbanned' : 'banned'}!`);
+      alert(`User ${currentStatus ? 'unbanned' : 'banned'} successfully!`);
       loadData();
     } catch (error) {
       console.error('Error toggling ban:', error);
-      alert('Failed to update user status');
+      alert('Failed to update user status: ' + error.message);
     }
   };
 
@@ -265,6 +465,16 @@ const AdminDashboard = ({ user, onViewChange }) => {
             📄 Documents
           </button>
           <button
+            onClick={() => setActiveTab('add')}
+            className={`px-6 py-3 font-medium ${
+              activeTab === 'add' 
+                ? 'border-b-2 border-emerald-500 text-emerald-600' 
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            ➕ Add Document
+          </button>
+          <button
             onClick={() => setActiveTab('users')}
             className={`px-6 py-3 font-medium ${
               activeTab === 'users' 
@@ -276,16 +486,18 @@ const AdminDashboard = ({ user, onViewChange }) => {
           </button>
         </div>
 
-        {/* Search */}
-        <div className="mb-6">
-          <input
-            type="text"
-            placeholder={`Search ${activeTab}...`}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-        </div>
+        {/* Search - hide for Add Document tab */}
+        {activeTab !== 'add' && (
+          <div className="mb-6">
+            <input
+              type="text"
+              placeholder={`Search ${activeTab}...`}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+        )}
 
         {/* Documents Tab */}
         {activeTab === 'documents' && (
@@ -364,6 +576,197 @@ const AdminDashboard = ({ user, onViewChange }) => {
                 No documents found
               </div>
             )}
+          </div>
+        )}
+
+        {/* Add Document Tab */}
+        {activeTab === 'add' && (
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <h2 className="text-2xl font-bold mb-6 text-gray-800">Add New Document</h2>
+            <form onSubmit={addDocument} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Course Selection */}
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Course</label>
+                    <select
+                      value={newDoc.courseId}
+                      onChange={(e) => {
+                        setNewDoc({ ...newDoc, courseId: e.target.value, semesterId: '', unitId: '' });
+                        loadSemesters(e.target.value);
+                      }}
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      required
+                    >
+                      <option value="">Select Course</option>
+                      {courses.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={createCourse}
+                    className="mt-7 px-3 py-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200"
+                    title="Create new course"
+                  >
+                    +
+                  </button>
+                </div>
+
+                {/* Semester Selection */}
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Semester</label>
+                    <select
+                      value={newDoc.semesterId}
+                      onChange={(e) => {
+                        setNewDoc({ ...newDoc, semesterId: e.target.value, unitId: '' });
+                        loadUnits(newDoc.courseId, e.target.value);
+                      }}
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      required
+                      disabled={!newDoc.courseId}
+                    >
+                      <option value="">Select Semester</option>
+                      {semesters.map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={createSemester}
+                    className="mt-7 px-3 py-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 disabled:bg-gray-100"
+                    disabled={!newDoc.courseId}
+                    title="Create new semester"
+                  >
+                    +
+                  </button>
+                </div>
+
+                {/* Unit Selection */}
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
+                    <select
+                      value={newDoc.unitId}
+                      onChange={(e) => setNewDoc({ ...newDoc, unitId: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      required
+                      disabled={!newDoc.semesterId}
+                    >
+                      <option value="">Select Unit</option>
+                      {units.map(u => (
+                        <option key={u.id} value={u.id}>{u.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={createUnit}
+                    className="mt-7 px-3 py-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 disabled:bg-gray-100"
+                    disabled={!newDoc.semesterId}
+                    title="Create new unit"
+                  >
+                    +
+                  </button>
+                </div>
+
+                {/* Title */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                  <input
+                    type="text"
+                    value={newDoc.title}
+                    onChange={(e) => setNewDoc({ ...newDoc, title: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    placeholder="Document title"
+                    required
+                  />
+                </div>
+
+                {/* File Path */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">File Path (URL)</label>
+                  <input
+                    type="text"
+                    value={newDoc.filePath}
+                    onChange={(e) => setNewDoc({ ...newDoc, filePath: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    placeholder="https://..."
+                    required
+                  />
+                </div>
+
+                {/* Thumbnail URL */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Thumbnail URL</label>
+                  <input
+                    type="text"
+                    value={newDoc.thumbnailUrl}
+                    onChange={(e) => setNewDoc({ ...newDoc, thumbnailUrl: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    placeholder="https://..."
+                  />
+                </div>
+
+                {/* Description */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <textarea
+                    value={newDoc.description}
+                    onChange={(e) => setNewDoc({ ...newDoc, description: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    rows="3"
+                    placeholder="Document description"
+                  />
+                </div>
+
+                {/* Time */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
+                  <select
+                    value={newDoc.time}
+                    onChange={(e) => setNewDoc({ ...newDoc, time: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="normal">Normal</option>
+                    <option value="latest">Latest</option>
+                  </select>
+                </div>
+
+                {/* Status */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <select
+                    value={newDoc.status}
+                    onChange={(e) => setNewDoc({ ...newDoc, status: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="free">Free</option>
+                    <option value="premium">Premium</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex gap-4 mt-6">
+                <button
+                  type="submit"
+                  disabled={addingDoc}
+                  className="px-6 py-3 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 disabled:bg-gray-400"
+                >
+                  {addingDoc ? 'Adding...' : 'Add Document'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('documents')}
+                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
         )}
 

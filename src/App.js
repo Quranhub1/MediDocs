@@ -95,6 +95,7 @@ function AppContent() {
           <BottomNav 
             currentView={currentView} 
             onViewChange={handleViewChange} 
+            user={currentUser}
           />
           
           {/* Footer - Desktop Only */}
