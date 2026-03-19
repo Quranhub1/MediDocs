@@ -52,7 +52,7 @@ const DocumentCarousel = ({ documents }) => {
   
   // Debug: show a message to help identify the issue
   if (documents && documents.length > 0 && displayDocs.length === 0) {
-    console.log('No documents with time="latest" found. Use Admin Dashboard to mark documents as latest.');
+    console.log('No documents with time="latest" found. ');
   }
 
   const currentDoc = displayDocs[currentIndex];

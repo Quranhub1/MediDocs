@@ -165,6 +165,7 @@ export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => 
     // Get all courses (top-level)
     const coursesRef = collection(db, RESOURCES_COLLECTION);
     const coursesSnapshot = await getDocs(coursesRef);
+    console.log('Courses found:', coursesSnapshot.docs.length);
     
     for (const courseDoc of coursesSnapshot.docs) {
       const courseId = courseDoc.id;
