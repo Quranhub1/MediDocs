@@ -26,7 +26,9 @@ const AdminDashboard = ({ user, onViewChange }) => {
   const ADMIN_PHONE = '256749846848';
 
   // Check if user is admin
-  const isAdmin = user?.phone === ADMIN_PHONE || user?.email === 'kaigwaakram123@gmail.com';
+  const ADMIN_EMAIL = 'kaigwaakram123@gmail.com';
+  const isAdmin = user?.phone === ADMIN_PHONE || 
+    (user?.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
 
   useEffect(() => {
     if (isAdmin) {
