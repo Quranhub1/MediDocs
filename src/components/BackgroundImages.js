@@ -58,7 +58,7 @@ const BackgroundImages = () => {
             src={image}
             alt={`Medical ${index + 1}`}
             className="w-full h-full object-cover"
-            style={{ filter: 'blur(1px) brightness(0.7)' }}
+            style={{ filter: 'brightness(0.8)' }}
           />
         </div>
       ))}
