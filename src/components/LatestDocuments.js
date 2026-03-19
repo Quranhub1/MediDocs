@@ -162,13 +162,21 @@ const LatestDocuments = ({ documents, user, onViewChange }) => {
                 {/* Action Buttons */}
                 <div className="flex space-x-2">
 {doc.status === 'premium' && (!user || !user.subscriptionApproved) ? (
-                    // Premium document - show upgrade button for non-authenticated or non-approved users
-                    <button
-                      onClick={() => alert('Please login and subscribe to access premium documents')}
-                      className="flex-1 px-4 py-2.5 bg-gradient-to-r from-gray-500 to-gray-600 text-white text-sm font-medium rounded-xl transition-all duration-200 cursor-not-allowed opacity-50"
-                    >
-                      Read Online
-                    </button>
+                    // Premium document - show both buttons (disabled) for non-authenticated or non-approved users
+                    <>
+                      <button
+                        onClick={() => alert('Please login and subscribe to access premium documents')}
+                        className="flex-1 px-4 py-2.5 bg-gradient-to-r from-gray-500 to-gray-600 text-white text-sm font-medium rounded-xl transition-all duration-200 cursor-not-allowed opacity-50"
+                      >
+                        Read Online
+                      </button>
+                      <button
+                        onClick={() => alert('Please login and subscribe to access premium documents')}
+                        className="flex-1 px-4 py-2.5 bg-white border-2 border-gray-400 text-gray-500 text-sm font-medium rounded-xl cursor-not-allowed opacity-50"
+                      >
+                        Download
+                      </button>
+                    </>
                   ) : (
                     // Free or authenticated user with approved subscription - show normal buttons
                     <>
