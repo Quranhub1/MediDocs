@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { submitPayment } from '../services/FirestoreService';
 
 const PaymentModal = ({ show, onClose }) => {
   const [amount, setAmount] = useState('50000');
@@ -7,18 +8,30 @@ const PaymentModal = ({ show, onClose }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!amount || !phoneNumber || !referenceNumber) return;
     
     setIsSubmitting(true);
     setSubmitStatus(null);
     
-    setTimeout(() => {
-      console.log('Manual payment submitted:', { amount, phoneNumber, referenceNumber });
+    try {
+      const result = await submitPayment({
+        amount,
+        phoneNumber,
+        referenceNumber
+      });
+      if (result.success) {
+        setSubmitStatus('success');
+      } else {
+        setSubmitStatus('error');
+      }
+    } catch (error) {
+      console.error('Error submitting payment:', error);
+      setSubmitStatus('error');
+    } finally {
       setIsSubmitting(false);
-      setSubmitStatus('success');
-    }, 1500);
+    }
   };
 
   if (!show) return null;

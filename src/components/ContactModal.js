@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { submitContactForm } from '../services/FirestoreService';
 
 const ContactModal = ({ show, onClose }) => {
   const [formState, setFormState] = useState({
@@ -22,18 +23,23 @@ const ContactModal = ({ show, onClose }) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Simulate form submission
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setSubmitted(true);
-    setIsSubmitting(false);
-    
-    // Reset form after 3 seconds
-    setTimeout(() => {
-      setSubmitted(false);
-      setFormState({ name: '', email: '', subject: '', message: '' });
-      onClose();
-    }, 2000);
+    try {
+      const result = await submitContactForm(formState);
+      if (result.success) {
+        setSubmitted(true);
+        setIsSubmitting(false);
+        setTimeout(() => {
+          setSubmitted(false);
+          setFormState({ name: '', email: '', subject: '', message: '' });
+          onClose();
+        }, 2000);
+      } else {
+        setIsSubmitting(false);
+      }
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      setIsSubmitting(false);
+    }
   };
 
   if (!show) return null;

@@ -1,6 +1,8 @@
 import {
   collection,
-  getDocs
+  getDocs,
+  addDoc,
+  serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -262,3 +264,35 @@ export const fetchResources = async (maxItems = 20) => fetchAllDocuments(maxItem
 
 // Clear cache (useful for logout or refresh)
 export { clearCache };
+
+// Submit contact form to Firestore
+export const submitContactForm = async (formData) => {
+  try {
+    const contactRef = collection(db, 'contact_submissions');
+    await addDoc(contactRef, {
+      ...formData,
+      createdAt: serverTimestamp(),
+      status: 'pending'
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Error submitting contact form:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Submit payment to Firestore
+export const submitPayment = async (paymentData) => {
+  try {
+    const paymentsRef = collection(db, 'payments');
+    await addDoc(paymentsRef, {
+      ...paymentData,
+      createdAt: serverTimestamp(),
+      status: 'pending_verification'
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Error submitting payment:', error);
+    return { success: false, error: error.message };
+  }
+};

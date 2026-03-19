@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import BackgroundImages from './BackgroundImages';
+import { submitContactForm } from '../services/FirestoreService';
 
 const ContactSection = ({ onContactClick }) => {
   const [formState, setFormState] = useState({
@@ -19,22 +20,25 @@ const ContactSection = ({ onContactClick }) => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     setSubmitStatus(null);
     
-    setTimeout(() => {
-      console.log('Contact form submitted:', formState);
+    try {
+      const result = await submitContactForm(formState);
+      if (result.success) {
+        setSubmitStatus('success');
+        setFormState({ name: '', email: '', subject: '', message: '' });
+      } else {
+        setSubmitStatus('error');
+      }
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      setSubmitStatus('error');
+    } finally {
       setIsSubmitting(false);
-      setSubmitStatus('success');
-      setFormState({
-        name: '',
-        email: '',
-        subject: '',
-        message: ''
-      });
-    }, 1500);
+    }
   };
 
   return (
