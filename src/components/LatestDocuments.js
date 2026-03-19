@@ -49,13 +49,8 @@ const LatestDocuments = ({ documents, user, onViewChange }) => {
     }
   };
 
-// Filter documents based on time field - show latest first, then show all if no latest
-  const filteredDocuments = documents.filter(doc => {
-    return doc.time === 'latest';
-  });
-  
-  // If no documents with time='latest', show all documents
-  const displayDocuments = filteredDocuments.length > 0 ? filteredDocuments : documents.slice(0, 6);
+// Show all documents in the Latest Documents section
+  const displayDocuments = documents.slice(0, 6);
 
   return (
     <section className="py-12 px-4">
