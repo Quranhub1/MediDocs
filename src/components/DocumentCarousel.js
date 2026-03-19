@@ -17,9 +17,10 @@ const DocumentCarousel = ({ documents }) => {
       console.log('Documents is not an array or is empty');
       return [];
     }
-    // Filter to only show documents with time='latest'
-    const latestDocs = documents.filter(doc => doc && doc.time === 'latest');
-    console.log('Latest docs filtered:', latestDocs.length, latestDocs.map(d => ({id: d.id, time: d.time})));
+    // Filter to only show documents with time='latest' (case-insensitive)
+    const latestDocs = documents.filter(doc => doc && doc.time && doc.time.toLowerCase() === 'latest');
+    console.log('Latest docs filtered:', latestDocs.length);
+    console.log('All doc times:', documents.map(d => ({ id: d.id, time: d.time })));
     return latestDocs;
   };
   
@@ -52,11 +53,6 @@ const DocumentCarousel = ({ documents }) => {
   if (!displayDocs || displayDocs.length === 0) {
     console.log('Returning null - no displayDocs');
     return null;
-  }
-  
-  // Debug: show a message to help identify the issue
-  if (documents && documents.length > 0 && displayDocs.length === 0) {
-    console.log('No documents with time="latest" found. ');
   }
 
   const currentDoc = displayDocs[currentIndex];
