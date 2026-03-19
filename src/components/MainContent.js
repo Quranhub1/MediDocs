@@ -40,6 +40,9 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
       const result = await fetchAllDocuments(10, false);
       console.log('Fetch result:', result);
       console.log('Documents loaded:', result.data?.length || 0);
+      if (result.data && result.data.length > 0) {
+        console.log('First doc structure:', JSON.stringify(result.data[0]));
+      }
       if (result.success) {
         setLatestDocuments(result.data || []);
       }
