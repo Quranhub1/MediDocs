@@ -162,7 +162,8 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
   }
 
   // Show carousel even for non-logged in users
-  if (view === 'home' && latestDocuments.length > 0) {
+  if (view === 'home') {
+    console.log('Home view - latestDocuments:', latestDocuments.length);
     return (
       <div>
         <HeroSection user={user} onLoginClick={onLoginClick} onRegisterClick={onRegisterClick} />
