@@ -1,9 +1,11 @@
 import React from 'react';
+import BackgroundImages from './BackgroundImages';
 
 const HeroSection = ({ user, onLoginClick, onRegisterClick }) => {
 
   return (
     <section className="relative bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 py-16 md:py-24 overflow-hidden">
+      <BackgroundImages />
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10">
         <div className="text-center">
