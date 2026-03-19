@@ -7,6 +7,7 @@ import PrivacySection from './PrivacySection';
 import HeroSection from './HeroSection';
 import StatsSection from './StatsSection';
 import BackgroundImages from './BackgroundImages';
+import DocumentCarousel from './DocumentCarousel';
 import { fetchCourses, fetchSemesters, fetchCourseUnits, fetchDocuments, fetchAllDocuments } from '../services/FirestoreService';
 
 const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick, onContactClick, onAIChatClick, setView }) => {
@@ -188,6 +189,7 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
       return (
         <div className="space-y-0">
           <HeroSection user={user} onLoginClick={onLoginClick} onRegisterClick={onRegisterClick} />
+          <DocumentCarousel documents={latestDocuments} />
           <StatsSection />
           <div className="space-y-0">
             <LatestDocuments 
@@ -258,6 +260,7 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
         <div className="relative min-h-screen">
           <BackgroundImages />
           <div className="relative z-10 bg-gradient-to-br from-emerald-50 to-teal-50 min-h-screen py-8">
+            <DocumentCarousel documents={documents} />
             <div className="max-w-7xl mx-auto px-4">
               <button 
                 onClick={goBack}
