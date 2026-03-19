@@ -166,6 +166,9 @@ export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => 
     const coursesRef = collection(db, RESOURCES_COLLECTION);
     const coursesSnapshot = await getDocs(coursesRef);
     console.log('Courses found:', coursesSnapshot.docs.length);
+    if (coursesSnapshot.docs.length === 0) {
+      console.log('No courses found in:', RESOURCES_COLLECTION);
+    }
     
     for (const courseDoc of coursesSnapshot.docs) {
       const courseId = courseDoc.id;
@@ -234,6 +237,10 @@ export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => 
       }
     }
     
+    console.log('Total documents fetched:', allDocuments.length);
+    if (allDocuments.length > 0) {
+      console.log('Sample document:', JSON.stringify(allDocuments[0]));
+    }
     // Sort by time field - show latest first
     allDocuments.sort((a, b) => {
       if (a.time === 'latest' && b.time !== 'latest') return -1;
