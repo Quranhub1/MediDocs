@@ -6,13 +6,15 @@ const DocumentCarousel = ({ documents }) => {
   // Debug: log documents received
   console.log('Carousel received documents:', documents?.length || 0, documents);
 
-  // Always show all documents passed to the carousel
+  // Show only documents with time='latest'
   const getDisplayDocs = () => {
     // If documents is undefined or not an array, return empty array
     if (!documents || !Array.isArray(documents)) {
       return [];
     }
-    return documents;
+    // Filter to only show documents with time='latest'
+    const latestDocs = documents.filter(doc => doc && doc.time === 'latest');
+    return latestDocs;
   };
   
   const displayDocs = getDisplayDocs();
@@ -40,9 +42,13 @@ const DocumentCarousel = ({ documents }) => {
   }, [displayDocs]);
   
   // If no documents at all, return null
-  // For debugging: show a message when no documents
   if (!displayDocs || displayDocs.length === 0) {
-    return null; // Carousel hidden when no documents
+    return null;
+  }
+  
+  // Debug: show a message to help identify the issue
+  if (documents && documents.length > 0 && displayDocs.length === 0) {
+    console.log('No documents with time="latest" found. Use Admin Dashboard to mark documents as latest.');
   }
 
   const currentDoc = displayDocs[currentIndex];
