@@ -245,10 +245,8 @@ export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => 
       return 0;
     });
     
-    // Filter to show documents with time='latest' or status='free'
-    const filteredDocuments = allDocuments.filter(doc => doc.time === 'latest' || doc.status === 'free');
-    
-    const result = { success: true, data: filteredDocuments.slice(0, maxItems) };
+    // Show all documents
+    const result = { success: true, data: allDocuments.slice(0, maxItems) };
     
     // Cache the results
     setCache(CACHE_KEYS.DOCUMENTS, result.data, MAX_CACHE_SIZE);
