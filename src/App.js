@@ -4,6 +4,7 @@ import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import MainContent from './components/MainContent';
+import AdminDashboard from './components/AdminDashboard';
 import LoginModal from './components/LoginModal';
 import RegisterModal from './components/RegisterModal';
 import PaymentModal from './components/PaymentModal';
@@ -67,19 +68,27 @@ function AppContent() {
               onAboutClick={() => handleViewChange('about')}
               onContactClick={() => handleViewChange('contact')}
               onPrivacyClick={() => handleViewChange('privacy')}
+              onAdminClick={() => handleViewChange('admin')}
             />
             
             <div className="w-full">
-              <MainContent 
-                view={currentView} 
-                user={currentUser}
-                setView={handleViewChange}
-                onLoginClick={() => setShowLoginModal(true)}
-                onRegisterClick={() => setShowRegisterModal(true)}
-                onPaymentClick={() => setShowPaymentModal(true)}
-                onContactClick={() => setShowContactModal(true)}
-                onAIChatClick={() => setShowAIChatModal(true)}
-              />
+              {currentView === 'admin' ? (
+                <AdminDashboard 
+                  user={currentUser}
+                  onViewChange={handleViewChange}
+                />
+              ) : (
+                <MainContent 
+                  view={currentView} 
+                  user={currentUser}
+                  setView={handleViewChange}
+                  onLoginClick={() => setShowLoginModal(true)}
+                  onRegisterClick={() => setShowRegisterModal(true)}
+                  onPaymentClick={() => setShowPaymentModal(true)}
+                  onContactClick={() => setShowContactModal(true)}
+                  onAIChatClick={() => setShowAIChatModal(true)}
+                />
+              )}
             </div>
           </main>
           
@@ -118,7 +127,7 @@ function AppContent() {
                 </div>
               </div>
               <div className="mt-8 pt-4 border-t border-emerald-500 text-center text-sm text-emerald-200">
-                © 2024 MediDocs Uganda. All rights reserved.
+                © 2026 MediDocs Uganda. All rights reserved.
               </div>
             </div>
           </footer>

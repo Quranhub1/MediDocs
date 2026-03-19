@@ -13,6 +13,10 @@ const Header = ({
   const [aiSearchQuery, setAiSearchQuery] = useState('');
   const [scrolled, setScrolled] = useState(false);
 
+  // Admin check
+  const ADMIN_PHONE = '256749846848';
+  const isAdmin = user?.phone === ADMIN_PHONE || user?.email === 'kaigwaakram123@gmail.com';
+
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
@@ -34,6 +38,9 @@ const Header = ({
     { id: 'about', label: 'About', section: 'about' },
     { id: 'contact', label: 'Contact', section: 'contact' },
   ];
+
+  // Add admin to menu items if user is admin
+  const allMenuItems = isAdmin ? [...menuItems, { id: 'admin', label: 'Admin', section: 'admin' }] : menuItems;
 
   const handleNavClick = (item) => {
     onViewChange(item.id);
@@ -91,7 +98,7 @@ const Header = ({
 
             {/* Desktop Navigation - Center */}
             <nav className="hidden lg:flex items-center space-x-2">
-              {menuItems.map((item) => (
+              {allMenuItems.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => handleNavClick(item)}
@@ -211,7 +218,7 @@ const Header = ({
 
           {/* Desktop Navigation - Center */}
           <nav className="hidden lg:flex items-center space-x-2">
-            {menuItems.map((item) => (
+            {allMenuItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => handleNavClick(item)}

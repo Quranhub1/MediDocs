@@ -1,26 +1,37 @@
-import React, { useState, useEffect } from 'react';
+waimport React, { useState, useEffect } from 'react';
 
 const DocumentCarousel = ({ documents }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Filter to only show documents with time='latest', or show all if no latest docs
+  // Filter to only show documents with time='latest'
   const latestDocs = documents?.filter(doc => doc.time === 'latest') || [];
+  
+  // Use latest docs if available, otherwise use all documents
   const displayDocs = latestDocs.length > 0 ? latestDocs : (documents || []);
   
+  // Reset currentIndex when displayDocs changes
   useEffect(() => {
-    if (!displayDocs || displayDocs.length === 0) return;
+    setCurrentIndex(0);
+  }, [documents]);
+
+  // Auto-rotate every 5 seconds (reduced from 15 for testing)
+  useEffect(() => {
+    if (!displayDocs || displayDocs.length <= 1) return;
     
     const interval = setInterval(() => {
       setCurrentIndex((prevIndex) => {
-        // Rotate to the left (decrease index)
-        return (prevIndex - 1 + displayDocs.length) % displayDocs.length;
+        // Rotate to the next index
+        return (prevIndex + 1) % displayDocs.length;
       });
-    }, 15000); // 15 seconds
+    }, 5000); // 5 seconds
 
     return () => clearInterval(interval);
   }, [displayDocs]);
 
+  // If there are no documents at all, show nothing
   if (!displayDocs || displayDocs.length === 0) return null;
+
+  const currentDoc = displayDocs[currentIndex];
 
   const handleReadOnline = (doc) => {
     const url = doc.filePath;
@@ -36,7 +47,17 @@ const DocumentCarousel = ({ documents }) => {
     }
   };
 
-  const currentDoc = displayDocs[currentIndex];
+  const goToPrevious = () => {
+    setCurrentIndex((prevIndex) => 
+      (prevIndex - 1 + displayDocs.length) % displayDocs.length
+    );
+  };
+
+  const goToNext = () => {
+    setCurrentIndex((prevIndex) => 
+      (prevIndex + 1) % displayDocs.length
+    );
+  };
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4 py-8">
@@ -95,17 +116,19 @@ const DocumentCarousel = ({ documents }) => {
           ))}
         </div>
         
-        {/* Left/Right Arrows */}
+        {/* Left Arrow */}
         <button
-          onClick={() => setCurrentIndex((currentIndex - 1 + displayDocs.length) % displayDocs.length)}
+          onClick={goToPrevious}
           className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-colors"
         >
           <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
+        
+        {/* Right Arrow */}
         <button
-          onClick={() => setCurrentIndex((currentIndex + 1) % displayDocs.length)}
+          onClick={goToNext}
           className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-colors"
         >
           <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -115,8 +138,8 @@ const DocumentCarousel = ({ documents }) => {
       </div>
       
       {/* Document Counter */}
-      <div className="text-center mt-4 text-gray-600">
-        {currentIndex + 1} / {displayDocs.length}
+      <div className="text-center mt-4 text-white">
+        {currentIndex + 1} / {displayDocs.length} {latestDocs.length > 0 ? '(Latest)' : ''}
       </div>
     </div>
   );

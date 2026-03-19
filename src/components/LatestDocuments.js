@@ -49,8 +49,29 @@ const LatestDocuments = ({ documents, user, onViewChange }) => {
     }
   };
 
-// Show all documents in the Latest Documents section
-  const displayDocuments = documents.slice(0, 6);
+// Show only documents with time === 'latest'
+  const displayDocuments = documents.filter(doc => doc.time === 'latest').slice(0, 6);
+
+  if (displayDocuments.length === 0) {
+    return (
+      <section className="py-12 px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl font-bold text-gray-800 mb-3">
+              Latest Documents
+            </h2>
+            <p className="text-gray-600 max-w-xl mx-auto">
+              Stay updated with the newest study materials added to our platform
+            </p>
+          </div>
+          <div className="text-center py-8">
+            <p className="text-gray-500">No latest documents available at the moment.</p>
+            <p className="text-gray-400 text-sm mt-2">Check back soon for new study materials!</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="py-12 px-4">
