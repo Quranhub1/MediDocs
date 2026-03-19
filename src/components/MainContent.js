@@ -40,7 +40,8 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
       setLoading(true);
       console.log('Starting document fetch with forceRefresh:', forceRefresh);
       // Use forceRefresh to bypass cache and get fresh data from Firestore
-      const result = await fetchAllDocuments(10, forceRefresh);
+      // Fetch 50 docs to make sure we get the latest ones
+      const result = await fetchAllDocuments(50, forceRefresh);
       console.log('Fetch result:', result);
       console.log('Documents loaded:', result.data?.length || 0);
       if (result.data && result.data.length > 0) {
