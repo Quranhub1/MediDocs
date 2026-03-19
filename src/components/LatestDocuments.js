@@ -49,12 +49,9 @@ const LatestDocuments = ({ documents, user }) => {
     }
   };
 
-// Filter documents based on time field (latest/old) and status (premium/free)
+// Filter documents based on time field - only show latest documents
   const filteredDocuments = documents.filter(doc => {
-    if (doc.time === 'latest') return true; // Always show latest documents
-    if (doc.status === 'free') return true; // Always show free documents
-    if (user && doc.status === 'premium' && user.subscriptionApproved) return true; // Show premium documents only to subscribed users with approved subscription
-    return false;
+    return doc.time === 'latest';
   });
 
   return (
