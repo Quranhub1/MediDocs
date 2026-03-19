@@ -1,12 +1,16 @@
 import React from 'react';
+import BackgroundImages from './BackgroundImages';
 
 const PrivacySection = () => {
   return (
-    <section className="mb-8">
-      <h2 className="text-2xl font-bold text-gray-800 mb-4">
-        Privacy Policy
-      </h2>
-      <div className="space-y-6">
+    <section className="relative min-h-screen mb-8">
+      <BackgroundImages />
+      <div className="relative z-10 bg-white/90 backdrop-blur-sm min-h-screen py-12">
+        <div className="max-w-4xl mx-auto px-4">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">
+            Privacy Policy
+          </h2>
+          <div className="space-y-6">
         <div className="bg-white rounded-xl shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">
             Introduction
@@ -95,6 +99,7 @@ const PrivacySection = () => {
             changes by posting the new Privacy Policy on this page. You are advised to review 
             this Privacy Policy periodically for any changes.
           </p>
+          </div>
         </div>
       </div>
     </section>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import BackgroundImages from './BackgroundImages';
 
 const ContactSection = ({ onContactClick }) => {
   const [formState, setFormState] = useState({
@@ -40,10 +41,13 @@ const ContactSection = ({ onContactClick }) => {
   };
 
   return (
-    <section className="mb-8">
-      <h2 className="text-2xl font-bold text-gray-800 mb-4">
-        Contact Us
-      </h2>
+    <section className="relative min-h-screen mb-8">
+      <BackgroundImages />
+      <div className="relative z-10 bg-white/90 backdrop-blur-sm min-h-screen py-12">
+        <div className="max-w-2xl mx-auto px-4">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">
+            Contact Us
+          </h2>
       
       {submitStatus === 'success' && (
         <div className="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 mb-6" role="alert">
@@ -145,6 +149,7 @@ const ContactSection = ({ onContactClick }) => {
           Need immediate help? Chat with us live
         </button>
       </div>
+    </div>
     </section>
   );
 };

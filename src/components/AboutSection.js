@@ -1,9 +1,13 @@
 import React from 'react';
+import BackgroundImages from './BackgroundImages';
 
 const AboutSection = () => {
   return (
-    <section className="mb-8">
-      <h2 className="text-2xl font-bold text-gray-800 mb-4">
+    <section className="relative min-h-screen mb-8">
+      <BackgroundImages />
+      <div className="relative z-10 bg-white/90 backdrop-blur-sm min-h-screen py-12">
+        <div className="max-w-4xl mx-auto px-4">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">
         About MediDocs Uganda
       </h2>
       <div className="space-y-6">
@@ -38,6 +42,7 @@ const AboutSection = () => {
             Join thousands of Ugandan medical students who trust MediDocs Uganda 
             for their academic success.
           </p>
+        </div>
         </div>
       </div>
     </section>
