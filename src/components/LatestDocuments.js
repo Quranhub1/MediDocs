@@ -49,8 +49,23 @@ const LatestDocuments = ({ documents, user, onViewChange }) => {
     }
   };
 
-// Show only documents with time === 'latest'
-  const displayDocuments = documents.filter(doc => doc.time === 'latest').slice(0, 6);
+// Show only documents with time === 'latest', or fallback to recent documents sorted by createdAt
+  let displayDocuments = [];
+  
+  if (documents && documents.length > 0) {
+    const latestDocs = documents.filter(doc => doc.time === 'latest');
+    if (latestDocs.length > 0) {
+      displayDocuments = latestDocs;
+    } else {
+      // Sort by createdAt to show most recent documents
+      const sortedDocs = [...documents].sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+        const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+        return dateB - dateA; // Most recent first
+      });
+      displayDocuments = sortedDocs.slice(0, 6);
+    }
+  }
 
   if (displayDocuments.length === 0) {
     return (

@@ -3,11 +3,26 @@ import React, { useState, useEffect } from 'react';
 const DocumentCarousel = ({ documents }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Filter to only show documents with time='latest'
-  const latestDocs = documents?.filter(doc => doc.time === 'latest') || [];
+  // Filter to only show documents with time='latest', or fallback to recent documents
+  let displayDocs = [];
   
-  // Use latest docs if available, otherwise use all documents
-  const displayDocs = latestDocs.length > 0 ? latestDocs : (documents || []);
+  if (documents && documents.length > 0) {
+    const latestDocs = documents.filter(doc => doc.time === 'latest');
+    if (latestDocs.length > 0) {
+      displayDocs = latestDocs;
+    } else {
+      // Sort by createdAt to show most recent documents
+      const sortedDocs = [...documents].sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+        const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+        return dateB - dateA; // Most recent first
+      });
+      displayDocs = sortedDocs;
+    }
+  }
+  
+  // If no documents at all, return null to show nothing
+  if (!displayDocs || displayDocs.length === 0) return null;
   
   // Reset currentIndex when displayDocs changes
   useEffect(() => {
@@ -27,9 +42,6 @@ const DocumentCarousel = ({ documents }) => {
 
     return () => clearInterval(interval);
   }, [displayDocs]);
-
-  // If there are no documents at all, show nothing
-  if (!displayDocs || displayDocs.length === 0) return null;
 
   const currentDoc = displayDocs[currentIndex];
 
