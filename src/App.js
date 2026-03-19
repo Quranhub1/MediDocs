@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import './App.css';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import MainContent from './components/MainContent';
-import AdminDashboard from './components/AdminDashboard';
 import LoginModal from './components/LoginModal';
 import RegisterModal from './components/RegisterModal';
 import PaymentModal from './components/PaymentModal';
 import ContactModal from './components/ContactModal';
-import AIStudyAssistant from './components/AIStudyAssistant';
 import { AuthProvider, useAuth } from './context/AuthContext';
+
+// Lazy load heavy components
+const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
+const AIStudyAssistant = lazy(() => import('./components/AIStudyAssistant'));
 
 function AppContent() {
   const { currentUser, logout } = useAuth();
@@ -73,10 +75,12 @@ function AppContent() {
             
             <div className="w-full">
               {currentView === 'admin' ? (
-                <AdminDashboard 
-                  user={currentUser}
-                  onViewChange={handleViewChange}
-                />
+                <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+                  <AdminDashboard 
+                    user={currentUser}
+                    onViewChange={handleViewChange}
+                  />
+                </Suspense>
               ) : (
                 <MainContent 
                   view={currentView} 
@@ -162,11 +166,13 @@ function AppContent() {
           onClose={() => setShowContactModal(false)}
         />
         
-        <AIStudyAssistant 
-          show={showAIChatModal} 
-          onClose={() => setShowAIChatModal(false)}
-          user={currentUser}
-        />
+        <Suspense fallback={null}>
+          <AIStudyAssistant 
+            show={showAIChatModal} 
+            onClose={() => setShowAIChatModal(false)}
+            user={currentUser}
+          />
+        </Suspense>
         
         {/* Floating AI Assistant Button */}
         <button

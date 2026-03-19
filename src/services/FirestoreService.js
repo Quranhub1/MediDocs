@@ -15,8 +15,8 @@ const CACHE_KEYS = {
 };
 
 const CACHE_DURATION = {
-  COURSES: 10 * 60 * 1000, // 10 minutes for courses
-  DOCUMENTS: 5 * 60 * 1000  // 5 minutes for documents
+  COURSES: 30 * 60 * 1000, // 30 minutes for courses
+  DOCUMENTS: 15 * 60 * 1000  // 15 minutes for documents
 };
 
 const MAX_CACHE_SIZE = 50; // Maximum items to cache
