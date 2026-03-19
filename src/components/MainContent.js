@@ -38,6 +38,7 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
   const loadLatestDocuments = async (forceRefresh = false) => {
     try {
       setLoading(true);
+      console.log('Starting document fetch with forceRefresh:', forceRefresh);
       // Use forceRefresh to bypass cache and get fresh data from Firestore
       const result = await fetchAllDocuments(10, forceRefresh);
       console.log('Fetch result:', result);
@@ -46,7 +47,10 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
         console.log('First doc structure:', JSON.stringify(result.data[0]));
       }
       if (result.success) {
+        console.log('Setting latestDocuments state with', result.data?.length || 0, 'docs');
         setLatestDocuments(result.data || []);
+      } else {
+        console.log('Fetch failed:', result.error);
       }
     } catch (err) {
       console.error('Error loading latest documents:', err);
