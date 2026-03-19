@@ -31,7 +31,9 @@ const getCache = (key) => {
     const now = Date.now();
     
     // Check if cache is expired
-    if (now - timestamp > CACHE_DURATION[key === CACHE_KEYS.COURSES ? 'COURSES' : 'DOCUMENTS']) {
+    const isCourses = key === CACHE_KEYS.COURSES;
+    const cacheType = isCourses ? 'COURSES' : 'DOCUMENTS';
+    if (now - timestamp > CACHE_DURATION[cacheType]) {
       localStorage.removeItem(key);
       return null;
     }

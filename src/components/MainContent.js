@@ -36,7 +36,7 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
   const loadLatestDocuments = async () => {
     try {
       setLoading(true);
-      // Use cache (false) for faster initial load, forceRefresh (true) only when needed
+      // Use caching (false) for faster initial load
       const result = await fetchAllDocuments(10, false);
       if (result.success) {
         setLatestDocuments(result.data);
