@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../firebase';
+import { fetchAllDocuments } from '../services/FirestoreService';
 import { 
   collection, 
   getDocs, 
@@ -8,6 +8,7 @@ import {
   deleteDoc,
   serverTimestamp
 } from 'firebase/firestore';
+import { db } from '../firebase';
 
 const AdminDashboard = ({ user, onViewChange }) => {
   const [activeTab, setActiveTab] = useState('documents');
@@ -50,60 +51,28 @@ const AdminDashboard = ({ user, onViewChange }) => {
   };
 
   const loadDocuments = async () => {
-    const allDocs = [];
-    
     try {
-      // Get all courses
-      const coursesRef = collection(db, 'RESOURCES_STUDYPEDIA');
-      const coursesSnapshot = await getDocs(coursesRef);
+      // Use the shared fetch function with caching
+      const result = await fetchAllDocuments(100, false);
       
-      for (const courseDoc of coursesSnapshot.docs) {
-        const courseId = courseDoc.id;
+      if (result.success && result.data) {
+        const allDocs = result.data.map(doc => ({
+          ...doc,
+          fullPath: doc.fullPath || `RESOURCES_STUDYPEDIA/${doc.courseId}/semesters/${doc.semesterId}/courseunits/${doc.unitId}/documents/${doc.id}`
+        }));
         
-        // Get semesters
-        const semestersRef = collection(db, `RESOURCES_STUDYPEDIA/${courseId}/semesters`);
-        const semestersSnapshot = await getDocs(semestersRef);
+        setDocuments(allDocs);
         
-        for (const semesterDoc of semestersSnapshot.docs) {
-          const semesterId = semesterDoc.id;
-          
-          // Get courseunits
-          const unitsRef = collection(db, `RESOURCES_STUDYPEDIA/${courseId}/semesters/${semesterId}/courseunits`);
-          const unitsSnapshot = await getDocs(unitsRef);
-          
-          for (const unitDoc of unitsSnapshot.docs) {
-            const unitId = unitDoc.id;
-            
-            // Get documents
-            const docsRef = collection(db, `RESOURCES_STUDYPEDIA/${courseId}/semesters/${semesterId}/courseunits/${unitId}/documents`);
-            const docsSnapshot = await getDocs(docsRef);
-            
-            docsSnapshot.forEach((d) => {
-              const docData = d.data();
-              allDocs.push({
-                id: d.id,
-                ...docData,
-                fullPath: `RESOURCES_STUDYPEDIA/${courseId}/semesters/${semesterId}/courseunits/${unitId}/documents/${d.id}`,
-                courseId,
-                semesterId,
-                unitId
-              });
-            });
-          }
-        }
+        // Update stats
+        const latestDocs = allDocs.filter(d => d.time === 'latest').length;
+        const premiumDocs = allDocs.filter(d => d.status === 'premium').length;
+        setStats(prev => ({
+          ...prev,
+          totalDocuments: allDocs.length,
+          latestDocuments: latestDocs,
+          premiumDocuments: premiumDocs
+        }));
       }
-      
-      setDocuments(allDocs);
-      
-      // Update stats
-      const latestDocs = allDocs.filter(d => d.time === 'latest').length;
-      const premiumDocs = allDocs.filter(d => d.status === 'premium').length;
-      setStats(prev => ({
-        ...prev,
-        totalDocuments: allDocs.length,
-        latestDocuments: latestDocs,
-        premiumDocuments: premiumDocs
-      }));
     } catch (error) {
       console.error('Error loading documents:', error);
     }
