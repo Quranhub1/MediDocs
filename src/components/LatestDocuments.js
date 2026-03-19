@@ -1,6 +1,6 @@
 import React from 'react';
 
-const LatestDocuments = ({ documents, user }) => {
+const LatestDocuments = ({ documents, user, onViewChange }) => {
   const getFileTypeIcon = (filePath) => {
     if (!filePath) return '📄';
 
@@ -160,7 +160,10 @@ const LatestDocuments = ({ documents, user }) => {
 
         {/* View All Button */}
         <div className="text-center mt-10">
-          <button className="px-8 py-3 bg-white border-2 border-emerald-500 text-emerald-600 font-semibold rounded-xl hover:bg-emerald-50 transition-all duration-200">
+          <button 
+            onClick={() => onViewChange && onViewChange('documents')}
+            className="px-8 py-3 bg-white border-2 border-emerald-500 text-emerald-600 font-semibold rounded-xl hover:bg-emerald-50 transition-all duration-200"
+          >
             View All Documents
           </button>
         </div>

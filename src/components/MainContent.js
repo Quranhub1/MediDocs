@@ -191,6 +191,8 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
           <div className="space-y-0">
             <LatestDocuments 
               documents={latestDocuments} 
+              user={user}
+              onViewChange={setView}
               onDocumentClick={(doc) => console.log('Document clicked:', doc)}
               onDownloadClick={(doc) => console.log('Download clicked:', doc)}
             />
@@ -389,6 +391,8 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
           <div className="space-y-0">
             <LatestDocuments 
               documents={latestDocuments} 
+              user={user}
+              onViewChange={setView}
               onDocumentClick={(doc) => console.log('Document clicked:', doc)}
               onDownloadClick={(doc) => console.log('Download clicked:', doc)}
             />
