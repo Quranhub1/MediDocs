@@ -282,32 +282,7 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
           </div>
         </div>
       );
-    case 'documents':
-      return (
-        <div className="min-h-screen bg-gray-50 py-8">
-          <div className="max-w-7xl mx-auto px-4">
-            <button 
-              onClick={goBack}
-              className="mb-6 flex items-center text-emerald-600 hover:text-emerald-700"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path>
-              </svg>
-              Back to Course Units
-            </button>
-            <h2 className="text-3xl font-bold text-gray-800 mb-6">
-              {selectedUnit?.name || 'Documents'}
-            </h2>
-            {subLoading ? (
-              <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {documents.map((doc) => (
-                  <div key={doc.id} className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-                    {/* Thumbnail */}
-                    {(doc.thumbnail) && (
+    case 'about':
                       <div className="mb-4">
                         <img 
                           src={doc.thumbnail} 

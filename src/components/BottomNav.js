@@ -13,11 +13,6 @@ const BottomNav = ({ currentView, onViewChange }) => {
       icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253',
     },
     { 
-      id: 'documents', 
-      label: 'Docs', 
-      icon: 'M9 12h6m2 0a2 2 0 110 4 2 2 0 010-4zM3 6h18a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z',
-    },
-    { 
       id: 'contact', 
       label: 'Contact', 
       icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z',
@@ -25,9 +20,7 @@ const BottomNav = ({ currentView, onViewChange }) => {
   ];
 
   const handleClick = (id) => {
-    // Map 'documents' to 'home' (shows latest documents)
-    const viewId = id === 'documents' ? 'home' : id;
-    onViewChange(viewId);
+    onViewChange(id);
     // Scroll to top when changing views
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -36,7 +29,7 @@ const BottomNav = ({ currentView, onViewChange }) => {
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg lg:hidden z-40">
       <div className="flex justify-around items-center h-16 px-2">
         {navItems.map((item) => {
-          const isActive = currentView === item.id || (item.id === 'documents' && currentView === 'home');
+          const isActive = currentView === item.id;
           return (
             <button
               key={item.id}
