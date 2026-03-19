@@ -300,7 +300,7 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
       return (
         <div className="relative min-h-screen">
           <BackgroundImages />
-          <div className="relative z-10 bg-white/50 min-h-screen py-8">
+          <div className="relative z-10 bg-gradient-to-br from-emerald-50 to-teal-50 min-h-screen py-8">
             <div className="max-w-7xl mx-auto px-4">
               <button 
                 onClick={goBack}
@@ -323,15 +323,15 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
                   {documents.map((doc) => (
                     <div 
                       key={doc.id}
-                      className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all border border-gray-100"
+                      className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all border border-emerald-400"
                     >
-                      <h3 className="text-lg font-bold text-gray-800 mb-2">{doc.title || doc.id}</h3>
-                      <p className="text-gray-500 text-sm mb-4">{doc.description || 'No description'}</p>
+                      <h3 className="text-lg font-bold text-white mb-2">{doc.title || doc.id}</h3>
+                      <p className="text-emerald-100 text-sm mb-4">{doc.description || 'No description'}</p>
                       <div className="flex flex-wrap gap-2">
                         {doc.filePath && (
                           <button
                             onClick={() => handleReadOnline(doc)}
-                            className="px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm hover:bg-emerald-600"
+                            className="px-4 py-2 bg-white text-emerald-600 rounded-lg text-sm font-medium hover:bg-emerald-50"
                           >
                             Read Online
                           </button>
@@ -339,7 +339,7 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
                         {doc.filePath && (
                           <button
                             onClick={() => handleDownload(doc)}
-                            className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600"
+                            className="px-4 py-2 bg-emerald-800 text-white rounded-lg text-sm font-medium hover:bg-emerald-900"
                           >
                             Download
                           </button>

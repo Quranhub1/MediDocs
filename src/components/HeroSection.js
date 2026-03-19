@@ -3,9 +3,9 @@ import React, { useState, useEffect } from 'react';
 const HeroSection = ({ user, onLoginClick, onRegisterClick }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const images = [
-    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRLVqoJQcUOFNhASOTfyqPHfZWWlfD2Icwemg&s',
-    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQIsBHOBqsiWgICqJDRlRqcnXFFkIgXvBmmLA&s',
-    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRsFmS0qNmaV-zb1WbhWq3HFRJqkMWm_PIuFg&s'
+    'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=1200',
+    'https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=1200',
+    'https://images.unsplash.com/photo-1559757175-5700dde675bc?w=1200'
   ];
 
   useEffect(() => {

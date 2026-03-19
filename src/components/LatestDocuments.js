@@ -49,13 +49,13 @@ const LatestDocuments = ({ documents, user, onViewChange }) => {
     }
   };
 
-// Filter documents based on time field - only show latest documents
+// Filter documents based on time field - show latest first, then show all if no latest
   const filteredDocuments = documents.filter(doc => {
-    console.log('Document:', doc.name, 'time:', doc.time);
     return doc.time === 'latest';
   });
   
-  console.log('Total docs:', documents.length, 'Filtered:', filteredDocuments.length);
+  // If no documents with time='latest', show all documents
+  const displayDocuments = filteredDocuments.length > 0 ? filteredDocuments : documents.slice(0, 6);
 
   return (
     <section className="py-12 px-4">
@@ -72,7 +72,7 @@ const LatestDocuments = ({ documents, user, onViewChange }) => {
 
         {/* Documents Grid - Responsive: 1 col mobile, 2 cols tablet, 3 cols desktop */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredDocuments.map((doc) => (
+          {displayDocuments.map((doc) => (
             <div
               key={doc.id}
               className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 overflow-hidden group"
