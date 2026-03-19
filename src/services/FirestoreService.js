@@ -152,11 +152,15 @@ export { fetchCourses };
 
 // Path: RESOURCES_STUDYPEDIA/{courseId}/semesters/{semesterId}/courseunits/{unitId}/documents/{docId}
 export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => {
+  console.log('fetchAllDocuments called with maxItems:', maxItems, 'forceRefresh:', forceRefresh);
   if (!forceRefresh) {
     const cached = getCache(CACHE_KEYS.DOCUMENTS);
+    console.log('Cache check, cached data:', cached ? cached.data?.length : 'none');
     if (cached) {
       return { success: true, data: cached.data };
     }
+  } else {
+    console.log('forceRefresh is true, clearing cache first');
   }
 
   try {
@@ -249,7 +253,9 @@ export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => 
     });
     
     // Show all documents
+    console.log('Total docs before slice:', allDocuments.length, 'maxItems:', maxItems);
     const result = { success: true, data: allDocuments.slice(0, maxItems) };
+    console.log('Returning result with', result.data.length, 'documents');
     
     // Cache the results
     setCache(CACHE_KEYS.DOCUMENTS, result.data, MAX_CACHE_SIZE);
