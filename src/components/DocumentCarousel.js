@@ -3,23 +3,24 @@ import React, { useState, useEffect } from 'react';
 const DocumentCarousel = ({ documents }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Filter to only show documents with time='latest'
+  // Filter to only show documents with time='latest', or show all if no latest docs
   const latestDocs = documents?.filter(doc => doc.time === 'latest') || [];
+  const displayDocs = latestDocs.length > 0 ? latestDocs : (documents || []);
   
   useEffect(() => {
-    if (!latestDocs || latestDocs.length === 0) return;
+    if (!displayDocs || displayDocs.length === 0) return;
     
     const interval = setInterval(() => {
       setCurrentIndex((prevIndex) => {
         // Rotate to the left (decrease index)
-        return (prevIndex - 1 + latestDocs.length) % latestDocs.length;
+        return (prevIndex - 1 + displayDocs.length) % displayDocs.length;
       });
     }, 15000); // 15 seconds
 
     return () => clearInterval(interval);
-  }, [latestDocs]);
+  }, [displayDocs]);
 
-  if (!latestDocs || latestDocs.length === 0) return null;
+  if (!displayDocs || displayDocs.length === 0) return null;
 
   const handleReadOnline = (doc) => {
     const url = doc.filePath;
@@ -35,7 +36,7 @@ const DocumentCarousel = ({ documents }) => {
     }
   };
 
-  const currentDoc = latestDocs[currentIndex];
+  const currentDoc = displayDocs[currentIndex];
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4 py-8">
@@ -83,7 +84,7 @@ const DocumentCarousel = ({ documents }) => {
         
         {/* Navigation Dots */}
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-          {latestDocs.map((_, index) => (
+          {displayDocs.map((_, index) => (
             <button
               key={index}
               onClick={() => setCurrentIndex(index)}
@@ -115,7 +116,7 @@ const DocumentCarousel = ({ documents }) => {
       
       {/* Document Counter */}
       <div className="text-center mt-4 text-gray-600">
-        {currentIndex + 1} / {latestDocs.length}
+        {currentIndex + 1} / {displayDocs.length}
       </div>
     </div>
   );
