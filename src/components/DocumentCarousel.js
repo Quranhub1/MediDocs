@@ -4,44 +4,49 @@ const DocumentCarousel = ({ documents }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   // Filter to only show documents with time='latest', or fallback to recent documents
-  let displayDocs = [];
-  
-  if (documents && documents.length > 0) {
+  const getDisplayDocs = () => {
+    if (!documents || documents.length === 0) return [];
+    
     const latestDocs = documents.filter(doc => doc.time === 'latest');
     if (latestDocs.length > 0) {
-      displayDocs = latestDocs;
-    } else {
-      // Sort by createdAt to show most recent documents
-      const sortedDocs = [...documents].sort((a, b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
-        const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
-        return dateB - dateA; // Most recent first
-      });
-      displayDocs = sortedDocs;
+      return latestDocs;
     }
-  }
+    
+    // Sort by createdAt to show most recent documents
+    const sortedDocs = [...documents].sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+      const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+      return dateB - dateA; // Most recent first
+    });
+    return sortedDocs;
+  };
   
-  // If no documents at all, return null to show nothing
-  if (!displayDocs || displayDocs.length === 0) return null;
+  const displayDocs = getDisplayDocs();
   
-  // Reset currentIndex when displayDocs changes
+  // Check if we're showing actual latest docs (not fallback)
+  const isShowingLatest = displayDocs.length > 0 && 
+    documents?.some(doc => doc.time === 'latest');
+  
+  // Reset currentIndex when documents change
   useEffect(() => {
     setCurrentIndex(0);
   }, [documents]);
 
-  // Auto-rotate every 5 seconds (reduced from 15 for testing)
+  // Auto-rotate every 5 seconds
   useEffect(() => {
     if (!displayDocs || displayDocs.length <= 1) return;
     
     const interval = setInterval(() => {
       setCurrentIndex((prevIndex) => {
-        // Rotate to the next index
         return (prevIndex + 1) % displayDocs.length;
       });
-    }, 5000); // 5 seconds
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [displayDocs]);
+  
+  // If no documents at all, return null
+  if (displayDocs.length === 0) return null;
 
   const currentDoc = displayDocs[currentIndex];
 
@@ -151,7 +156,7 @@ const DocumentCarousel = ({ documents }) => {
       
       {/* Document Counter */}
       <div className="text-center mt-4 text-white">
-        {currentIndex + 1} / {displayDocs.length} {latestDocs.length > 0 ? '(Latest)' : ''}
+        {currentIndex + 1} / {displayDocs.length} {isShowingLatest ? '(Latest)' : ''}
       </div>
     </div>
   );
