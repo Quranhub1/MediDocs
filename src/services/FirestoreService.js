@@ -74,13 +74,11 @@ const fetchCourses = async (forceRefresh = false) => {
   if (!forceRefresh) {
     const cached = getCache(CACHE_KEYS.COURSES);
     if (cached) {
-      console.log('Returning cached courses');
       return { success: true, data: cached.data };
     }
   }
 
   try {
-    console.log('Fetching courses from Firestore...');
     const coursesRef = collection(db, RESOURCES_COLLECTION);
     const querySnapshot = await getDocs(coursesRef);
     
@@ -102,7 +100,6 @@ const fetchCourses = async (forceRefresh = false) => {
 // Fetch semesters for a specific course
 export const fetchSemesters = async (courseId) => {
   try {
-    console.log('Fetching semesters for course:', courseId);
     const semestersRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/semesters`);
     const snapshot = await getDocs(semestersRef);
     const semesters = snapshot.docs.map(doc => ({
@@ -119,7 +116,6 @@ export const fetchSemesters = async (courseId) => {
 // Fetch courseunits for a specific semester
 export const fetchCourseUnits = async (courseId, semesterId) => {
   try {
-    console.log('Fetching courseunits for semester:', semesterId);
     const unitsRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/semesters/${semesterId}/courseunits`);
     const snapshot = await getDocs(unitsRef);
     const units = snapshot.docs.map(doc => ({
@@ -136,7 +132,6 @@ export const fetchCourseUnits = async (courseId, semesterId) => {
 // Fetch documents for a specific courseunit
 export const fetchDocuments = async (courseId, semesterId, unitId) => {
   try {
-    console.log('Fetching documents for unit:', unitId);
     const docsRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/semesters/${semesterId}/courseunits/${unitId}/documents`);
     const snapshot = await getDocs(docsRef);
     const documents = snapshot.docs.map(doc => ({
@@ -158,13 +153,11 @@ export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => 
   if (!forceRefresh) {
     const cached = getCache(CACHE_KEYS.DOCUMENTS);
     if (cached) {
-      console.log('Returning cached documents');
       return { success: true, data: cached.data };
     }
   }
 
   try {
-    console.log('Fetching documents from Firestore...');
     const allDocuments = [];
     
     // Get all courses (top-level)

@@ -34,7 +34,6 @@ function AppContent() {
   };
 
   const handleAISearch = (query) => {
-    console.log('AI Search triggered:', query);
     setShowAIChatModal(true);
   };
 

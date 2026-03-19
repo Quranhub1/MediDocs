@@ -144,7 +144,7 @@ Provide accurate, educational, and easy-to-understand explanations. Use examples
           await addDoc(collection(db, 'chats', user.uid, 'messages'), userMessage);
           await addDoc(collection(db, 'chats', user.uid, 'messages'), botMessage);
         } catch (e) {
-          console.log('Chat save skipped');
+          // Chat save skipped
         }
       }
 
