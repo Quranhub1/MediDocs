@@ -205,7 +205,7 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
       return (
         <div className="relative min-h-screen">
           <BackgroundImages />
-          <div className="relative z-10 bg-white/70 backdrop-blur-sm min-h-screen py-8">
+          <div className="relative z-10 bg-white/50 min-h-screen py-8">
             <CourseGrid courses={courses} onBrowseClick={handleCourseClick} />
           </div>
         </div>
@@ -214,7 +214,7 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
       return (
         <div className="relative min-h-screen">
           <BackgroundImages />
-          <div className="relative z-10 bg-white/70 backdrop-blur-sm min-h-screen py-8">
+          <div className="relative z-10 bg-white/50 min-h-screen py-8">
             <div className="max-w-7xl mx-auto px-4">
               <button 
                 onClick={() => { setSelectedCourse(null); setView && setView('courses'); }}
@@ -257,7 +257,7 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
       return (
         <div className="relative min-h-screen">
           <BackgroundImages />
-          <div className="relative z-10 bg-white/70 backdrop-blur-sm min-h-screen py-8">
+          <div className="relative z-10 bg-white/50 min-h-screen py-8">
             <div className="max-w-7xl mx-auto px-4">
               <button 
                 onClick={goBack}
@@ -300,7 +300,7 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
       return (
         <div className="relative min-h-screen">
           <BackgroundImages />
-          <div className="relative z-10 bg-white/70 backdrop-blur-sm min-h-screen py-8">
+          <div className="relative z-10 bg-white/50 min-h-screen py-8">
             <div className="max-w-7xl mx-auto px-4">
               <button 
                 onClick={goBack}

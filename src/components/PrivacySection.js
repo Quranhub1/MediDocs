@@ -5,7 +5,7 @@ const PrivacySection = () => {
   return (
     <section className="relative min-h-screen mb-8">
       <BackgroundImages />
-      <div className="relative z-10 bg-white/70 backdrop-blur-sm min-h-screen py-12">
+      <div className="relative z-10 bg-white/50 min-h-screen py-12">
         <div className="max-w-4xl mx-auto px-4">
           <h2 className="text-2xl font-bold text-gray-800 mb-4">
             Privacy Policy
