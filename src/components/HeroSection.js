@@ -4,7 +4,7 @@ import BackgroundImages from './BackgroundImages';
 const HeroSection = ({ user, onLoginClick, onRegisterClick }) => {
 
   return (
-    <section className="relative bg-gradient-to-br from-emerald-900 via-teal-900 to-cyan-900 py-16 md:py-24 overflow-hidden">
+    <section className="relative bg-white py-16 md:py-24 overflow-hidden">
       <BackgroundImages />
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10">
@@ -19,12 +19,12 @@ const HeroSection = ({ user, onLoginClick, onRegisterClick }) => {
           </div>
 
           {/* Heading */}
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent mb-6 animate-pulse-glow">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent mb-6">
             MediDocs Uganda
           </h1>
 
           {/* Subtitle */}
-          <p className="text-lg sm:text-xl text-gray-700 mb-8 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg sm:text-xl text-gray-600 mb-8 max-w-2xl mx-auto leading-relaxed">
             Your trusted medical education platform for Ugandan students. Access comprehensive study materials for Certificate and Diploma programs, Nursing, and Clinical Medicine programs.
           </p>
 
@@ -33,7 +33,7 @@ const HeroSection = ({ user, onLoginClick, onRegisterClick }) => {
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <button
                 onClick={onRegisterClick}
-                className="px-8 py-4 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-600 hover:via-teal-600 hover:to-cyan-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 flex items-center justify-center space-x-2 relative overflow-hidden btn-shine"
+                className="px-8 py-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center space-x-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.1 0-2 .9-2 2s1 2 2 2 2-.9 2-2-1-2-2-2zm0 12c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-8c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2z"></path>
@@ -42,7 +42,7 @@ const HeroSection = ({ user, onLoginClick, onRegisterClick }) => {
               </button>
               <button
                 onClick={onLoginClick}
-                className="px-8 py-4 bg-white/10 backdrop-blur-sm border-2 border-white/30 text-white font-semibold rounded-xl hover:bg-white/20 hover:border-white/50 transition-all duration-300 flex items-center justify-center space-x-2"
+                className="px-8 py-4 bg-white border-2 border-emerald-500 text-emerald-600 font-semibold rounded-full hover:bg-emerald-50 transition-all duration-300 flex items-center justify-center space-x-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m2 0a2 2 0 110 4 2 2 0 010-4zM3 6h18a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z"></path>
@@ -52,15 +52,13 @@ const HeroSection = ({ user, onLoginClick, onRegisterClick }) => {
             </div>
           ) : (
             <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
-              <div className="flex items-center space-x-3 bg-white rounded-xl px-6 py-3 shadow-md">
-                <img
-                  src="https://i.imgur.com/kkopgnq.png"
-                  alt="User Avatar"
-                  className="w-10 h-10 rounded-full object-cover border-2 border-emerald-200"
-                />
+              <div className="flex items-center space-x-3 bg-white rounded-full px-6 py-3 shadow-lg border border-gray-100">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold">
+                  {user.email?.charAt(0).toUpperCase() || 'U'}
+                </div>
                 <div className="text-left">
                   <p className="font-semibold text-gray-800">{user.email?.split('@')[0] || 'User'}</p>
-                  <p className="text-sm text-gray-500">{user.email}</p>
+                  <p className="text-xs text-gray-500">{user.email}</p>
                 </div>
               </div>
 
@@ -69,21 +67,21 @@ const HeroSection = ({ user, onLoginClick, onRegisterClick }) => {
 
           {/* Stats row */}
           <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 shadow-md">
-              <p className="text-2xl font-bold text-emerald-600">500+</p>
-              <p className="text-sm text-gray-600">Documents</p>
+            <div className="bg-gray-50 rounded-2xl p-4 shadow-sm border border-gray-100">
+              <p className="text-3xl font-bold text-emerald-600">500+</p>
+              <p className="text-sm text-gray-500">Documents</p>
             </div>
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 shadow-md">
-              <p className="text-2xl font-bold text-emerald-600">4+</p>
-              <p className="text-sm text-gray-600">Courses</p>
+            <div className="bg-gray-50 rounded-2xl p-4 shadow-sm border border-gray-100">
+              <p className="text-3xl font-bold text-emerald-600">4+</p>
+              <p className="text-sm text-gray-500">Courses</p>
             </div>
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 shadow-md">
-              <p className="text-2xl font-bold text-emerald-600">10K+</p>
-              <p className="text-sm text-gray-600">Students</p>
+            <div className="bg-gray-50 rounded-2xl p-4 shadow-sm border border-gray-100">
+              <p className="text-3xl font-bold text-emerald-600">10K+</p>
+              <p className="text-sm text-gray-500">Students</p>
             </div>
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 shadow-md">
-              <p className="text-2xl font-bold text-emerald-600">24/7</p>
-              <p className="text-sm text-gray-600">AI Support</p>
+            <div className="bg-gray-50 rounded-2xl p-4 shadow-sm border border-gray-100">
+              <p className="text-3xl font-bold text-emerald-600">24/7</p>
+              <p className="text-sm text-gray-500">AI Support</p>
             </div>
           </div>
 
