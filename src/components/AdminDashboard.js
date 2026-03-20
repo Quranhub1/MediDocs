@@ -59,11 +59,30 @@ const AdminDashboard = ({ user, onViewChange }) => {
   const loadData = async () => {
     setLoading(true);
     try {
-      await Promise.all([
+      // Load documents, users, and courses in parallel
+      const [docsResult, usersResult, coursesResult] = await Promise.all([
         loadDocuments(),
         loadUsers(),
         loadCourses()
       ]);
+      
+      // Update stats after all data is loaded
+      const latestDocs = (docsResult || []).filter(d => d.time === 'latest').length;
+      const premiumDocs = (docsResult || []).filter(d => d.status === 'premium').length;
+      
+      setStats({
+        totalDocuments: (docsResult || []).length,
+        totalUsers: (usersResult || []).length,
+        latestDocuments: latestDocs,
+        premiumDocuments: premiumDocs
+      });
+      
+      console.log('Admin - All stats updated:', {
+        totalDocuments: (docsResult || []).length,
+        totalUsers: (usersResult || []).length,
+        latestDocuments: latestDocs,
+        premiumDocuments: premiumDocs
+      });
     } catch (error) {
       console.error('Error loading admin data:', error);
     }
@@ -87,21 +106,14 @@ const AdminDashboard = ({ user, onViewChange }) => {
         console.log('Admin - Sample doc:', allDocs[0] ? JSON.stringify(allDocs[0]) : 'none');
         
         setDocuments(allDocs);
+        console.log('Admin - Documents state updated');
         
-        // Update stats
-        const latestDocs = allDocs.filter(d => d.time === 'latest').length;
-        const premiumDocs = allDocs.filter(d => d.status === 'premium').length;
-        setStats(prev => ({
-          ...prev,
-          totalDocuments: allDocs.length,
-          latestDocuments: latestDocs,
-          premiumDocuments: premiumDocs
-        }));
-        
-        console.log('Admin - Stats updated:', { total: allDocs.length, latest: latestDocs, premium: premiumDocs });
+        return allDocs;
       }
+      return [];
     } catch (error) {
       console.error('Error loading documents:', error);
+      return [];
     }
   };
 
@@ -115,15 +127,15 @@ const AdminDashboard = ({ user, onViewChange }) => {
       }));
       
       console.log('Admin - Users loaded:', usersList.length);
-      console.log('Admin - Users data:', usersList);
+      console.log('Admin - Users data:', JSON.stringify(usersList));
       
       setUsers(usersList);
-      setStats(prev => ({
-        ...prev,
-        totalUsers: usersList.length
-      }));
+      console.log('Admin - Users state updated');
+      
+      return usersList;
     } catch (error) {
       console.error('Error loading users:', error);
+      return [];
     }
   };
 
@@ -431,6 +443,22 @@ const AdminDashboard = ({ user, onViewChange }) => {
 
       {/* Stats Cards */}
       <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-gray-800">Dashboard Overview</h2>
+          <button
+            onClick={loadData}
+            disabled={loading}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-2"
+          >
+            {loading ? (
+              <>
+                <span className="animate-spin">⟳</span> Loading...
+              </>
+            ) : (
+              <>⟳ Refresh</>
+            )}
+          </button>
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white rounded-xl shadow-md p-6">
             <div className="text-3xl font-bold text-emerald-600">{stats.totalDocuments}</div>

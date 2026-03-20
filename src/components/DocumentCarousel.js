@@ -10,25 +10,51 @@ const DocumentCarousel = ({ documents }) => {
     console.log('Checking time field:', documents.map(d => ({ id: d.id, time: d.time })));
   }
 
-  // Show only documents with time='latest'
+  // Helper to convert any timestamp format to Date
+  const convertToDate = (timestamp) => {
+    if (!timestamp) return new Date(0);
+    if (timestamp instanceof Date) return timestamp;
+    if (timestamp && typeof timestamp.toDate === 'function') {
+      return timestamp.toDate();
+    }
+    if (timestamp instanceof Date) return timestamp;
+    const date = new Date(timestamp);
+    return isNaN(date.getTime()) ? new Date(0) : date;
+  };
+
+  // Show documents with time='latest', or fallback to recent documents
   const getDisplayDocs = () => {
     // If documents is undefined or not an array, return empty array
     if (!documents || !Array.isArray(documents)) {
       console.log('Documents is not an array or is empty');
       return [];
     }
-    // Filter to only show documents with time='latest' (case-insensitive)
+    
+    // First try to get documents with time='latest' (case-insensitive)
     const latestDocs = documents.filter(doc => doc && doc.time && doc.time.toLowerCase() === 'latest');
     console.log('Latest docs filtered:', latestDocs.length);
-    console.log('All doc times:', documents.map(d => ({ id: d.id, time: d.time })));
-    return latestDocs;
+    
+    if (latestDocs.length > 0) {
+      console.log('Showing latest flagged documents');
+      return latestDocs;
+    }
+    
+    // Fallback: sort by createdAt/createdAtDate and get most recent
+    console.log('No latest flagged docs, showing most recent');
+    const sortedDocs = [...documents].sort((a, b) => {
+      const dateA = a.createdAtDate ? a.createdAtDate : convertToDate(a.createdAt);
+      const dateB = b.createdAtDate ? b.createdAtDate : convertToDate(b.createdAt);
+      return dateB - dateA;
+    });
+    
+    return sortedDocs.slice(0, 5); // Show up to 5 recent docs
   };
   
   const displayDocs = getDisplayDocs();
   
-  // Check if we're showing actual latest docs (not fallback)
+  // Check if we're showing actual latest flagged docs (not fallback)
   const isShowingLatest = displayDocs.length > 0 && 
-    documents?.some(doc => doc.time === 'latest');
+    documents?.some(doc => doc.time && doc.time.toLowerCase() === 'latest');
   
   // Reset currentIndex when documents change
   useEffect(() => {

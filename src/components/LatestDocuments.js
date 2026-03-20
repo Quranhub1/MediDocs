@@ -49,18 +49,35 @@ const LatestDocuments = ({ documents, user, onViewChange, onPaymentClick }) => {
     }
   };
 
-// Show only documents with time === 'latest', or fallback to recent documents sorted by createdAt
+// Helper to convert any timestamp format to Date
+  const convertToDate = (timestamp) => {
+    if (!timestamp) return new Date(0);
+    if (timestamp instanceof Date) return timestamp;
+    // Firestore Timestamp has toDate() method
+    if (timestamp && typeof timestamp.toDate === 'function') {
+      return timestamp.toDate();
+    }
+    // Already processed date from our service
+    if (timestamp instanceof Date) return timestamp;
+    // String or number
+    const date = new Date(timestamp);
+    return isNaN(date.getTime()) ? new Date(0) : date;
+  };
+
+  // Show only documents with time === 'latest', or fallback to recent documents sorted by createdAt
   let displayDocuments = [];
   
   if (documents && documents.length > 0) {
     const latestDocs = documents.filter(doc => doc.time === 'latest');
     if (latestDocs.length > 0) {
-      displayDocuments = latestDocs;
+      displayDocuments = latestDocs.slice(0, 6); // Limit to 6 for display
     } else {
       // Sort by createdAt to show most recent documents
+      // Handle both createdAt (Firestore Timestamp) and createdAtDate (pre-converted Date)
       const sortedDocs = [...documents].sort((a, b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
-        const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+        // Use pre-converted date if available, otherwise convert
+        const dateA = a.createdAtDate ? a.createdAtDate : convertToDate(a.createdAt);
+        const dateB = b.createdAtDate ? b.createdAtDate : convertToDate(b.createdAt);
         return dateB - dateA; // Most recent first
       });
       displayDocuments = sortedDocs.slice(0, 6);

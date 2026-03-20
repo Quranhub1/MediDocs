@@ -150,106 +150,158 @@ export const fetchDocuments = async (courseId, semesterId, unitId) => {
 // Legacy function - exports for backward compatibility
 export { fetchCourses };
 
+// Helper to convert Firestore Timestamp to Date
+const convertTimestamp = (timestamp) => {
+  if (!timestamp) return null;
+  if (timestamp instanceof Date) return timestamp;
+  if (timestamp && typeof timestamp.toDate === 'function') {
+    return timestamp.toDate();
+  }
+  // Handle string timestamps
+  if (typeof timestamp === 'string') {
+    const date = new Date(timestamp);
+    return isNaN(date.getTime()) ? null : date;
+  }
+  return null;
+};
+
 // Path: RESOURCES_STUDYPEDIA/{courseId}/semesters/{semesterId}/courseunits/{unitId}/documents/{docId}
 export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => {
   console.log('fetchAllDocuments called with maxItems:', maxItems, 'forceRefresh:', forceRefresh);
+  
+  // Always try cache first unless force refresh
   if (!forceRefresh) {
     const cached = getCache(CACHE_KEYS.DOCUMENTS);
     console.log('Cache check, cached data:', cached ? cached.data?.length : 'none');
-    if (cached) {
+    if (cached && cached.data && cached.data.length > 0) {
       return { success: true, data: cached.data };
     }
-  } else {
-    console.log('forceRefresh is true, clearing cache first');
   }
 
   try {
     const allDocuments = [];
     
-    // Get all courses (top-level)
+    // Get all courses (top-level) - single query
     const coursesRef = collection(db, RESOURCES_COLLECTION);
     const coursesSnapshot = await getDocs(coursesRef);
     console.log('Courses found:', coursesSnapshot.docs.length);
+    
     if (coursesSnapshot.docs.length === 0) {
       console.log('No courses found in:', RESOURCES_COLLECTION);
+      const result = { success: true, data: [] };
+      setCache(CACHE_KEYS.DOCUMENTS, [], MAX_CACHE_SIZE);
+      return result;
     }
     
-    for (const courseDoc of coursesSnapshot.docs) {
+    // Build all semester paths first
+    const semesterPromises = coursesSnapshot.docs.map(async (courseDoc) => {
       const courseId = courseDoc.id;
       const courseName = courseDoc.data().name || courseId;
       
-      // Get semesters under each course
       const semestersRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/semesters`);
       const semestersSnapshot = await getDocs(semestersRef);
       
-      for (const semesterDoc of semestersSnapshot.docs) {
-        const semesterId = semesterDoc.id;
-        const semesterName = semesterDoc.data().name || semesterId;
-        
-        // Get courseunits under each semester
-        const unitsRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/semesters/${semesterId}/courseunits`);
-        const unitsSnapshot = await getDocs(unitsRef);
-        
-        for (const unitDoc of unitsSnapshot.docs) {
-          const unitId = unitDoc.id;
-          const unitName = unitDoc.data().name || unitId;
-          
-          // Get documents under each courseunit - without query ordering
-          const docsRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/semesters/${semesterId}/courseunits/${unitId}/documents`);
-          const docsSnapshot = await getDocs(docsRef);
-          
-          docsSnapshot.forEach((doc) => {
-            const docData = doc.data();
-            // Use status field directly (premium/free)
-            const documentStatus = docData.status || 'free';
-            
-            allDocuments.push({
-              id: doc.id,
-              ...docData,
-              status: documentStatus,
-              courseId,
-              semesterId,
-              unitId,
-              courseName,
-              semesterName,
-              unitName
-            });
-          });
-        }
-        
-        // Also get documents directly under semesters - without query ordering
-        const semDocsRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/semesters/${semesterId}/documents`);
-        const semDocsSnapshot = await getDocs(semDocsRef);
-        
-        semDocsSnapshot.forEach((doc) => {
-          const docData = doc.data();
-          // Use status field directly (premium/free)
-          const documentStatus = docData.status || 'free';
-          
-          allDocuments.push({
-            id: doc.id,
-            ...docData,
-            status: documentStatus,
-            courseId,
-            semesterId,
-            unitId: null,
-            courseName,
-            semesterName,
-            unitName: null
-          });
-        });
-      }
-    }
+      return semestersSnapshot.docs.map(semesterDoc => ({
+        courseId,
+        courseName,
+        semesterId: semesterDoc.id,
+        semesterName: semesterDoc.data().name || semesterDoc.id
+      }));
+    });
+    
+    const semestersList = await Promise.all(semesterPromises);
+    const flatSemesters = semestersList.flat();
+    console.log('Total semesters:', flatSemesters.length);
+    
+    // Now get all units in parallel for all semesters
+    const unitsPromises = flatSemesters.map(async (sem) => {
+      const unitsRef = collection(db, `${RESOURCES_COLLECTION}/${sem.courseId}/semesters/${sem.semesterId}/courseunits`);
+      const unitsSnapshot = await getDocs(unitsRef);
+      
+      return unitsSnapshot.docs.map(unitDoc => ({
+        courseId: sem.courseId,
+        courseName: sem.courseName,
+        semesterId: sem.semesterId,
+        semesterName: sem.semesterName,
+        unitId: unitDoc.id,
+        unitName: unitDoc.data().name || unitDoc.id
+      }));
+    });
+    
+    const unitsList = await Promise.all(unitsPromises);
+    const flatUnits = unitsList.flat();
+    console.log('Total units:', flatUnits.length);
+    
+    // Now fetch all documents in parallel for all units
+    const docsPromises = flatUnits.map(async (unit) => {
+      const docsRef = collection(db, `${RESOURCES_COLLECTION}/${unit.courseId}/semesters/${unit.semesterId}/courseunits/${unit.unitId}/documents`);
+      const docsSnapshot = await getDocs(docsRef);
+      
+      return docsSnapshot.docs.map(doc => {
+        const docData = doc.data();
+        return {
+          id: doc.id,
+          ...docData,
+          createdAtDate: convertTimestamp(docData.createdAt), // Store as Date for sorting
+          status: docData.status || 'free',
+          courseId: unit.courseId,
+          semesterId: unit.semesterId,
+          unitId: unit.unitId,
+          courseName: unit.courseName,
+          semesterName: unit.semesterName,
+          unitName: unit.unitName
+        };
+      });
+    });
+    
+    const docsResults = await Promise.all(docsPromises);
+    const unitDocs = docsResults.flat();
+    console.log('Documents from units:', unitDocs.length);
+    
+    // Also fetch semester-level documents in parallel
+    const semDocsPromises = flatSemesters.map(async (sem) => {
+      const semDocsRef = collection(db, `${RESOURCES_COLLECTION}/${sem.courseId}/semesters/${sem.semesterId}/documents`);
+      const semDocsSnapshot = await getDocs(semDocsRef);
+      
+      return semDocsSnapshot.docs.map(doc => {
+        const docData = doc.data();
+        return {
+          id: doc.id,
+          ...docData,
+          createdAtDate: convertTimestamp(docData.createdAt),
+          status: docData.status || 'free',
+          courseId: sem.courseId,
+          semesterId: sem.semesterId,
+          unitId: null,
+          courseName: sem.courseName,
+          semesterName: sem.semesterName,
+          unitName: null
+        };
+      });
+    });
+    
+    const semDocsResults = await Promise.all(semDocsPromises);
+    const semDocs = semDocsResults.flat();
+    console.log('Documents from semesters:', semDocs.length);
+    
+    // Combine all documents
+    allDocuments.push(...unitDocs, ...semDocs);
     
     console.log('Total documents fetched:', allDocuments.length);
     if (allDocuments.length > 0) {
       console.log('Sample document:', JSON.stringify(allDocuments[0]));
     }
-    // Sort by time field - show latest first
+    
+    // Sort by time field first (latest first), then by createdAtDate for others
     allDocuments.sort((a, b) => {
+      // First prioritize 'latest' flagged documents
       if (a.time === 'latest' && b.time !== 'latest') return -1;
       if (a.time !== 'latest' && b.time === 'latest') return 1;
-      return 0;
+      
+      // Then sort by createdAtDate (newest first)
+      const dateA = a.createdAtDate || new Date(0);
+      const dateB = b.createdAtDate || new Date(0);
+      return dateB - dateA;
     });
     
     // Show all documents
@@ -257,8 +309,10 @@ export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => 
     const result = { success: true, data: allDocuments.slice(0, maxItems) };
     console.log('Returning result with', result.data.length, 'documents');
     
-    // Cache the results
-    setCache(CACHE_KEYS.DOCUMENTS, result.data, MAX_CACHE_SIZE);
+    // Cache the results (but not during force refresh to avoid caching empty/stale data)
+    if (!forceRefresh) {
+      setCache(CACHE_KEYS.DOCUMENTS, result.data, MAX_CACHE_SIZE);
+    }
     
     return result;
   } catch (error) {
