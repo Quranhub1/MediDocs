@@ -25,8 +25,8 @@ const LatestDocuments = ({ documents, user, onViewChange, onPaymentClick }) => {
   };
 
   const getThumbnailUrl = (doc) => {
-    // Use thumbnail field directly
-    return doc.thumbnail || null;
+    // Check both thumbnailUrl (from Firestore) and thumbnail fields
+    return doc.thumbnailUrl || doc.thumbnail || null;
   };
 
   const handleReadOnline = (doc) => {
