@@ -4,7 +4,7 @@ import BackgroundImages from './BackgroundImages';
 const HeroSection = ({ user, onLoginClick, onRegisterClick }) => {
 
   return (
-    <section className="relative bg-white py-16 md:py-24 overflow-hidden">
+    <section className="relative bg-gradient-to-br from-slate-900 via-emerald-900 to-teal-900 py-16 md:py-24 overflow-hidden">
       <BackgroundImages />
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10">
@@ -19,12 +19,12 @@ const HeroSection = ({ user, onLoginClick, onRegisterClick }) => {
           </div>
 
           {/* Heading */}
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent mb-6">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6">
             MediDocs Uganda
           </h1>
 
           {/* Subtitle */}
-          <p className="text-lg sm:text-xl text-gray-600 mb-8 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg sm:text-xl text-gray-200 mb-8 max-w-2xl mx-auto leading-relaxed">
             Your trusted medical education platform for Ugandan students. Access comprehensive study materials for Certificate and Diploma programs, Nursing, and Clinical Medicine programs.
           </p>
 
@@ -52,13 +52,13 @@ const HeroSection = ({ user, onLoginClick, onRegisterClick }) => {
             </div>
           ) : (
             <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
-              <div className="flex items-center space-x-3 bg-white rounded-full px-6 py-3 shadow-lg border border-gray-100">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold">
+              <div className="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-full px-6 py-3 border border-white/10">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold">
                   {user.email?.charAt(0).toUpperCase() || 'U'}
                 </div>
                 <div className="text-left">
-                  <p className="font-semibold text-gray-800">{user.email?.split('@')[0] || 'User'}</p>
-                  <p className="text-xs text-gray-500">{user.email}</p>
+                  <p className="font-semibold text-white">{user.email?.split('@')[0] || 'User'}</p>
+                  <p className="text-xs text-gray-300">{user.email}</p>
                 </div>
               </div>
 
@@ -67,26 +67,26 @@ const HeroSection = ({ user, onLoginClick, onRegisterClick }) => {
 
           {/* Stats row */}
           <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
-            <div className="bg-gray-50 rounded-2xl p-4 shadow-sm border border-gray-100">
-              <p className="text-3xl font-bold text-emerald-600">500+</p>
-              <p className="text-sm text-gray-500">Documents</p>
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
+              <p className="text-3xl font-bold text-white">500+</p>
+              <p className="text-sm text-gray-300">Documents</p>
             </div>
-            <div className="bg-gray-50 rounded-2xl p-4 shadow-sm border border-gray-100">
-              <p className="text-3xl font-bold text-emerald-600">4+</p>
-              <p className="text-sm text-gray-500">Courses</p>
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
+              <p className="text-3xl font-bold text-white">4+</p>
+              <p className="text-sm text-gray-300">Courses</p>
             </div>
-            <div className="bg-gray-50 rounded-2xl p-4 shadow-sm border border-gray-100">
-              <p className="text-3xl font-bold text-emerald-600">10K+</p>
-              <p className="text-sm text-gray-500">Students</p>
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
+              <p className="text-3xl font-bold text-white">10K+</p>
+              <p className="text-sm text-gray-300">Students</p>
             </div>
-            <div className="bg-gray-50 rounded-2xl p-4 shadow-sm border border-gray-100">
-              <p className="text-3xl font-bold text-emerald-600">24/7</p>
-              <p className="text-sm text-gray-500">AI Support</p>
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
+              <p className="text-3xl font-bold text-white">24/7</p>
+              <p className="text-sm text-gray-300">AI Support</p>
             </div>
           </div>
 
           {/* Trust message */}
-          <p className="mt-8 text-sm text-gray-500">
+          <p className="mt-8 text-sm text-gray-300">
             Join thousands of Ugandan medical students achieving their dreams
           </p>
         </div>
