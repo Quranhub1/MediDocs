@@ -27,12 +27,14 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
   useEffect(() => {
     // Load latest documents regardless of login status
     // Use force refresh (true) to ensure we get latest data from Firestore
-    loadLatestDocuments(true);
-    
-    // Load courses only when user logs in
-    if (user) {
-      loadCourses();
-    }
+    const initData = async () => {
+      await loadLatestDocuments(true);
+      // Load courses only when user logs in
+      if (user) {
+        loadCourses();
+      }
+    };
+    initData();
   }, [user]);
 
   const loadLatestDocuments = async (forceRefresh = false) => {
