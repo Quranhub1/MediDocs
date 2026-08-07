@@ -10,7 +10,22 @@ import BackgroundImages from './BackgroundImages';
 import DocumentCarousel from './DocumentCarousel';
 import { fetchCourses, fetchSemesters, fetchCourseUnits, fetchDocuments, fetchAllDocuments } from '../services/FirestoreService';
 
-const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick, onContactClick, onAIChatClick, setView }) => {
+const canAccessDocument = (doc, userProfile) => {
+  if (!doc) return true;
+  if (doc.status === 'free') return true;
+  if (!userProfile) return false;
+  if (userProfile.banned) return false;
+  if (userProfile.subscriptionApproved && userProfile.subscriptionStatus === 'active') {
+    if (userProfile.subscriptionExpiry) {
+      const expiry = new Date(userProfile.subscriptionExpiry);
+      return expiry > new Date();
+    }
+    return true;
+  }
+  return false;
+};
+
+const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, onPaymentClick, onContactClick, onAIChatClick, setView }) => {
   const [courses, setCourses] = useState([]);
   const [latestDocuments, setLatestDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,60 +36,24 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
   const [semesters, setSemesters] = useState([]);
   const [courseUnits, setCourseUnits] = useState([]);
   const [documents, setDocuments] = useState([]);
-  const [refreshKey, setRefreshKey] = useState(0); // For forcing refresh
 
-  // Fetch initial data when app loads
   useEffect(() => {
-    // Load latest documents regardless of login status
-    // Use force refresh (true) to ensure we get latest data from Firestore
     const initData = async () => {
-      await loadLatestDocuments(true);
-      // Load courses only when user logs in
-      if (user) {
-        loadCourses();
+      setLoading(true);
+      const result = await fetchAllDocuments(50, false);
+      if (result.success) {
+        setLatestDocuments(result.data || []);
       }
+      if (user) {
+        const coursesResult = await fetchCourses(false);
+        if (coursesResult.success) {
+          setCourses(coursesResult.data);
+        }
+      }
+      setLoading(false);
     };
     initData();
   }, [user]);
-
-  const loadLatestDocuments = async (forceRefresh = false) => {
-    try {
-      setLoading(true);
-      console.log('Starting document fetch with forceRefresh:', forceRefresh);
-      // Use forceRefresh to bypass cache and get fresh data from Firestore
-      // Fetch 50 docs to make sure we get the latest ones
-      const result = await fetchAllDocuments(50, forceRefresh);
-      console.log('Fetch result:', result);
-      console.log('Documents loaded:', result.data?.length || 0);
-      if (result.data && result.data.length > 0) {
-        console.log('First doc structure:', JSON.stringify(result.data[0]));
-      }
-      if (result.success) {
-        console.log('Setting latestDocuments state with', result.data?.length || 0, 'docs');
-        setLatestDocuments(result.data || []);
-      } else {
-        console.log('Fetch failed:', result.error);
-      }
-    } catch (err) {
-      console.error('Error loading latest documents:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadCourses = async () => {
-    try {
-      setLoading(true);
-      const result = await fetchCourses();
-      if (result.success) {
-        setCourses(result.data);
-      }
-    } catch (err) {
-      console.error('Error loading courses:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleCourseClick = async (course) => {
     setSelectedCourse(course);
@@ -121,23 +100,29 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
     setSubLoading(false);
   };
 
-  const handleDownload = (doc) => {
-    // Use filePath for read online URL - open in same tab
-    const url = doc.filePath;
-    if (url) {
-      window.location.href = url;
-    } else {
-      alert('No link available for this document');
-    }
-  };
-
   const handleReadOnline = (doc) => {
-    // Use filePath for read online URL - open in same tab
+    if (!canAccessDocument(doc, userProfile)) {
+      onPaymentClick();
+      return;
+    }
     const url = doc.filePath;
     if (url) {
       window.location.href = url;
     } else {
       alert('No read online link available for this document');
+    }
+  };
+
+  const handleDownload = (doc) => {
+    if (!canAccessDocument(doc, userProfile)) {
+      onPaymentClick();
+      return;
+    }
+    const url = doc.filePath;
+    if (url) {
+      window.location.href = url;
+    } else {
+      alert('No link available for this document');
     }
   };
 
@@ -168,26 +153,15 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
     );
   }
 
-  // Show carousel even for non-logged in users
   if (view === 'home') {
-    console.log('Home view - latestDocuments:', latestDocuments.length, 'loading:', loading);
     return (
       <div>
         <HeroSection user={user} onLoginClick={onLoginClick} onRegisterClick={onRegisterClick} />
-        {loading ? (
-          <div className="flex justify-center items-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
-          </div>
-        ) : (
-          <DocumentCarousel documents={latestDocuments} />
-        )}
+        <DocumentCarousel documents={latestDocuments} user={user} userProfile={userProfile} onPaymentClick={onPaymentClick} />
         {!user && (
           <div className="max-w-2xl mx-auto px-4 py-8 text-center">
             <p className="text-gray-600 mb-4">Login to access all documents</p>
-            <button 
-              onClick={onLoginClick}
-              className="px-6 py-3 bg-emerald-500 text-white rounded-xl font-medium hover:bg-emerald-600 transition-colors"
-            >
+            <button onClick={onLoginClick} className="px-6 py-3 bg-emerald-500 text-white rounded-xl font-medium hover:bg-emerald-600 transition-colors">
               Login
             </button>
           </div>
@@ -199,6 +173,7 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
               <LatestDocuments 
                 documents={latestDocuments} 
                 user={user}
+                userProfile={userProfile}
                 onViewChange={setView}
                 onPaymentClick={onPaymentClick}
               />
@@ -210,7 +185,6 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
     );
   }
 
-  // Show login prompt if not logged in
   if (!user) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center bg-gray-50">
@@ -223,18 +197,8 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
           <h2 className="text-2xl font-bold text-gray-800 mb-4">Login Required</h2>
           <p className="text-gray-600 mb-6">Please login or create an account to access our medical education resources and documents.</p>
           <div className="flex gap-4 justify-center">
-            <button 
-              onClick={onLoginClick}
-              className="px-6 py-3 bg-emerald-500 text-white rounded-xl font-medium hover:bg-emerald-600 transition-colors"
-            >
-              Login
-            </button>
-            <button 
-              onClick={onRegisterClick}
-              className="px-6 py-3 bg-white text-emerald-600 border-2 border-emerald-500 rounded-xl font-medium hover:bg-emerald-50 transition-colors"
-            >
-              Register
-            </button>
+            <button onClick={onLoginClick} className="px-6 py-3 bg-emerald-500 text-white rounded-xl font-medium hover:bg-emerald-600 transition-colors">Login</button>
+            <button onClick={onRegisterClick} className="px-6 py-3 bg-white text-emerald-600 border-2 border-emerald-500 rounded-xl font-medium hover:bg-emerald-50 transition-colors">Register</button>
           </div>
         </div>
       </div>
@@ -251,6 +215,7 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
             <LatestDocuments 
               documents={latestDocuments} 
               user={user}
+              userProfile={userProfile}
               onViewChange={setView}
               onDocumentClick={(doc) => console.log('Document clicked:', doc)}
               onDownloadClick={(doc) => console.log('Download clicked:', doc)}
@@ -274,18 +239,13 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
           <BackgroundImages />
           <div className="relative z-10 bg-gradient-to-br from-emerald-50 to-teal-50 min-h-screen py-8">
             <div className="max-w-7xl mx-auto px-4">
-              <button 
-                onClick={() => { setSelectedCourse(null); setView && setView('courses'); }}
-                className="mb-6 flex items-center text-emerald-600 hover:text-emerald-700"
-              >
+              <button onClick={() => { setSelectedCourse(null); setView && setView('courses'); }} className="mb-6 flex items-center text-emerald-600 hover:text-emerald-700">
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path>
                 </svg>
                 Back to Courses
               </button>
-              <h2 className="text-3xl font-bold text-gray-800 mb-6">
-                {selectedCourse?.name || 'Select a Course'}
-              </h2>
+              <h2 className="text-3xl font-bold text-gray-800 mb-6">{selectedCourse?.name || 'Select a Course'}</h2>
               {subLoading ? (
                 <div className="flex justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
@@ -293,18 +253,12 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {semesters.map((semester) => (
-                    <div 
-                      key={semester.id}
-                      onClick={() => handleSemesterClick(semester)}
-                      className="bg-gradient-to-br from-emerald-400 to-teal-500 p-6 rounded-xl shadow-lg hover:shadow-2xl hover:scale-105 cursor-pointer transition-all duration-300 border border-emerald-300"
-                    >
+                    <div key={semester.id} onClick={() => handleSemesterClick(semester)} className="bg-gradient-to-br from-emerald-400 to-teal-500 p-6 rounded-xl shadow-lg hover:shadow-2xl hover:scale-105 cursor-pointer transition-all duration-300 border border-emerald-300">
                       <h3 className="text-lg font-bold text-white">{semester.name || semester.id}</h3>
                       <p className="text-emerald-100 text-sm mt-2">Click to view course units</p>
                     </div>
                   ))}
-                  {semesters.length === 0 && (
-                    <p className="text-gray-500">No semesters found for this course.</p>
-                  )}
+                  {semesters.length === 0 && <p className="text-gray-500">No semesters found for this course.</p>}
                 </div>
               )}
             </div>
@@ -316,20 +270,15 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
         <div className="relative min-h-screen">
           <BackgroundImages />
           <div className="relative z-10 bg-gradient-to-br from-emerald-50 to-teal-50 min-h-screen py-8">
-            <DocumentCarousel documents={documents} />
+            <DocumentCarousel documents={documents} user={user} userProfile={userProfile} onPaymentClick={onPaymentClick} />
             <div className="max-w-7xl mx-auto px-4">
-              <button 
-                onClick={goBack}
-                className="mb-6 flex items-center text-emerald-600 hover:text-emerald-700"
-              >
+              <button onClick={goBack} className="mb-6 flex items-center text-emerald-600 hover:text-emerald-700">
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path>
                 </svg>
                 Back to Semesters
               </button>
-              <h2 className="text-3xl font-bold text-gray-800 mb-6">
-                {selectedSemester?.name || 'Select a Semester'}
-              </h2>
+              <h2 className="text-3xl font-bold text-gray-800 mb-6">{selectedSemester?.name || 'Select a Semester'}</h2>
               {subLoading ? (
                 <div className="flex justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
@@ -337,18 +286,12 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {courseUnits.map((unit) => (
-                    <div 
-                      key={unit.id}
-                      onClick={() => handleUnitClick(unit)}
-                      className="bg-gradient-to-br from-emerald-400 to-teal-500 p-6 rounded-xl shadow-lg hover:shadow-2xl hover:scale-105 cursor-pointer transition-all duration-300 border border-emerald-300"
-                    >
+                    <div key={unit.id} onClick={() => handleUnitClick(unit)} className="bg-gradient-to-br from-emerald-400 to-teal-500 p-6 rounded-xl shadow-lg hover:shadow-2xl hover:scale-105 cursor-pointer transition-all duration-300 border border-emerald-300">
                       <h3 className="text-lg font-bold text-white">{unit.name || unit.id}</h3>
                       <p className="text-emerald-100 text-sm mt-2">Click to view documents</p>
                     </div>
                   ))}
-                  {courseUnits.length === 0 && (
-                    <p className="text-gray-500">No course units found for this semester.</p>
-                  )}
+                  {courseUnits.length === 0 && <p className="text-gray-500">No course units found for this semester.</p>}
                 </div>
               )}
             </div>
@@ -361,18 +304,13 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
           <BackgroundImages />
           <div className="relative z-10 bg-gradient-to-br from-emerald-50 to-teal-50 min-h-screen py-8">
             <div className="max-w-7xl mx-auto px-4">
-              <button 
-                onClick={goBack}
-                className="mb-6 flex items-center text-emerald-600 hover:text-emerald-700"
-              >
+              <button onClick={goBack} className="mb-6 flex items-center text-emerald-600 hover:text-emerald-700">
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path>
                 </svg>
                 Back to Course Units
               </button>
-              <h2 className="text-3xl font-bold text-gray-800 mb-6">
-                {selectedUnit?.name || 'Documents'}
-              </h2>
+              <h2 className="text-3xl font-bold text-gray-800 mb-6">{selectedUnit?.name || 'Documents'}</h2>
               {subLoading ? (
                 <div className="flex justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
@@ -380,35 +318,24 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {documents.map((doc) => (
-                    <div 
-                      key={doc.id}
-                      className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all border border-emerald-400"
-                    >
+                    <div key={doc.id} className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all border border-emerald-400">
                       <h3 className="text-lg font-bold text-white mb-2">{doc.title || doc.id}</h3>
                       <p className="text-emerald-100 text-sm mb-4">{doc.description || 'No description'}</p>
                       <div className="flex flex-wrap gap-2">
                         {doc.filePath && (
-                          <button
-                            onClick={() => handleReadOnline(doc)}
-                            className="px-4 py-2 bg-white text-emerald-600 rounded-lg text-sm font-medium hover:bg-emerald-50"
-                          >
+                          <button onClick={() => handleReadOnline(doc)} className="px-4 py-2 bg-white text-emerald-600 rounded-lg text-sm font-medium hover:bg-emerald-50">
                             Read Online
                           </button>
                         )}
                         {doc.filePath && (
-                          <button
-                            onClick={() => handleDownload(doc)}
-                            className="px-4 py-2 bg-emerald-800 text-white rounded-lg text-sm font-medium hover:bg-emerald-900"
-                          >
+                          <button onClick={() => handleDownload(doc)} className="px-4 py-2 bg-emerald-800 text-white rounded-lg text-sm font-medium hover:bg-emerald-900">
                             Download
                           </button>
                         )}
                       </div>
                     </div>
                   ))}
-                  {documents.length === 0 && (
-                    <p className="text-gray-500">No documents found for this course unit.</p>
-                  )}
+                  {documents.length === 0 && <p className="text-gray-500">No documents found for this course unit.</p>}
                 </div>
               )}
             </div>
@@ -430,6 +357,7 @@ const MainContent = ({ view, user, onLoginClick, onRegisterClick, onPaymentClick
             <LatestDocuments 
               documents={latestDocuments} 
               user={user}
+              userProfile={userProfile}
               onViewChange={setView}
               onDocumentClick={(doc) => console.log('Document clicked:', doc)}
               onDownloadClick={(doc) => console.log('Download clicked:', doc)}

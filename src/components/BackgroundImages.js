@@ -2,9 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 const BackgroundImages = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [isLoaded, setIsLoaded] = useState(false);
   
-  // 30 medical education related images
   const images = [
     'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800',
     'https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=800',
@@ -31,7 +29,6 @@ const BackgroundImages = () => {
     'https://images.unsplash.com/photo-1551863535-6ed6a4c7c9b5?w=800',
     'https://images.unsplash.com/photo-1576091620696-5d7a185d6dbc?w=800',
     'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800',
-    'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800',
     'https://images.unsplash.com/photo-1584036561566-baf8f5f1b144?w=800',
     'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=800',
     'https://images.unsplash.com/photo-1576091622271-dc22937e6343?w=800',
@@ -41,12 +38,11 @@ const BackgroundImages = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentImageIndex((prevIndex) => (prevIndex + 1) % images.length);
-    }, 40000); // 40 seconds
+    }, 40000);
 
     return () => clearInterval(interval);
   }, [images.length]);
 
-  // Floating shapes animation
   const floatingShapes = [
     { class: 'top-20 left-10 w-20 h-20', delay: '0s' },
     { class: 'top-40 right-20 w-16 h-16', delay: '2s' },
@@ -57,13 +53,10 @@ const BackgroundImages = () => {
 
   return (
     <div className="absolute inset-0 z-0 overflow-hidden">
-      {/* Gradient fallback background */}
       <div className="absolute inset-0 bg-gradient-to-br from-emerald-900 via-teal-800 to-cyan-900"></div>
       
-      {/* Animated gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 z-10"></div>
       
-      {/* Floating shapes */}
       <div className="absolute inset-0 z-5 overflow-hidden pointer-events-none">
         {floatingShapes.map((shape, index) => (
           <div
@@ -79,7 +72,6 @@ const BackgroundImages = () => {
         ))}
       </div>
 
-      {/* Background images with smooth transition */}
       {images.map((image, index) => (
         <div
           key={index}
@@ -94,12 +86,11 @@ const BackgroundImages = () => {
             alt={`Medical ${index + 1}`}
             className="w-full h-full object-cover"
             style={{ filter: 'brightness(0.7) saturate(1.1)' }}
-            onLoad={() => setIsLoaded(true)}
+            loading="lazy"
           />
         </div>
       ))}
       
-      {/* Animated particles/dots */}
       <div className="absolute inset-0 z-10 pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-white/20 rounded-full animate-pulse"></div>
         <div className="absolute top-1/2 right-1/3 w-3 h-3 bg-teal-300/30 rounded-full animate-pulse" style={{ animationDelay: '1s' }}></div>

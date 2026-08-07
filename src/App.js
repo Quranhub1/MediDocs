@@ -13,7 +13,7 @@ import AIStudyAssistant from './components/AIStudyAssistant';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
 function AppContent() {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, userProfile, isBanned, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentView, setCurrentView] = useState('home');
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -35,7 +35,6 @@ function AppContent() {
     setShowAIChatModal(true);
   };
 
-  // Handle navigation from any component
   const handleViewChange = (viewId) => {
     setCurrentView(viewId);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -45,7 +44,17 @@ function AppContent() {
   return (
     <>
       <div className="min-h-screen bg-gray-50 pb-16 lg:pb-0">
-        {/* Main Content Wrapper */}
+        {isBanned && (
+          <div className="fixed inset-0 z-50 bg-red-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md text-center">
+              <div className="text-6xl mb-4">🚫</div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">Account Banned</h2>
+              <p className="text-gray-600 mb-6">Your account has been banned. Please contact support for assistance.</p>
+              <button onClick={handleLogout} className="px-6 py-2 bg-red-500 text-white rounded-lg">Logout</button>
+            </div>
+          </div>
+        )}
+        
         <div className="flex flex-col min-h-screen">
           <Header 
             user={currentUser} 
@@ -80,6 +89,7 @@ function AppContent() {
                 <MainContent 
                   view={currentView} 
                   user={currentUser}
+                  userProfile={userProfile}
                   setView={handleViewChange}
                   onLoginClick={() => setShowLoginModal(true)}
                   onRegisterClick={() => setShowRegisterModal(true)}
@@ -91,22 +101,18 @@ function AppContent() {
             </div>
           </main>
           
-          {/* Bottom Navigation - Mobile Only */}
           <BottomNav 
             currentView={currentView} 
             onViewChange={handleViewChange} 
             user={currentUser}
           />
           
-          {/* Footer - Desktop Only */}
           <footer className="hidden lg:block bg-gradient-to-r from-emerald-600 to-teal-700 text-white py-8 px-4">
             <div className="max-w-7xl mx-auto">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div>
                   <h4 className="font-bold text-lg mb-4">MediDocs Uganda</h4>
-                  <p className="text-emerald-100 text-sm">
-                    Your trusted medical education platform for Ugandan students.
-                  </p>
+                  <p className="text-emerald-100 text-sm">Your trusted medical education platform for Ugandan students.</p>
                 </div>
                 <div>
                   <h4 className="font-bold text-lg mb-4">Quick Links</h4>
@@ -127,13 +133,12 @@ function AppContent() {
                 </div>
               </div>
               <div className="mt-8 pt-4 border-t border-emerald-500 text-center text-sm text-emerald-200">
-                © 2026 MediDocs Uganda. All rights reserved.
+                2026 MediDocs Uganda. All rights reserved.
               </div>
             </div>
           </footer>
         </div>
         
-        {/* Modals */}
         <LoginModal 
           show={showLoginModal} 
           onClose={() => setShowLoginModal(false)}
@@ -166,9 +171,9 @@ function AppContent() {
           show={showAIChatModal} 
           onClose={() => setShowAIChatModal(false)}
           user={currentUser}
+          userProfile={userProfile}
         />
         
-        {/* Floating AI Assistant Button */}
         <button
           onClick={() => setShowAIChatModal(true)}
           className="fixed bottom-20 right-6 z-40 w-16 h-16 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform animate-bounce"

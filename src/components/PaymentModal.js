@@ -1,59 +1,155 @@
-import React, { useState } from 'react';
-import { submitPayment } from '../services/FirestoreService';
+import React, { useState, useEffect } from 'react';
+import { submitPayment, verifyPayment, SUBSCRIPTION_PLANS } from '../services/FirestoreService';
+import { useAuth } from '../context/AuthContext';
+import { serverTimestamp } from 'firebase/firestore';
 
-const PaymentModal = ({ show, onClose }) => {
-  const [amount, setAmount] = useState('50000');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [referenceNumber, setReferenceNumber] = useState('');
+const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) => {
+  const { userProfile, currentUser, updateUserSubscription } = useAuth();
+  const [selectedPlanKey, setSelectedPlanKey] = useState(selectedPlan || 'monthly');
+  const [phoneNumber, setPhoneNumber] = useState(userProfile?.phone || '256749846848');
+  const [email, setEmail] = useState(userProfile?.email || currentUser?.email || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
+  const [paystackLoaded, setPaystackLoaded] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!amount || !phoneNumber || !referenceNumber) return;
-    
-    setIsSubmitting(true);
-    setSubmitStatus(null);
-    
-    try {
-      const result = await submitPayment({
-        amount,
-        phoneNumber,
-        referenceNumber
-      });
-      if (result.success) {
-        setSubmitStatus('success');
-      } else {
-        setSubmitStatus('error');
-      }
-    } catch (error) {
-      console.error('Error submitting payment:', error);
-      setSubmitStatus('error');
-    } finally {
+  useEffect(() => {
+    if (show) {
+      setSubmitStatus(null);
       setIsSubmitting(false);
+      if (selectedPlan) {
+        setSelectedPlanKey(selectedPlan);
+      }
     }
+  }, [show, selectedPlan]);
+
+  useEffect(() => {
+    if (show && !paystackLoaded) {
+      const script = document.createElement('script');
+      script.src = 'https://js.paystack.co/v1/inline.js';
+      script.async = true;
+      script.onload = () => setPaystackLoaded(true);
+      document.body.appendChild(script);
+      return () => {
+        if (script.parentNode) {
+          script.parentNode.removeChild(script);
+        }
+      };
+    }
+  }, [show, paystackLoaded]);
+
+  const getPlanDetails = () => {
+    return SUBSCRIPTION_PLANS[selectedPlanKey] || SUBSCRIPTION_PLANS.monthly;
+  };
+
+  const handlePaystackPayment = async () => {
+    if (!paystackLoaded || !window.PaystackPop) {
+      alert('Payment system is loading. Please try again in a moment.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    const plan = getPlanDetails();
+    const publicKey = process.env.REACT_APP_PAYSTACK_PUBLIC_KEY;
+    
+    if (!publicKey || publicKey.includes('your_paystack')) {
+      alert('Paystack is not configured. Please contact support.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    const handler = window.PaystackPop.setup({
+      key: publicKey,
+      email: email,
+      amount: plan.amount * 100,
+      currency: 'UGX',
+      ref: 'MEDIDOCS-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+      phone: phoneNumber,
+      label: 'KABALI MADINA',
+      metadata: {
+        custom_fields: [
+          {
+            display_name: 'Plan',
+            variable_name: 'plan',
+            value: plan.label
+          },
+          {
+            display_name: 'Phone',
+            variable_name: 'phone',
+            value: phoneNumber
+          }
+        ]
+      },
+      onClose: () => {
+        setIsSubmitting(false);
+      },
+      callback: async (response) => {
+        const reference = response.reference;
+        setIsSubmitting(true);
+        
+        try {
+          const verifyResult = await verifyPayment(reference);
+          
+          if (verifyResult.success) {
+            const paymentData = {
+              reference: reference,
+              amount: plan.amount.toString(),
+              phoneNumber: phoneNumber,
+              email: email,
+              plan: selectedPlanKey,
+              planLabel: plan.label,
+              status: 'success',
+              paidAt: serverTimestamp()
+            };
+            
+            await submitPayment(paymentData);
+            
+            if (currentUser) {
+              const expiryDate = new Date();
+              expiryDate.setDate(expiryDate.getDate() + plan.duration);
+              
+              await updateUserSubscription(currentUser.uid, {
+                subscriptionApproved: true,
+                subscriptionStatus: 'active',
+                subscriptionPlan: selectedPlanKey,
+                subscriptionExpiry: expiryDate
+              });
+            }
+            
+            setSubmitStatus('success');
+            if (onPaymentSuccess) {
+              onPaymentSuccess();
+            }
+          } else {
+            setSubmitStatus('error');
+          }
+        } catch (error) {
+          console.error('Payment processing error:', error);
+          setSubmitStatus('error');
+        } finally {
+          setIsSubmitting(false);
+        }
+      }
+    });
+
+    handler.openIframe();
   };
 
   if (!show) return null;
 
+  const plan = getPlanDetails();
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Overlay */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose}></div>
       
-      {/* Modal Content */}
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden max-h-[90vh] overflow-y-auto">
-        {/* Header */}
         <div className="bg-gradient-to-r from-emerald-500 to-teal-600 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-2xl font-bold text-white">Manual Payment</h3>
-              <p className="text-emerald-100">Complete your payment to access premium content</p>
+              <h3 className="text-2xl font-bold text-white">Choose Your Plan</h3>
+              <p className="text-emerald-100">Unlock premium medical study materials</p>
             </div>
-            <button
-              onClick={onClose}
-              className="text-white/80 hover:text-white transition-colors"
-            >
+            <button onClick={onClose} className="text-white/80 hover:text-white transition-colors">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
               </svg>
@@ -61,7 +157,6 @@ const PaymentModal = ({ show, onClose }) => {
           </div>
         </div>
         
-        {/* Content */}
         <div className="p-6">
           {submitStatus === 'success' && (
             <div className="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded-lg">
@@ -70,105 +165,98 @@ const PaymentModal = ({ show, onClose }) => {
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
                 <div>
-                  <p className="font-medium">Payment submitted successfully!</p>
-                  <p className="text-sm text-gray-500">
-                    Your access will be granted within 24 hours.
-                  </p>
+                  <p className="font-medium">Payment successful!</p>
+                  <p className="text-sm text-gray-500">Your premium access has been activated.</p>
                 </div>
               </div>
             </div>
           )}
           
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Amount */}
+          {submitStatus === 'error' && (
+            <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-lg">
+              <p className="font-medium">Payment failed</p>
+              <p className="text-sm text-gray-500">Please try again or contact support.</p>
+            </div>
+          )}
+          
+          <div className="space-y-4 mb-6">
             <div>
-              <label htmlFor="payment-amount" className="block text-sm font-medium text-gray-700 mb-2">
-                Amount (UGX)
-              </label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">UGX</span>
-                <input
-                  type="number"
-                  id="payment-amount"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  required
-                  min="1000"
-                  className="w-full pl-16 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                />
+              <label className="block text-sm font-medium text-gray-700 mb-2">Select Plan</label>
+              <div className="grid grid-cols-3 gap-2">
+                {Object.entries(SUBSCRIPTION_PLANS).map(([key, planData]) => (
+                  <button
+                    key={key}
+                    onClick={() => setSelectedPlanKey(key)}
+                    className={`p-3 rounded-xl border-2 text-center transition-all ${
+                      selectedPlanKey === key
+                        ? 'border-emerald-500 bg-emerald-50'
+                        : 'border-gray-200 hover:border-emerald-300'
+                    }`}
+                  >
+                    <div className="font-bold text-emerald-700">{planData.label}</div>
+                    <div className="text-xs text-gray-500">UGX {planData.amount.toLocaleString()}</div>
+                  </button>
+                ))}
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Standard access: 50,000 UGX
-              </p>
+            </div>
+
+            <div>
+              <label htmlFor="payment-email" className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+              <input
+                type="email"
+                id="payment-email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                placeholder="your@email.com"
+              />
             </div>
             
-            {/* Phone Number */}
             <div>
-              <label htmlFor="payment-phone" className="block text-sm font-medium text-gray-700 mb-2">
-                Mobile Money Number
-              </label>
+              <label htmlFor="payment-phone" className="block text-sm font-medium text-gray-700 mb-2">Mobile Money Number</label>
               <input
                 type="tel"
                 id="payment-phone"
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 required
-                pattern="[0-9]{10,12}"
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                placeholder="e.g., 0772345678"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Accepts MTN, Airtel, and Africell
-              </p>
-            </div>
-            
-            {/* Reference Number */}
-            <div>
-              <label htmlFor="reference-number" className="block text-sm font-medium text-gray-700 mb-2">
-                Transaction Reference
-              </label>
-              <input
-                type="text"
-                id="reference-number"
-                value={referenceNumber}
-                onChange={(e) => setReferenceNumber(e.target.value)}
-                required
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                placeholder="Enter your transaction reference"
+                placeholder="256749846848"
               />
             </div>
-            
-            {/* Payment Instructions */}
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
-              <p className="font-medium text-emerald-800 mb-2">How to Pay:</p>
-              <ol className="list-decimal list-inside text-sm text-emerald-700 space-y-1">
-                <li>Send 50,000 UGX to: <span className="font-bold">0772 345 678</span></li>
-                <li>Save your transaction reference number</li>
-                <li>Enter the reference above and submit</li>
-              </ol>
-            </div>
-            
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className={`w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold rounded-xl transition-all duration-200 ${
-                isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
-              }`}
-            >
-              {isSubmitting ? (
-                <div className="flex items-center justify-center space-x-2">
-                  <div className="animate-spin h-4 w-4 border-b-2 border-white rounded-full"></div>
-                  <span>Processing...</span>
-                </div>
-              ) : (
-                'Submit Payment'
-              )}
-            </button>
-          </form>
+          </div>
+
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6">
+            <p className="font-medium text-emerald-800 mb-2">Payment Details:</p>
+            <ol className="list-decimal list-inside text-sm text-emerald-700 space-y-1">
+              <li>Plan: <span className="font-bold">{plan.label}</span></li>
+              <li>Amount: <span className="font-bold">UGX {plan.amount.toLocaleString()}</span></li>
+              <li>Pay to: <span className="font-bold">KABALI MADINA (+256 749 846 848)</span></li>
+              <li>You will be redirected to Paystack to complete payment securely</li>
+            </ol>
+          </div>
           
-          {/* Contact */}
-          <div className="mt-6 pt-4 border-t text-center text-sm text-gray-500">
+          <button
+            onClick={handlePaystackPayment}
+            disabled={isSubmitting || !paystackLoaded}
+            className={`w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold rounded-xl transition-all duration-200 ${
+              isSubmitting || !paystackLoaded ? 'opacity-70 cursor-not-allowed' : ''
+            }`}
+          >
+            {isSubmitting ? (
+              <div className="flex items-center justify-center space-x-2">
+                <div className="animate-spin h-4 w-4 border-b-2 border-white rounded-full"></div>
+                <span>Processing...</span>
+              </div>
+            ) : !paystackLoaded ? (
+              'Loading Payment...'
+            ) : (
+              `Pay UGX ${plan.amount.toLocaleString()}`
+            )}
+          </button>
+          
+          <div className="mt-4 pt-4 border-t text-center text-sm text-gray-500">
             <p>Need help? Contact: <a href="tel:+256749846848" className="text-emerald-600 font-medium">+256 749 846 848</a></p>
           </div>
         </div>

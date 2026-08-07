@@ -8,7 +8,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 
 const AuthContext = createContext();
@@ -25,24 +25,34 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState(null);
+  const [isBanned, setIsBanned] = useState(false);
 
-  // Listen to auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
+      setIsBanned(false);
       
       if (user) {
-        // Fetch user profile from Firestore
         try {
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           if (userDoc.exists()) {
-            setUserProfile(userDoc.data());
+            const profile = userDoc.data();
+            setUserProfile(profile);
+            if (profile.banned) {
+              setIsBanned(true);
+            }
+          } else {
+            setUserProfile(null);
+            setIsBanned(false);
           }
         } catch (error) {
           console.error('Error fetching user profile:', error);
+          setUserProfile(null);
+          setIsBanned(false);
         }
       } else {
         setUserProfile(null);
+        setIsBanned(false);
       }
       
       setLoading(false);
@@ -51,20 +61,22 @@ export const AuthProvider = ({ children }) => {
     return unsubscribe;
   }, []);
 
-  // Register new user
-  const register = async (email, password, name) => {
+  const register = async (email, password, name, phone = '') => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
-      // Create user profile in Firestore
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
         email,
         name,
+        phone,
         createdAt: serverTimestamp(),
         role: 'user',
-        subscription: 'free'
+        subscription: 'free',
+        subscriptionApproved: false,
+        subscriptionStatus: 'inactive',
+        banned: false
       });
       
       return { success: true, user };
@@ -73,7 +85,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Login user
   const login = async (email, password) => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -83,18 +94,17 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Logout user
   const logout = async () => {
     try {
       await signOut(auth);
       setUserProfile(null);
+      setIsBanned(false);
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
     }
   };
 
-  // Reset password
   const resetPassword = async (email) => {
     try {
       await sendPasswordResetEmail(auth, email);
@@ -104,22 +114,24 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Google Sign In
   const googleLogin = async () => {
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
       
-      // Check if user profile exists, if not create one
       const userDoc = await getDoc(doc(db, 'users', result.user.uid));
       if (!userDoc.exists()) {
         await setDoc(doc(db, 'users', result.user.uid), {
           uid: result.user.uid,
           email: result.user.email,
           name: result.user.displayName || 'Google User',
+          phone: '',
           createdAt: serverTimestamp(),
           role: 'user',
-          subscription: 'free'
+          subscription: 'free',
+          subscriptionApproved: false,
+          subscriptionStatus: 'inactive',
+          banned: false
         });
       }
       
@@ -129,14 +141,62 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const createUser = async (email, password, name, phone = '') => {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      await setDoc(doc(db, 'users', user.uid), {
+        uid: user.uid,
+        email,
+        name,
+        phone,
+        createdAt: serverTimestamp(),
+        role: 'user',
+        subscription: 'free',
+        subscriptionApproved: false,
+        subscriptionStatus: 'inactive',
+        banned: false
+      });
+      
+      return { success: true, user: userCredential.user };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  };
+
+  const banUser = async (userId, banned) => {
+    try {
+      const userDocRef = doc(db, 'users', userId);
+      await updateDoc(userDocRef, { banned: !banned });
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  };
+
+  const updateUserSubscription = async (userId, subscriptionData) => {
+    try {
+      const userDocRef = doc(db, 'users', userId);
+      await updateDoc(userDocRef, subscriptionData);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  };
+
   const value = {
     currentUser,
     userProfile,
+    isBanned,
     register,
     login,
     logout,
     resetPassword,
     googleLogin,
+    createUser,
+    banUser,
+    updateUserSubscription,
     loading
   };
 
