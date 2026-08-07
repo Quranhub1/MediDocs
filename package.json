@@ -8,6 +8,7 @@
     "@testing-library/user-event": "^13.5.0",
     "cors": "^2.8.5",
     "express": "^4.18.2",
+    "express-rate-limit": "^7.4.0",
     "firebase": "^10.7.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -19,6 +20,18 @@
     "es-abstract": "^1.24.2",
     "postcss": "^8.4.0",
     "tailwindcss": "^3.3.0"
+  },
+  "overrides": {
+    "react-scripts": {
+      "webpack": "^5.88.2",
+      "webpack-dev-server": "^4.15.1",
+      "undici": "^6.21.1",
+      "postcss": "^8.4.31",
+      "svgo": "^3.3.2",
+      "uuid": "^9.0.1",
+      "underscore": "^1.13.6",
+      "nth-check": "^2.0.1"
+    }
   },
   "scripts": {
     "start": "react-scripts start",
