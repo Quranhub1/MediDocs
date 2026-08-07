@@ -74,6 +74,107 @@ const openAIDBCache = {
   }
 };
 
+const formatAIResponse = (text) => {
+  if (!text) return '';
+
+  let html = text;
+
+  html = html.replace(/```[\w]*\n?([\s\S]*?)```/g, (match, code) => {
+    const escaped = code
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    return `<pre class="ai-code-block"><code>${escaped.trim()}</code></pre>`;
+  });
+
+  html = html.replace(/`([^`]+)`/g, '<code class="ai-inline-code">$1</code>');
+
+  html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong class="ai-bold">$1</strong>');
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="ai-bold">$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, '<em class="ai-italic">$1</em>');
+
+  html = html.replace(/^#{6}\s*(.+)$/gim, '<h6 class="ai-heading">$1</h6>');
+  html = html.replace(/^#{5}\s*(.+)$/gim, '<h5 class="ai-heading">$1</h5>');
+  html = html.replace(/^#{4}\s*(.+)$/gim, '<h4 class="ai-heading">$1</h4>');
+  html = html.replace(/^#{3}\s*(.+)$/gim, '<h3 class="ai-heading">$1</h3>');
+  html = html.replace(/^#{2}\s*(.+)$/gim, '<h2 class="ai-heading">$1</h2>');
+  html = html.replace(/^#{1}\s*(.+)$/gim, '<h1 class="ai-heading">$1</h1>');
+
+  html = html.replace(/^---$/gim, '<hr class="ai-divider" />');
+
+  const lines = html.split('\n');
+  const result = [];
+  let inTable = false;
+  let tableRows = [];
+
+  const flushTable = () => {
+    if (tableRows.length > 0) {
+      const header = tableRows[0];
+      const body = tableRows.slice(1);
+      result.push(
+        `<div class="ai-table-wrapper"><table class="ai-table"><thead><tr>${header.map(cell => `<th>${cell}</th>`).join('')}</tr></thead><tbody>${body.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`
+      );
+      tableRows = [];
+      inTable = false;
+    }
+  };
+
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+      const cells = trimmed.split('|').filter((_, i, arr) => i > 0 && i < arr.length - 1).map(cell => cell.trim());
+      if (cells.every(cell => /^[-:]+$/.test(cell))) {
+        return;
+      }
+      inTable = true;
+      tableRows.push(cells);
+      return;
+    }
+    if (inTable) {
+      flushTable();
+    }
+
+    if (trimmed === '') {
+      result.push('<br/>');
+      return;
+    }
+
+    if (/^(\d+\.|-|\*)\s/.test(trimmed)) {
+      const isOrdered = /^\d+\.\s/.test(trimmed);
+      const content = trimmed.replace(/^(\d+\.|-|\*)\s/, '');
+      result.push(`<li class="ai-list-item ${isOrdered ? 'ai-ordered' : 'ai-unordered'}">${content}</li>`);
+      return;
+    }
+
+    if (/^>/.test(trimmed)) {
+      const content = trimmed.replace(/^>\s?/, '');
+      result.push(`<blockquote class="ai-blockquote">${content}</blockquote>`);
+      return;
+    }
+
+    result.push(`<span class="ai-text">${trimmed}</span> `);
+  });
+
+  flushTable();
+
+  let finalHtml = result.join('\n');
+
+  finalHtml = finalHtml.replace(/(<li class="ai-list-item[^"]*">.*?<\/li>)/gs, (match) => {
+    return match;
+  });
+
+  finalHtml = finalHtml.replace(/<span class="ai-text">(.*?)<\/span>/gs, (match, p1) => {
+    if (p1.trim() === '') return '';
+    return `<p class="ai-paragraph">${p1}</p>`;
+  });
+
+  finalHtml = finalHtml.replace(/<p class="ai-paragraph"><\/p>/g, '<br/>');
+  finalHtml = finalHtml.replace(/<p class="ai-paragraph">(<(?:h[1-6]|pre|div|table|blockquote|ul|ol|li)[^>]*>)/gi, '$1');
+  finalHtml = finalHtml.replace(/(<\/(?:h[1-6]|pre|div|table|blockquote|ul|ol|li)[^>]*>)<\/p>/gi, '$1');
+
+  return finalHtml;
+};
+
 const AIStudyAssistant = ({ show, onClose, user, userProfile }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -160,13 +261,14 @@ const AIStudyAssistant = ({ show, onClose, user, userProfile }) => {
     if (relevantDocs.length > 0) {
       contextInfo = `\n\nHere are some relevant documents from our database:\n${relevantDocs.map(d => `- ${d.title} (${d.courseId?.toUpperCase()} - ${d.semesterId?.toUpperCase()}${d.unitName ? ' - ' + d.unitName : ''}): ${d.description || 'No description'}`).join('\n')}`;
     }
-    return `You are MediDocs AI, a knowledgeable and friendly medical study assistant for students in Uganda. You have access to a database of medical study documents. When a student asks about a topic, recommend the most relevant documents and guide them to where they can find the resource in our platform. If they ask for a page or section, tell them which course > semester > unit > document to navigate to.${contextInfo}\n\nProvide accurate, educational, and easy-to-understand explanations. Use examples relevant to the Ugandan healthcare context when possible. Keep responses concise but informative.`;
+    return `You are MediDocs AI, a knowledgeable and friendly medical study assistant for students in Uganda. You have access to a database of medical study documents. When a student asks about a topic, recommend the most relevant documents and guide them to where they can find the resource in our platform. If they ask for a page or section, tell them which course > semester > unit > document to navigate to.${contextInfo}\n\nProvide accurate, educational, and easy-to-understand explanations. Use examples relevant to the Ugandan healthcare context when possible. Keep responses concise but informative. Format your responses using clear paragraphs, bullet points, and tables where appropriate. Avoid excessive markdown symbols.`;
   };
 
   const speakText = (text) => {
     if (!window.speechSynthesis) return;
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text.replace(/[#*_]/g, ''));
+    const plainText = text.replace(/<[^>]*>/g, '').replace(/[#*_]/g, '');
+    const utterance = new SpeechSynthesisUtterance(plainText);
     utterance.rate = 0.9;
     utterance.pitch = 1;
     window.speechSynthesis.speak(utterance);
@@ -214,8 +316,8 @@ const AIStudyAssistant = ({ show, onClose, user, userProfile }) => {
               },
               body: JSON.stringify({
                 messages: [
-                  { 
-                    role: 'system', 
+                  {
+                    role: 'system',
                     content: buildSystemPrompt(input)
                   },
                   ...messages.filter(m => m.text).slice(-10).map(m => ({
@@ -227,7 +329,7 @@ const AIStudyAssistant = ({ show, onClose, user, userProfile }) => {
                 apiKey: openAIApiKey
               })
             });
-            
+
             const data = await response.json();
             if (data.success && data.response) {
               botResponse = data.response;
@@ -246,8 +348,8 @@ const AIStudyAssistant = ({ show, onClose, user, userProfile }) => {
             },
             body: JSON.stringify({
               messages: [
-                { 
-                  role: 'system', 
+                {
+                  role: 'system',
                   content: buildSystemPrompt(input)
                 },
                 ...messages.filter(m => m.text).slice(-10).map(m => ({
@@ -259,7 +361,7 @@ const AIStudyAssistant = ({ show, onClose, user, userProfile }) => {
               apiKey: openAIApiKey
             })
           });
-          
+
           const data = await response.json();
           botResponse = data.success ? data.response : (data.error || 'The AI service returned an empty response. Please try again.');
         }
@@ -303,9 +405,9 @@ const AIStudyAssistant = ({ show, onClose, user, userProfile }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
       <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/90 via-teal-900/90 to-cyan-900/90" onClick={onClose}></div>
-      
+
       <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl mx-2 overflow-hidden flex flex-col" style={{ height: '85vh', maxHeight: '700px' }}>
-        
+
         <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 p-4 sm:p-5 flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-3">
             <div className="relative">
@@ -345,11 +447,11 @@ const AIStudyAssistant = ({ show, onClose, user, userProfile }) => {
             </button>
           ))}
         </div>
-        
+
         <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-gray-50 to-white">
           {messages.map((message, index) => (
-            <div 
-              key={message.id || index} 
+            <div
+              key={message.id || index}
               className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
               style={{ animation: 'fadeIn 0.3s ease-out' }}
             >
@@ -361,7 +463,14 @@ const AIStudyAssistant = ({ show, onClose, user, userProfile }) => {
                 </div>
               )}
               <div className={`max-w-[75%] rounded-2xl px-4 py-3 ${message.isUser ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-br-md' : 'bg-white text-gray-800 shadow-lg rounded-bl-md border border-gray-100'}`}>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.text}</p>
+                {message.isUser ? (
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.text}</p>
+                ) : (
+                  <div
+                    className="ai-response text-sm leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: formatAIResponse(message.text) }}
+                  />
+                )}
                 {message.isUser === false && (
                   <div className="flex items-center gap-2 mt-2">
                     <p className="text-xs text-gray-400">MediDocs AI</p>
@@ -389,7 +498,7 @@ const AIStudyAssistant = ({ show, onClose, user, userProfile }) => {
               )}
             </div>
           ))}
-          
+
           {isTyping && (
             <div className="flex justify-start">
               <div className="w-8 h-8 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 flex items-center justify-center shrink-0 mr-2">
@@ -408,7 +517,7 @@ const AIStudyAssistant = ({ show, onClose, user, userProfile }) => {
           )}
           <div ref={messagesEndRef} />
         </div>
-        
+
         <div className="p-4 bg-white border-t border-gray-100 shrink-0">
           {apiMissing && (
             <div className="mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 flex items-center">
@@ -453,6 +562,135 @@ const AIStudyAssistant = ({ show, onClose, user, userProfile }) => {
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        .ai-response {
+          font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          font-size: 0.875rem;
+          line-height: 1.75;
+          color: #1f2937;
+        }
+        .ai-response .ai-paragraph {
+          margin-bottom: 0.85rem;
+          color: #374151;
+          font-weight: 400;
+        }
+        .ai-response .ai-heading {
+          font-size: 1.05rem;
+          font-weight: 700;
+          color: #111827;
+          margin-top: 1.1rem;
+          margin-bottom: 0.4rem;
+          letter-spacing: -0.01em;
+        }
+        .ai-response .ai-bold {
+          font-weight: 700;
+          color: #0f172a;
+        }
+        .ai-response .ai-italic {
+          font-style: italic;
+          color: #374151;
+        }
+        .ai-response .ai-list-item {
+          position: relative;
+          padding-left: 1.2rem;
+          margin-bottom: 0.35rem;
+          color: #374151;
+        }
+        .ai-response .ai-unordered {
+          list-style: none;
+        }
+        .ai-response .ai-unordered::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 0.55rem;
+          width: 0.35rem;
+          height: 0.35rem;
+          border-radius: 50%;
+          background-color: #10b981;
+        }
+        .ai-response .ai-ordered {
+          list-style: none;
+          counter-increment: ai-counter;
+        }
+        .ai-response .ai-ordered::before {
+          content: counter(ai-counter) '.';
+          position: absolute;
+          left: 0;
+          font-weight: 700;
+          color: #059669;
+        }
+        .ai-response .ai-blockquote {
+          border-left: 4px solid #10b981;
+          padding-left: 0.85rem;
+          margin: 0.75rem 0;
+          color: #065f46;
+          font-style: italic;
+          background: #ecfdf5;
+          border-radius: 0 0.5rem 0.5rem 0;
+          padding: 0.6rem 0.85rem;
+        }
+        .ai-response .ai-divider {
+          border: none;
+          border-top: 1px solid #e5e7eb;
+          margin: 0.9rem 0;
+        }
+        .ai-response .ai-inline-code {
+          background: #f3f4f6;
+          border: 1px solid #e5e7eb;
+          border-radius: 0.35rem;
+          padding: 0.15rem 0.4rem;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+          font-size: 0.8rem;
+          color: #dc2626;
+        }
+        .ai-response .ai-code-block {
+          background: #1f2937;
+          color: #f9fafb;
+          border-radius: 0.75rem;
+          padding: 1rem;
+          overflow-x: auto;
+          margin: 0.75rem 0;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+          font-size: 0.8rem;
+          line-height: 1.6;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .ai-response .ai-table-wrapper {
+          overflow-x: auto;
+          margin: 0.75rem 0;
+          border-radius: 0.75rem;
+          border: 1px solid #e5e7eb;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        .ai-response .ai-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 0.8rem;
+        }
+        .ai-response .ai-table thead {
+          background: linear-gradient(to right, #ecfdf5, #d1fae5);
+        }
+        .ai-response .ai-table th {
+          padding: 0.7rem 0.9rem;
+          text-align: left;
+          font-weight: 700;
+          color: #065f46;
+          text-transform: uppercase;
+          font-size: 0.7rem;
+          letter-spacing: 0.05em;
+          border-bottom: 2px solid #10b981;
+        }
+        .ai-response .ai-table td {
+          padding: 0.65rem 0.9rem;
+          border-bottom: 1px solid #f3f4f6;
+          color: #374151;
+        }
+        .ai-response .ai-table tbody tr:hover {
+          background: #f9fafb;
+        }
+        .ai-response .ai-table tbody tr:last-child td {
+          border-bottom: none;
         }
       `}</style>
     </div>
