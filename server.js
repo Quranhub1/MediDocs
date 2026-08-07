@@ -11,17 +11,31 @@ app.use(express.static(path.join(__dirname, 'build')));
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 const GROQ_API_KEY = process.env.REACT_APP_OPENAI_API_KEY || process.env.GROQ_API_KEY;
 
+const PAYSTACK_BASE_URL = 'https://api.paystack.co';
+const PAYSTACK_VERIFY_PATH = '/transaction/verify';
+
 const aiMemoryCache = new Map();
 const AI_CACHE_MAX_ENTRIES = 10000;
+
+const sanitizePaystackReference = (reference) => {
+  if (typeof reference !== 'string') return null;
+  const trimmed = reference.trim();
+  if (!trimmed) return null;
+  if (!/^[A-Za-z0-9][A-Za-z0-9\-_./]*$/.test(trimmed)) return null;
+  if (trimmed.includes('..')) return null;
+  return trimmed;
+};
 
 app.post('/api/paystack/verify', async (req, res) => {
   try {
     const { reference } = req.body;
-    if (!reference) {
-      return res.status(400).json({ success: false, error: 'Reference is required' });
+    const safeReference = sanitizePaystackReference(reference);
+    if (!safeReference) {
+      return res.status(400).json({ success: false, error: 'Invalid reference format' });
     }
 
-    const response = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
+    const verifyUrl = `${PAYSTACK_BASE_URL}${PAYSTACK_VERIFY_PATH}/${encodeURIComponent(safeReference)}`;
+    const response = await fetch(verifyUrl, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${PAYSTACK_SECRET_KEY}`
