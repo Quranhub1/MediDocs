@@ -1,210 +1,158 @@
-# MediDocs Uganda - React Version
+# MediDocs Uganda
 
-This is a React conversion of the MediDocs Uganda medical education platform. The original HTML/CSS/JS implementation has been refactored into a modern React application with improved structure, maintainability, and a more stylish design.
+MediDocs Uganda is a medical education platform built with React, Firebase, and Tailwind CSS. It provides Ugandan medical students with access to study materials, AI-powered learning assistance, and subscription-based premium content.
 
 ## Features
 
-- **User Authentication**: Login/Register with email/password and Google authentication
-- **AI Search**: AI-powered study assistance using Groq API (proxied through backend)
-- **Course Browser**: Browse Certificate and Diploma courses with visual icons
-- **Latest Documents**: View latest study materials with thumbnail support
-- **Document Interaction**: Read online or download study materials
-- **Manual Payment System**: Simple manual payment process for premium access (no API integration)
-- **Contact Form**: Reach out to support team
-- **AI Chat**: Interactive AI study assistant
-- **Responsive Design**: Beautifully rendered on both mobile and desktop devices
-- **Modern UI**: Stylish gradients, shadows, and animations
-- **Modals**: Login, register, payment, contact, and AI chat modals
-- **Sidebar Navigation**: Collapsible menu for easy navigation
-- **Hero Section**: Attractive landing page with call-to-action buttons
-- **Statistics Section**: Highlights key features and benefits
+- **User Authentication**: Email/password and Google sign-in via Firebase Auth
+- **AI Study Assistant**: Real Groq-powered chat with document-aware recommendations, page guidance, summarization, and text-to-speech
+- **Course Browser**: Browse courses, semesters, and course units with hierarchical navigation
+- **Document Library**: Read online or download study materials with thumbnail previews
+- **Paystack Payments**: Subscription billing with weekly, monthly, and yearly plans in UGX
+- **Admin Dashboard**: Manage documents, users, payments, and subscriptions
+- **Responsive Design**: Mobile-first UI with Tailwind CSS, works on all screen sizes
+- **Performance Optimized**: Local caching, lazy loading, and memoized rendering
 
 ## Project Structure
 
 ```
-studypedia-react/
 ├── public/
-│   ├── index.html          # Main HTML template
-│   └── favicon.ico         # Application icon
+│   └── index.html          # Main HTML template
 ├── src/
 │   ├── components/         # Reusable UI components
-│   │   ├── Header.js       # App header with navigation and auth buttons
-│   │   ├── Sidebar.js      # Collapsible navigation sidebar
-│   │   ├── MainContent.js  # Main content area router
-│   │   ├── HeroSection.js  # Attractive landing section
-│   │   ├── StatsSection.js # Features highlights
-│   │   ├── LatestDocuments.js # Document listing with thumbnail support
-│   │   ├── CourseGrid.js   # Course browsing interface
-│   │   ├── AboutSection.js # About us information
-│   │   ├── ContactSection.js # Contact form
-│   │   ├── PrivacySection.js # Privacy policy
-│   │   ├── LoginModal.js   # Authentication modal
-│   │   ├── RegisterModal.js # Registration modal
-│   │   ├── PaymentModal.js # Manual payment processing modal
-│   │   └── AIChatModal.js  # AI study assistant modal
-│   ├── context/            # React context providers
-│   │   └── AuthContext.js  # Authentication state management
-│   ├── App.js              # Main application component
-│   ├── App.css             # Global styles and responsive adjustments
-│   └── index.js            # Application entry point
-├── package.json            # Project dependencies and scripts
-└README.md                  # This file
+│   │   ├── Header.js
+│   │   ├── Sidebar.js
+│   │   ├── BottomNav.js
+│   │   ├── MainContent.js
+│   │   ├── HeroSection.js
+│   │   ├── StatsSection.js
+│   │   ├── LatestDocuments.js
+│   │   ├── DocumentCarousel.js
+│   │   ├── CourseGrid.js
+│   │   ├── AboutSection.js
+│   │   ├── ContactSection.js
+│   │   ├── PrivacySection.js
+│   │   ├── LoginModal.js
+│   │   ├── RegisterModal.js
+│   │   ├── PaymentModal.js
+│   │   ├── AIStudyAssistant.js
+│   │   └── AdminDashboard.js
+│   ├── context/
+│   │   └── AuthContext.js  # Authentication state and user management
+│   ├── services/
+│   │   └── FirestoreService.js # Data fetching, caching, payments, uploads
+│   ├── App.js
+│   ├── App.css
+│   ├── index.js
+│   └── index.css
+├── server.js               # Express backend for AI proxy and Paystack verification
+├── package.json
+├── .env.example
+├── firestore.rules
+└── README.md
 ```
-
-## Key Improvements Over Original
-
-1. **Component-Based Architecture**: Better separation of concerns
-2. **State Management**: React state hooks for UI state
-3. **Context API**: Global authentication state
-4. **Reusable Components**: Modular UI elements
-5. **Improved Maintainability**: Easier to update and extend
-6. **React Best Practices**: Functional components with hooks
-7. **Enhanced Thumbnail Support**: Better image/document preview handling
-8. **Modern Stylish Design**: Beautiful gradients, shadows, and animations
-9. **Mobile-First Approach**: Optimized for both mobile and desktop viewing
-10. **Simplified Payment System**: Manual payment process without complex API integration
-
-## Thumbnail Implementation
-
-The LatestDocuments component now supports intelligent thumbnail display:
-
-1. **Priority Order for Thumbnails**:
-   - `thumbnail` field (if provided)
-   - `thumbnailUrl` field (if provided)
-   - `previewImage` field (if provided)
-   - Fallback to filePath-based detection
-
-2. **File Type Detection**:
-   - Images (jpg, jpeg, png, gif, webp, svg): Shows actual image preview
-   - PDFs: Shows PDF icon with label
-   - Other documents: Shows generic document icon
-
-3. **Responsive Display**:
-   - Aspect ratio containers for proper scaling
-   - Hover effects and shadows for interactivity
-   - Mobile-optimized layouts
-
-## Backend Integration
-
-This React app is designed to work with the existing MediDocs backend deployed on Render.com at:
-`https://studypedia-server-1.onrender.com`
-
-The app makes API calls to:
-- `/api/ai/chat` - For AI search and chat functionality
-- Health check endpoint for monitoring
-
-**Note**: Payment processing has been simplified to a manual system - no API integration is required for payments.
-
-## Manual Payment System
-
-Instead of complex API integrations with payment gateways, the application now uses a simple manual payment process:
-
-1. Users are instructed to pay 50,000 UGX via Mobile Money or Bank Transfer
-2. After payment, they enter their transaction reference number
-3. Administrators manually verify payments and grant access
-4. This eliminates the need for Pesapal or other payment gateway integrations
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js (version 14 or higher)
-- npm or yarn package manager
+- Node.js 16+
+- npm or yarn
+- Firebase project
+- Groq API key
+- Paystack account
 
 ### Installation
 
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd medidocs-react
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-### Running the Application
-
-1. Start the development server:
-   ```bash
-   npm start
-   ```
-
-2. Open your browser to:
-   ```
-   http://localhost:3000
-   ```
-
-### Building for Production
-
-1. Create an optimized production build:
-   ```bash
-   npm run build
-   ```
-
-2. The build artifacts will be in the `build/` directory, ready for deployment.
-
-## Environment Variables
-
-Create a `.env` file in the root directory with the following variables:
-
-```
-REACT_APP_API_URL=https://studypedia-server-1.onrender.com
-REACT_APP_GOOGLE_CLIENT_ID=your_google_client_id_here
+```bash
+git clone <repository-url>
+cd medidocs-react
+npm install
 ```
 
-## Deployment
+### Environment Variables
 
-The application can be deployed to various platforms:
+Create a `.env` file in the root directory:
 
-### Vercel (Recommended)
-1. Install Vercel CLI: `npm i -g vercel`
-2. Deploy: `vercel`
+```
+REACT_APP_FIREBASE_API_KEY=your_firebase_api_key
+REACT_APP_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+REACT_APP_FIREBASE_PROJECT_ID=your_project_id
+REACT_APP_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+REACT_APP_FIREBASE_APP_ID=your_app_id
+REACT_APP_OPENAI_API_KEY=your_groq_api_key
+REACT_APP_PAYSTACK_PUBLIC_KEY=pk_test_your_paystack_public_key
+PAYSTACK_SECRET_KEY=sk_test_your_paystack_secret_key
+```
 
-### Netlify
-1. Install Netlify CLI: `npm i -g netlify-cli`
-2. Deploy: `netlify deploy --prod`
+### Development
 
-### Firebase Hosting
-1. Install Firebase CLI: `npm i -g firebase-tools`
-2. Initialize: `firebase init`
-3. Deploy: `firebase deploy`
+Run the React frontend only:
+```bash
+npm start
+```
 
-## Available Scripts
+Run both frontend and backend:
+```bash
+npm run dev
+```
 
-In the project directory, you can run:
+The Express backend runs on port 4000 by default and provides:
+- `/api/ai/chat` - Server-side Groq proxy with in-memory caching
+- `/api/paystack/verify` - Paystack transaction verification
+- `/api/paystack/webhook` - Paystack webhook handler
 
-- `npm start`: Runs the app in development mode
-- `npm test`: Launches the test runner
-- `npm run build`: Builds the app for production
-- `npm run eject`: Removes the build tool and copies configuration files
+### Production Build
+
+```bash
+npm run build
+```
+
+Build artifacts will be in the `build/` directory. Serve with the Express backend for full functionality.
+
+## Payment Integration
+
+MediDocs uses Paystack for subscription payments in UGX:
+
+- Weekly: UGX 5,000
+- Monthly: UGX 15,000
+- Yearly: UGX 60,000
+
+Payments are sent to **KABALI MADINA** at **+256 749 846 848**.
+
+After successful payment, the admin reviews and approves subscriptions from the Admin Dashboard.
+
+## Admin Dashboard
+
+The admin dashboard includes:
+
+- **Documents**: Add, edit, delete, and manage study materials with real thumbnail uploads
+- **Users**: Register new users, approve subscriptions, ban/unban accounts
+- **Payments**: View payment history and approve subscription payments
+- **Course Management**: Create courses, semesters, and units
+
+Admin access is controlled by email `kaigwaakram123@gmail.com` or phone `256749846848`.
+
+## AI Assistant
+
+The AI assistant is powered by Groq and includes:
+
+- Document-aware responses using Firestore context
+- Recommendations based on relevant study materials
+- Navigation guidance to specific courses, semesters, units, and documents
+- Summarization support
+- Text-to-speech playback
+- Client-side IndexedDB caching and server-side in-memory caching
 
 ## Browser Support
 
-The application supports all modern browsers:
 - Chrome (latest)
 - Firefox (latest)
 - Safari (latest)
 - Edge (latest)
 - Mobile browsers (iOS Safari, Android Chrome)
 
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit your changes: `git commit -m 'Add amazing feature'`
-4. Push to the branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
-
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-- Tailwind CSS for utility-first styling
-- React team for the excellent UI library
-- Google Fonts for the Inter typeface
-- Firebase for authentication and database services
-- Groq for AI capabilities
+MIT
