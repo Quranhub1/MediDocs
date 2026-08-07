@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
 const app = express();
 
 app.use(cors());
@@ -10,12 +11,39 @@ app.use(express.static(path.join(__dirname, 'build')));
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 const GROQ_API_KEY = process.env.REACT_APP_OPENAI_API_KEY || process.env.GROQ_API_KEY;
+const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 
 const PAYSTACK_BASE_URL = 'https://api.paystack.co';
 const PAYSTACK_VERIFY_PATH = '/transaction/verify';
 
 const aiMemoryCache = new Map();
 const AI_CACHE_MAX_ENTRIES = 10000;
+
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many requests, please try again later.' }
+});
+
+const paystackLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many payment verification requests, please try again later.' }
+});
+
+const aiLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many AI requests, please try again later.' }
+});
+
+app.use(generalLimiter);
 
 const sanitizePaystackReference = (reference) => {
   if (typeof reference !== 'string') return null;
@@ -26,7 +54,7 @@ const sanitizePaystackReference = (reference) => {
   return trimmed;
 };
 
-app.post('/api/paystack/verify', async (req, res) => {
+app.post('/api/paystack/verify', paystackLimiter, async (req, res) => {
   try {
     const { reference } = req.body;
     const safeReference = sanitizePaystackReference(reference);
@@ -55,7 +83,7 @@ app.post('/api/paystack/verify', async (req, res) => {
   }
 });
 
-app.post('/api/paystack/webhook', (req, res) => {
+app.post('/api/paystack/webhook', paystackLimiter, (req, res) => {
   const signature = req.headers['x-paystack-signature'];
   const payload = req.body;
   console.log('Paystack webhook received:', payload);
@@ -65,7 +93,7 @@ app.post('/api/paystack/webhook', (req, res) => {
   res.status(200).send('OK');
 });
 
-app.post('/api/ai/chat', async (req, res) => {
+app.post('/api/ai/chat', aiLimiter, async (req, res) => {
   try {
     const { messages } = req.body;
     
@@ -90,7 +118,7 @@ app.post('/api/ai/chat', async (req, res) => {
         'Authorization': `Bearer ${GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'llama-3.1-70b-versatile',
+        model: GROQ_MODEL,
         messages: messages,
         max_tokens: 1000,
         temperature: 0.7
@@ -117,7 +145,7 @@ app.post('/api/ai/chat', async (req, res) => {
   }
 });
 
-app.get('*', (req, res) => {
+app.get('*', generalLimiter, (req, res) => {
   res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
