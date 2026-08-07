@@ -3,6 +3,77 @@ import { db } from '../firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { fetchAllDocuments } from '../services/FirestoreService';
 
+const AI_CACHE_DB_NAME = 'medidocs_ai_cache';
+const AI_CACHE_STORE = 'responses';
+
+const openAIDBCache = {
+  db: null,
+  async init() {
+    if (this.db) return this.db;
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(AI_CACHE_DB_NAME, 1);
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains(AI_CACHE_STORE)) {
+          db.createObjectStore(AI_CACHE_STORE);
+        }
+      };
+      request.onsuccess = (event) => {
+        this.db = event.target.result;
+        resolve(this.db);
+      };
+      request.onerror = (event) => reject(event.target.error);
+    });
+  },
+  async get(key) {
+    const db = await this.init();
+    return new Promise((resolve) => {
+      const tx = db.transaction(AI_CACHE_STORE, 'readonly');
+      const store = tx.objectStore(AI_CACHE_STORE);
+      const request = store.get(key);
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => resolve(null);
+    });
+  },
+  async set(key, value) {
+    const db = await this.init();
+    return new Promise((resolve) => {
+      const tx = db.transaction(AI_CACHE_STORE, 'readwrite');
+      const store = tx.objectStore(AI_CACHE_STORE);
+      store.put(value, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    });
+  },
+  async pruneIfNeeded() {
+    const db = await this.init();
+    return new Promise((resolve) => {
+      const tx = db.transaction(AI_CACHE_STORE, 'readwrite');
+      const store = tx.objectStore(AI_CACHE_STORE);
+      const countReq = store.count();
+      countReq.onsuccess = async () => {
+        const count = countReq.result;
+        if (count > 5000) {
+          const allReq = store.getAll();
+          allReq.onsuccess = () => {
+            const items = allReq.result || [];
+            items.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+            const toDelete = items.slice(5000);
+            const delTx = db.transaction(AI_CACHE_STORE, 'readwrite');
+            const delStore = delTx.objectStore(AI_CACHE_STORE);
+            toDelete.forEach((item) => delStore.delete(item.key));
+            delTx.oncomplete = () => resolve();
+            delTx.onerror = () => resolve();
+          };
+        } else {
+          resolve();
+        }
+      };
+      countReq.onerror = () => resolve();
+    });
+  }
+};
+
 const AIStudyAssistant = ({ show, onClose, user, userProfile }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -10,6 +81,7 @@ const AIStudyAssistant = ({ show, onClose, user, userProfile }) => {
   const [isTyping, setIsTyping] = useState(false);
   const [documents, setDocuments] = useState([]);
   const [speaking, setSpeaking] = useState(null);
+  const [apiMissing, setApiMissing] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -46,13 +118,14 @@ const AIStudyAssistant = ({ show, onClose, user, userProfile }) => {
     if (show) {
       loadChatHistory();
       inputRef.current?.focus();
+      setApiMissing(!openAIApiKey || openAIApiKey.includes('your_groq'));
     }
     return () => {
       if (window.speechSynthesis) {
         window.speechSynthesis.cancel();
       }
     };
-  }, [show, loadChatHistory]);
+  }, [show, loadChatHistory, openAIApiKey]);
 
   useEffect(() => {
     scrollToBottom();
@@ -125,32 +198,71 @@ const AIStudyAssistant = ({ show, onClose, user, userProfile }) => {
     try {
       let botResponse;
 
-      if (openAIApiKey) {
-        const response = await fetch('/api/ai/chat', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            messages: [
-              { 
-                role: 'system', 
-                content: buildSystemPrompt(input)
-              },
-              ...messages.filter(m => m.text).slice(-10).map(m => ({
-                role: m.isUser ? 'user' : 'assistant',
-                content: m.text
-              })),
-              { role: 'user', content: input }
-            ],
-            apiKey: openAIApiKey
-          })
-        });
-        
-        const data = await response.json();
-        botResponse = data.success ? data.response : getFallbackResponse(input);
+      if (!openAIApiKey || openAIApiKey.includes('your_groq')) {
+        botResponse = 'The AI assistant is not configured. Please add your Groq API key in the environment variables to enable real AI responses.';
       } else {
-        botResponse = getFallbackResponse(input);
+        const cacheKey = `ai:${openAIApiKey}:${input.trim().toLowerCase()}`;
+        try {
+          const cached = await openAIDBCache.get(cacheKey);
+          if (cached && cached.response) {
+            botResponse = cached.response;
+          } else {
+            const response = await fetch('/api/ai/chat', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                messages: [
+                  { 
+                    role: 'system', 
+                    content: buildSystemPrompt(input)
+                  },
+                  ...messages.filter(m => m.text).slice(-10).map(m => ({
+                    role: m.isUser ? 'user' : 'assistant',
+                    content: m.text
+                  })),
+                  { role: 'user', content: input }
+                ],
+                apiKey: openAIApiKey
+              })
+            });
+            
+            const data = await response.json();
+            if (data.success && data.response) {
+              botResponse = data.response;
+              await openAIDBCache.set(cacheKey, { response: data.response, ts: Date.now() });
+              openAIDBCache.pruneIfNeeded();
+            } else {
+              botResponse = data.error || 'The AI service returned an empty response. Please try again.';
+            }
+          }
+        } catch (cacheError) {
+          console.error('AI cache error:', cacheError);
+          const response = await fetch('/api/ai/chat', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              messages: [
+                { 
+                  role: 'system', 
+                  content: buildSystemPrompt(input)
+                },
+                ...messages.filter(m => m.text).slice(-10).map(m => ({
+                  role: m.isUser ? 'user' : 'assistant',
+                  content: m.text
+                })),
+                { role: 'user', content: input }
+              ],
+              apiKey: openAIApiKey
+            })
+          });
+          
+          const data = await response.json();
+          botResponse = data.success ? data.response : (data.error || 'The AI service returned an empty response. Please try again.');
+        }
       }
 
       const botMessage = {
@@ -173,10 +285,9 @@ const AIStudyAssistant = ({ show, onClose, user, userProfile }) => {
 
     } catch (error) {
       console.error('AI chat error:', error);
-      const fallbackResponse = getFallbackResponse(input);
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
-        text: fallbackResponse,
+        text: 'Sorry, something went wrong while contacting the AI service. Please try again.',
         isUser: false,
         createdAt: serverTimestamp(),
         hasAudio: true
@@ -185,50 +296,6 @@ const AIStudyAssistant = ({ show, onClose, user, userProfile }) => {
       setIsLoading(false);
       setIsTyping(false);
     }
-  };
-
-  const getFallbackResponse = (question) => {
-    const q = question.toLowerCase();
-    const relevantDocs = findRelevantDocuments(question);
-    
-    let docRecommendation = '';
-    if (relevantDocs.length > 0) {
-      docRecommendation = `\n\nRecommended documents for you:\n${relevantDocs.map(d => `- **${d.title}** (${d.courseId?.toUpperCase()} - ${d.unitName || d.semesterId?.toUpperCase()})`).join('\n')}`;
-    }
-
-    if (q.includes('anatomy') || q.includes('skeletal') || q.includes('bone') || q.includes('skull')) {
-      return `📚 Human Anatomy Overview\n\n**Skeletal System:**\n- 206 bones in adult human body\n- Divided into axial (80) and appendicular (126) skeletons\n- Functions: support, protection, movement, mineral storage, blood cell formation\n\n**Major Bones:**\n- Skull: 22 bones (cranial + facial)\n- Spine: 33 vertebrae (7 cervical, 12 thoracic, 5 lumbar, 5 sacral, 4 coccygeal)\n- Ribs: 12 pairs (7 true, 3 false, 2 floating)\n\nWould you like me to explain any specific system in detail?${docRecommendation}`;
-    }
-
-    if (q.includes('physiology') || q.includes('function') || q.includes('heart') || q.includes('blood pressure')) {
-      return `🫀 Cardiovascular Physiology\n\n**Heart Function:**\n- Beats ~100,000 times/day, pumping 5L blood/minute\n- Cardiac cycle: systole (contraction) + diastole (relaxation)\n- Normal BP: 120/80 mmHg\n\n**Key Concepts:**\n- Cardiac output = HR × Stroke volume\n- Sinoatrial (SA) node: natural pacemaker\n- Baroreceptors regulate BP via sympathetic/parasympathetic systems\n\nNeed more details on any topic?${docRecommendation}`;
-    }
-
-    if (q.includes('pharmacology') || q.includes('drug') || q.includes('medication') || q.includes('antibiotic')) {
-      return `💊 Pharmacology Basics\n\n**Drug Classifications:**\n- Analgesics: Pain relief (Paracetamol, Ibuprofen)\n- Antibiotics: Infection treatment (Amoxicillin, Ciprofloxacin)\n- Antihypertensives: Blood pressure control (Amlodipine, Enalapril)\n- Antidiabetics: Blood sugar control (Metformin, Insulin)\n\n**Important Principles:**\n- Dose-response relationship\n- Half-life and dosing intervals\n- Drug interactions\n\nWant information on a specific drug or condition?${docRecommendation}`;
-    }
-
-    if (q.includes('nursing') || q.includes('patient care') || q.includes('vital signs') || q.includes('injection')) {
-      return `🏥 Nursing Fundamentals\n\n**Vital Signs Normal Ranges:**\n- Temperature: 36.1-37.2°C\n- Pulse: 60-100 bpm\n- BP: 120/80 mmHg\n- Respiratory Rate: 12-20/min\n- SpO2: 95-100%\n\n**Core Skills:**\n- Patient assessment\n- Medication administration (oral, IM, IV)\n- Wound care & dressing\n- Catheterization\n- IV cannulation\n\nWhat nursing topic would you like to explore?${docRecommendation}`;
-    }
-
-    if (q.includes('exam') || q.includes('past paper') || q.includes('revision') || q.includes('study tips')) {
-      return `📝 Exam Preparation Tips\n\n**For Ugandan Medical Exams:**\n\n1. **Past Papers:** Get old question papers from your institution\n2. **Time Management:** Practice answering within time limits\n3. **Marking Schemes:** Understand how answers are graded\n4. **High-Yield Topics:** Focus on common conditions\n5. **Group Study:** Discuss with classmates\n\n**Common Topics:**\n- Anatomy basics\n- Physiology processes\n- Pharmacology fundamentals\n- Patient assessment\n- Infection control\n\nWould you like me to help with a specific topic?${docRecommendation}`;
-    }
-
-    if (q.includes('summarize') || q.includes('summary')) {
-      return `I can help summarize documents. Please tell me which document you'd like me to summarize, or share the content you want summarized. I'll provide a concise overview highlighting the key points and main concepts for a medical student.`;
-    }
-
-    if (q.includes('page') || q.includes('where') || q.includes('find') || q.includes('locate')) {
-      return `To find resources in our platform, follow these steps:\n\n1. Go to **Courses** from the main menu\n2. Select your **Course** (e.g., Bachelor of Clinical Medicine)\n3. Choose the **Semester**\n4. Select the **Unit/Course Unit**\n5. Browse the **Documents** list\n\nUse the search bar at the top to quickly find specific topics. Premium documents require a subscription.\n\nWhich resource are you looking for? I can help guide you there.${docRecommendation}`;
-    }
-
-    if (q.includes('hello') || q.includes('hi') || q.includes('hey') || q.includes('good morning')) {
-      return "Hello! I'm MediDocs AI, your medical study assistant. How can I help you today? I can help you find documents, summarize content, or answer medical questions.";
-    }
-
-    return `That's a great question about medical studies!${docRecommendation}\n\nI can help you with:\n- 📖 Anatomy - Body structures and systems\n- 🔬 Physiology - How body systems work\n- 💊 Pharmacology - Drug classifications and uses\n- 🏥 Clinical Skills - Patient care techniques\n- 📝 Exam Prep - Study tips and past papers\n\nPlease try rephrasing your question or ask about one of these topics!`;
   };
 
   if (!show) return null;
@@ -343,12 +410,12 @@ const AIStudyAssistant = ({ show, onClose, user, userProfile }) => {
         </div>
         
         <div className="p-4 bg-white border-t border-gray-100 shrink-0">
-          {!openAIApiKey && (
-            <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700 flex items-center">
+          {apiMissing && (
+            <div className="mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 flex items-center">
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
               </svg>
-              Using built-in medical knowledge. Add Groq key for advanced AI.
+              AI service is not configured. Add a valid Groq API key to enable real responses.
             </div>
           )}
           <div className="flex space-x-2">

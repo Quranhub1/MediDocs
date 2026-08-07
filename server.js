@@ -8,10 +8,12 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'build')));
 
-// Paystack secret key
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
+const GROQ_API_KEY = process.env.REACT_APP_OPENAI_API_KEY || process.env.GROQ_API_KEY;
 
-// Verify Paystack transaction
+const aiMemoryCache = new Map();
+const AI_CACHE_MAX_ENTRIES = 10000;
+
 app.post('/api/paystack/verify', async (req, res) => {
   try {
     const { reference } = req.body;
@@ -39,33 +41,39 @@ app.post('/api/paystack/verify', async (req, res) => {
   }
 });
 
-// Paystack webhook
 app.post('/api/paystack/webhook', (req, res) => {
   const signature = req.headers['x-paystack-signature'];
   const payload = req.body;
-  
-  // In production, verify the webhook signature using PAYSTACK_SECRET_KEY
   console.log('Paystack webhook received:', payload);
-  
   if (payload.event === 'charge.success') {
-    const paymentData = payload.data;
-    // Here you would update Firestore or your database
-    console.log('Payment successful:', paymentData);
+    console.log('Payment successful:', payload.data);
   }
-  
   res.status(200).send('OK');
 });
 
-// AI Proxy endpoint to hide API key
 app.post('/api/ai/chat', async (req, res) => {
   try {
-    const { messages, apiKey } = req.body;
+    const { messages } = req.body;
     
+    if (!messages || !Array.isArray(messages)) {
+      return res.status(400).json({ success: false, error: 'Messages array is required' });
+    }
+
+    const cacheKey = messages.map(m => `${m.role}:${m.content}`).join('|');
+    if (aiMemoryCache.has(cacheKey)) {
+      const cached = aiMemoryCache.get(cacheKey);
+      return res.json({ success: true, response: cached, cached: true });
+    }
+
+    if (!GROQ_API_KEY) {
+      return res.status(500).json({ success: false, error: 'AI service is not configured on the server.' });
+    }
+
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        'Authorization': `Bearer ${GROQ_API_KEY}`
       },
       body: JSON.stringify({
         model: 'llama-3.1-70b-versatile',
@@ -78,9 +86,16 @@ app.post('/api/ai/chat', async (req, res) => {
     const data = await response.json();
     
     if (data.choices && data.choices.length > 0) {
-      res.json({ success: true, response: data.choices[0].message.content });
+      const reply = data.choices[0].message.content;
+      if (aiMemoryCache.size > AI_CACHE_MAX_ENTRIES) {
+        const oldestKey = aiMemoryCache.keys().next().value;
+        aiMemoryCache.delete(oldestKey);
+      }
+      aiMemoryCache.set(cacheKey, reply);
+      res.json({ success: true, response: reply });
     } else {
-      res.status(500).json({ success: false, error: data.error?.message || 'AI request failed' });
+      const errorMsg = data.error?.message || 'AI request failed';
+      res.status(500).json({ success: false, error: errorMsg });
     }
   } catch (error) {
     console.error('AI proxy error:', error);
