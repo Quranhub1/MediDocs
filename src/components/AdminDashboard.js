@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  fetchAllDocuments, 
-  getAllUsers, 
-  getAllPayments, 
+import {
+  fetchAllDocuments,
+  getAllUsers,
+  getAllPayments,
   approveUserSubscription,
   uploadThumbnail,
   SUBSCRIPTION_PLANS
 } from '../services/FirestoreService';
-import { 
-  collection, 
-  getDocs, 
-  doc as docRef, 
-  updateDoc, 
+import {
+  collection,
+  getDocs,
+  doc as docRef,
+  updateDoc,
   deleteDoc,
   addDoc,
   serverTimestamp
@@ -21,7 +21,7 @@ import { useAuth } from '../context/AuthContext';
 
 const AdminDashboard = ({ user, onViewChange }) => {
   const { createUser, banUser } = useAuth();
-  const [activeTab, setActiveTab] = useState('documents');
+  const [activeTab, setActiveTab] = useState('overview');
   const [documents, setDocuments] = useState([]);
   const [users, setUsers] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -33,11 +33,14 @@ const AdminDashboard = ({ user, onViewChange }) => {
     totalUsers: 0,
     totalPayments: 0,
     latestDocuments: 0,
-    premiumDocuments: 0
+    premiumDocuments: 0,
+    totalCourses: 0,
+    totalSemesters: 0,
+    totalUnits: 0
   });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   const [newDoc, setNewDoc] = useState({
     title: '',
     filePath: '',
@@ -54,9 +57,21 @@ const AdminDashboard = ({ user, onViewChange }) => {
   const [thumbnailPreview, setThumbnailPreview] = useState('');
   const fileInputRef = useRef(null);
 
+  const [showCourseForm, setShowCourseForm] = useState(false);
+  const [newCourseName, setNewCourseName] = useState('');
+  const [addingCourse, setAddingCourse] = useState(false);
+
+  const [showSemesterForm, setShowSemesterForm] = useState(false);
+  const [newSemesterName, setNewSemesterName] = useState('');
+  const [addingSemester, setAddingSemester] = useState(false);
+
+  const [showUnitForm, setShowUnitForm] = useState(false);
+  const [newUnitName, setNewUnitName] = useState('');
+  const [addingUnit, setAddingUnit] = useState(false);
+
   const ADMIN_EMAIL = 'kaigwaakram123@gmail.com';
   const ADMIN_PHONE = '256749846848';
-  const isAdmin = user?.phone === ADMIN_PHONE || 
+  const isAdmin = user?.phone === ADMIN_PHONE ||
     (user?.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
 
   const loadData = useCallback(async () => {
@@ -68,22 +83,25 @@ const AdminDashboard = ({ user, onViewChange }) => {
         loadPayments()
       ]);
       await loadCourses();
-      
+
       const latestDocs = (docsResult || []).filter(d => d.time === 'latest').length;
       const premiumDocs = (docsResult || []).filter(d => d.status === 'premium').length;
-      
+
       setStats({
         totalDocuments: (docsResult || []).length,
         totalUsers: (usersResult || []).length,
         totalPayments: (paymentsResult || []).length,
         latestDocuments: latestDocs,
-        premiumDocuments: premiumDocs
+        premiumDocuments: premiumDocs,
+        totalCourses: courses.length,
+        totalSemesters: semesters.length,
+        totalUnits: units.length
       });
     } catch (error) {
       console.error('Error loading admin data:', error);
     }
     setLoading(false);
-  }, []);
+  }, [courses.length, semesters.length, units.length]);
 
   useEffect(() => {
     if (isAdmin) {
@@ -189,6 +207,69 @@ const AdminDashboard = ({ user, onViewChange }) => {
     }
   };
 
+  const handleAddCourse = async (e) => {
+    e.preventDefault();
+    if (!newCourseName.trim()) return;
+    setAddingCourse(true);
+    try {
+      await addDoc(collection(db, 'RESOURCES_STUDYPEDIA'), {
+        name: newCourseName.trim(),
+        createdAt: serverTimestamp()
+      });
+      setNewCourseName('');
+      setShowCourseForm(false);
+      loadCourses();
+      loadData();
+    } catch (error) {
+      console.error('Error adding course:', error);
+      alert('Failed to add course: ' + error.message);
+    } finally {
+      setAddingCourse(false);
+    }
+  };
+
+  const handleAddSemester = async (e) => {
+    e.preventDefault();
+    if (!newSemesterName.trim() || !newDoc.courseId) return;
+    setAddingSemester(true);
+    try {
+      await addDoc(collection(db, `RESOURCES_STUDYPEDIA/${newDoc.courseId}/semesters`), {
+        name: newSemesterName.trim(),
+        createdAt: serverTimestamp()
+      });
+      setNewSemesterName('');
+      setShowSemesterForm(false);
+      loadSemesters(newDoc.courseId);
+      loadData();
+    } catch (error) {
+      console.error('Error adding semester:', error);
+      alert('Failed to add semester: ' + error.message);
+    } finally {
+      setAddingSemester(false);
+    }
+  };
+
+  const handleAddUnit = async (e) => {
+    e.preventDefault();
+    if (!newUnitName.trim() || !newDoc.courseId || !newDoc.semesterId) return;
+    setAddingUnit(true);
+    try {
+      await addDoc(collection(db, `RESOURCES_STUDYPEDIA/${newDoc.courseId}/semesters/${newDoc.semesterId}/courseunits`), {
+        name: newUnitName.trim(),
+        createdAt: serverTimestamp()
+      });
+      setNewUnitName('');
+      setShowUnitForm(false);
+      loadUnits(newDoc.courseId, newDoc.semesterId);
+      loadData();
+    } catch (error) {
+      console.error('Error adding unit:', error);
+      alert('Failed to add unit: ' + error.message);
+    } finally {
+      setAddingUnit(false);
+    }
+  };
+
   const handleThumbnailChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -203,25 +284,25 @@ const AdminDashboard = ({ user, onViewChange }) => {
 
   const addDocument = async (e) => {
     e.preventDefault();
-    
+
     if (!newDoc.courseId || !newDoc.semesterId || !newDoc.unitId) {
       alert('Please select Course, Semester, and Unit');
       return;
     }
-    
+
     setAddingDoc(true);
     try {
       let thumbnailUrl = newDoc.thumbnailUrl;
-      
+
       if (newDoc.thumbnailFile) {
         const uploadResult = await uploadThumbnail(newDoc.thumbnailFile);
         if (uploadResult.success) {
           thumbnailUrl = uploadResult.url;
         }
       }
-      
+
       const docRef = collection(db, `RESOURCES_STUDYPEDIA/${newDoc.courseId}/semesters/${newDoc.semesterId}/courseunits/${newDoc.unitId}/documents`);
-      
+
       await addDoc(docRef, {
         title: newDoc.title,
         filePath: newDoc.filePath,
@@ -231,7 +312,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
         status: newDoc.status,
         createdAt: serverTimestamp()
       });
-      
+
       alert('Document added successfully!');
       setNewDoc({
         title: '',
@@ -282,7 +363,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
 
   const deleteDocument = async (document) => {
     if (!window.confirm('Are you sure you want to delete this document?')) return;
-    
+
     try {
       const docRefDelete = docRef(db, document.fullPath);
       await deleteDoc(docRefDelete);
@@ -299,7 +380,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
     try {
       const expiryDate = new Date();
       expiryDate.setDate(expiryDate.getDate() + (SUBSCRIPTION_PLANS[plan]?.duration || 30));
-      
+
       const result = await approveUserSubscription(userId, plan, expiryDate);
       if (result.success) {
         alert('Subscription approved successfully!');
@@ -320,12 +401,12 @@ const AdminDashboard = ({ user, onViewChange }) => {
     const password = form.regPassword.value;
     const name = form.regName.value;
     const phone = form.regPhone.value;
-    
+
     if (!email || !password || !name) {
       alert('Please fill in all required fields');
       return;
     }
-    
+
     try {
       const result = await createUser(email, password, name, phone);
       if (result.success) {
@@ -356,19 +437,19 @@ const AdminDashboard = ({ user, onViewChange }) => {
     }
   };
 
-  const filteredDocuments = documents.filter(doc => 
+  const filteredDocuments = documents.filter(doc =>
     doc.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     doc.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     doc.courseId?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredUsers = users.filter(u => 
+  const filteredUsers = users.filter(u =>
     u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.phone?.includes(searchTerm)
   );
 
-  const filteredPayments = payments.filter(p => 
+  const filteredPayments = payments.filter(p =>
     p.reference?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.phoneNumber?.includes(searchTerm) ||
     p.email?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -377,15 +458,19 @@ const AdminDashboard = ({ user, onViewChange }) => {
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-6xl mb-4">🔒</div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Access Denied</h2>
-          <p className="text-gray-600">You don't have permission to access this page.</p>
-          <button 
+        <div className="text-center max-w-md mx-auto px-6">
+          <div className="w-20 h-20 mx-auto bg-red-100 rounded-full flex items-center justify-center mb-6">
+            <svg className="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+            </svg>
+          </div>
+          <h2 className="text-3xl font-bold text-gray-900 mb-3">Access Denied</h2>
+          <p className="text-gray-600 mb-8 leading-relaxed">You don't have permission to access this page. Please contact your system administrator if you believe this is an error.</p>
+          <button
             onClick={() => onViewChange('home')}
-            className="mt-4 px-6 py-2 bg-emerald-500 text-white rounded-lg"
+            className="px-8 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors shadow-lg hover:shadow-xl"
           >
-            Go Home
+            Return to Home
           </button>
         </div>
       </div>
@@ -396,401 +481,793 @@ const AdminDashboard = ({ user, onViewChange }) => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading admin data...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-emerald-500 border-t-transparent mx-auto mb-6"></div>
+          <p className="text-gray-600 text-lg">Loading admin data...</p>
+          <p className="text-gray-400 text-sm mt-2">Please wait while we fetch the latest information</p>
         </div>
       </div>
     );
   }
 
+  const StatCard = ({ icon, label, value, color }) => (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-500 mb-1">{label}</p>
+          <p className="text-3xl font-bold text-gray-900">{value}</p>
+        </div>
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${color}`}>
+          {icon}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white py-6 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between">
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-              <p className="text-emerald-100 mt-1">Manage your MediDocs platform</p>
+              <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+              <p className="text-gray-500 mt-1">Manage your MediDocs platform and monitor activity</p>
             </div>
             <button
               onClick={loadData}
-              className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg flex items-center gap-2"
+              disabled={loading}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-sm"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
               </svg>
-              Refresh
+              Refresh Data
             </button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-gray-800">Dashboard Overview</h2>
-          <button
-            onClick={loadData}
-            disabled={loading}
-            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-2"
-          >
-            {loading ? (
-              <>
-                <span className="animate-spin">⟳</span> Loading...
-              </>
-            ) : (
-              <>⟳ Refresh</>
-            )}
-          </button>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <div className="text-3xl font-bold text-emerald-600">{stats.totalDocuments}</div>
-            <div className="text-gray-500 text-sm">Total Documents</div>
-          </div>
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <div className="text-3xl font-bold text-teal-600">{stats.latestDocuments}</div>
-            <div className="text-gray-500 text-sm">Latest Documents</div>
-          </div>
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <div className="text-3xl font-bold text-amber-600">{stats.premiumDocuments}</div>
-            <div className="text-gray-500 text-sm">Premium Documents</div>
-          </div>
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <div className="text-3xl font-bold text-blue-600">{stats.totalUsers}</div>
-            <div className="text-gray-500 text-sm">Total Users</div>
-          </div>
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <div className="text-3xl font-bold text-purple-600">{stats.totalPayments}</div>
-            <div className="text-gray-500 text-sm">Total Payments</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="flex border-b border-gray-200 mb-6 overflow-x-auto">
-          <button onClick={() => setActiveTab('documents')} className={`px-6 py-3 font-medium whitespace-nowrap ${activeTab === 'documents' ? 'border-b-2 border-emerald-500 text-emerald-600' : 'text-gray-500 hover:text-gray-700'}`}>
-            📄 Documents
-          </button>
-          <button onClick={() => setActiveTab('add')} className={`px-6 py-3 font-medium whitespace-nowrap ${activeTab === 'add' ? 'border-b-2 border-emerald-500 text-emerald-600' : 'text-gray-500 hover:text-gray-700'}`}>
-            ➕ Add Document
-          </button>
-          <button onClick={() => setActiveTab('users')} className={`px-6 py-3 font-medium whitespace-nowrap ${activeTab === 'users' ? 'border-b-2 border-emerald-500 text-emerald-600' : 'text-gray-500 hover:text-gray-700'}`}>
-            👥 Users
-          </button>
-          <button onClick={() => setActiveTab('payments')} className={`px-6 py-3 font-medium whitespace-nowrap ${activeTab === 'payments' ? 'border-b-2 border-emerald-500 text-emerald-600' : 'text-gray-500 hover:text-gray-700'}`}>
-            💳 Payments
-          </button>
-          <button onClick={() => setActiveTab('register')} className={`px-6 py-3 font-medium whitespace-nowrap ${activeTab === 'register' ? 'border-b-2 border-emerald-500 text-emerald-600' : 'text-gray-500 hover:text-gray-700'}`}>
-            📝 Register User
-          </button>
-        </div>
-
-        {activeTab !== 'add' && activeTab !== 'register' && (
-          <div className="mb-6">
-            <input
-              type="text"
-              placeholder={`Search ${activeTab}...`}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold text-gray-800 mb-6">Platform Overview</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <StatCard
+              icon={
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+              }
+              label="Total Documents"
+              value={stats.totalDocuments}
+              color="bg-emerald-500"
+            />
+            <StatCard
+              icon={
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                </svg>
+              }
+              label="Total Users"
+              value={stats.totalUsers}
+              color="bg-blue-500"
+            />
+            <StatCard
+              icon={
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                </svg>
+              }
+              label="Total Payments"
+              value={stats.totalPayments}
+              color="bg-purple-500"
+            />
+            <StatCard
+              icon={
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                </svg>
+              }
+              label="Premium Documents"
+              value={stats.premiumDocuments}
+              color="bg-amber-500"
             />
           </div>
-        )}
+        </div>
 
-        {activeTab === 'documents' && (
-          <div className="bg-white rounded-xl shadow-md overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Thumbnail</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Course</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {filteredDocuments.map((doc) => (
-                    <tr key={doc.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        {doc.thumbnailUrl ? (
-                          <img src={doc.thumbnailUrl} alt={doc.title} className="w-16 h-12 object-cover rounded-lg" />
-                        ) : (
-                          <div className="w-16 h-12 bg-gray-200 rounded-lg flex items-center justify-center text-2xl">
-                            {doc.filePath?.endsWith('pdf') ? '📕' : doc.filePath?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? '🖼️' : '📄'}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="font-medium text-gray-900">{doc.title || doc.id}</div>
-                        <div className="text-sm text-gray-500">{doc.description?.substring(0, 50)}...</div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {doc.courseId?.toUpperCase()}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-1 text-xs rounded-full ${doc.status === 'premium' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-800'}`}>
-                          {doc.status || 'free'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-1 text-xs rounded-full ${doc.time === 'latest' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-800'}`}>
-                          {doc.time || 'normal'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex gap-2">
-                          {doc.time !== 'latest' ? (
-                            <button onClick={() => markAsLatest(doc)} className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded text-sm hover:bg-emerald-200">Mark Latest</button>
-                          ) : (
-                            <button onClick={() => removeLatest(doc)} className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200">Remove Latest</button>
-                          )}
-                          <button onClick={() => deleteDocument(doc)} className="px-3 py-1 bg-red-100 text-red-700 rounded text-sm hover:bg-red-200">Delete</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 mb-8">
+          <div className="border-b border-gray-200">
+            <nav className="flex -mb-px overflow-x-auto" aria-label="Tabs">
+              {[
+                { id: 'overview', label: 'Overview', icon: '📊' },
+                { id: 'documents', label: 'Documents', icon: '📄' },
+                { id: 'add', label: 'Add Content', icon: '➕' },
+                { id: 'users', label: 'Users', icon: '👥' },
+                { id: 'payments', label: 'Payments', icon: '💳' },
+                { id: 'register', label: 'Register', icon: '📝' }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`group inline-flex items-center gap-2 px-6 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                    activeTab === tab.id
+                      ? 'border-emerald-500 text-emerald-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <span>{tab.icon}</span>
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+          </div>
+
+          {activeTab !== 'add' && activeTab !== 'register' && (
+            <div className="p-6 border-b border-gray-200 bg-gray-50">
+              <div className="max-w-md">
+                <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                  </div>
+                  <input
+                    id="search"
+                    type="text"
+                    placeholder={`Search ${activeTab}...`}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="block w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
             </div>
-            {filteredDocuments.length === 0 && (
-              <div className="text-center py-12 text-gray-500">No documents found</div>
+          )}
+
+          <div className="p-6">
+            {activeTab === 'overview' && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-6 border border-emerald-100">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Content Structure</h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-gray-100">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                            <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">Courses</p>
+                            <p className="text-sm text-gray-500">Main categories</p>
+                          </div>
+                        </div>
+                        <span className="text-2xl font-bold text-gray-900">{stats.totalCourses}</span>
+                      </div>
+                      <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-gray-100">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">Semesters</p>
+                            <p className="text-sm text-gray-500">Academic periods</p>
+                          </div>
+                        </div>
+                        <span className="text-2xl font-bold text-gray-900">{stats.totalSemesters}</span>
+                      </div>
+                      <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-gray-100">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">Course Units</p>
+                            <p className="text-sm text-gray-500">Subject modules</p>
+                          </div>
+                        </div>
+                        <span className="text-2xl font-bold text-gray-900">{stats.totalUnits}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+                    <div className="space-y-3">
+                      <button
+                        onClick={() => setActiveTab('add')}
+                        className="w-full flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 hover:border-emerald-300 hover:shadow-sm transition-all text-left"
+                      >
+                        <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                          <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">Add New Content</p>
+                          <p className="text-sm text-gray-500">Upload documents or create courses</p>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('users')}
+                        className="w-full flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 hover:border-emerald-300 hover:shadow-sm transition-all text-left"
+                      >
+                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                          <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">Manage Users</p>
+                          <p className="text-sm text-gray-500">View and manage user accounts</p>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('payments')}
+                        className="w-full flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 hover:border-emerald-300 hover:shadow-sm transition-all text-left"
+                      >
+                        <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                          <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">Review Payments</p>
+                          <p className="text-sm text-gray-500">Approve subscription payments</p>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl p-6 text-white">
+                  <h3 className="text-lg font-semibold mb-2">Platform Health</h3>
+                  <p className="text-emerald-100 mb-4">Your platform is running smoothly with {stats.totalDocuments} documents across {stats.totalCourses} courses.</p>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                    <span className="text-sm text-emerald-100">All systems operational</span>
+                  </div>
+                </div>
+              </div>
             )}
-          </div>
-        )}
 
-        {activeTab === 'add' && (
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <h2 className="text-2xl font-bold mb-6 text-gray-800">Add New Document</h2>
-            <form onSubmit={addDocument} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Course</label>
-                    <select value={newDoc.courseId} onChange={(e) => { setNewDoc({ ...newDoc, courseId: e.target.value, semesterId: '', unitId: '' }); loadSemesters(e.target.value); }} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" required>
-                      <option value="">Select Course</option>
-                      {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                  </div>
-                  <button type="button" onClick={async () => { const name = prompt('Enter new course name:'); if (!name) return; const id = name.toLowerCase().replace(/\s+/g, '_'); await addDoc(collection(db, 'RESOURCES_STUDYPEDIA'), { name, createdAt: serverTimestamp() }); alert('Course created!'); loadCourses(); setNewDoc({ ...newDoc, courseId: id }); }} className="mt-7 px-3 py-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200">+</button>
+            {activeTab === 'documents' && (
+              <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thumbnail</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {filteredDocuments.map((doc) => (
+                        <tr key={doc.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4">
+                            {doc.thumbnailUrl ? (
+                              <img src={doc.thumbnailUrl} alt={doc.title} className="w-16 h-12 object-cover rounded-lg shadow-sm" />
+                            ) : (
+                              <div className="w-16 h-12 bg-gray-200 rounded-lg flex items-center justify-center text-2xl">
+                                {doc.filePath?.endsWith('pdf') ? '📕' : doc.filePath?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? '🖼️' : '📄'}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="font-medium text-gray-900">{doc.title || doc.id}</div>
+                            <div className="text-sm text-gray-500 line-clamp-1">{doc.description?.substring(0, 50)}...</div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600">
+                            {doc.courseId?.toUpperCase()}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${doc.status === 'premium' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-800'}`}>
+                              {doc.status || 'free'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${doc.time === 'latest' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-800'}`}>
+                              {doc.time || 'normal'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex gap-2">
+                              {doc.time !== 'latest' ? (
+                                <button
+                                  onClick={() => markAsLatest(doc)}
+                                  className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-medium hover:bg-emerald-200 transition-colors"
+                                >
+                                  Mark Latest
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => removeLatest(doc)}
+                                  className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                                >
+                                  Remove Latest
+                                </button>
+                              )}
+                              <button
+                                onClick={() => deleteDocument(doc)}
+                                className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Semester</label>
-                    <select value={newDoc.semesterId} onChange={(e) => { setNewDoc({ ...newDoc, semesterId: e.target.value, unitId: '' }); loadUnits(newDoc.courseId, e.target.value); }} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" required disabled={!newDoc.courseId}>
-                      <option value="">Select Semester</option>
-                      {semesters.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
-                  </div>
-                  <button type="button" onClick={async () => { if (!newDoc.courseId) { alert('Please select a course first'); return; } const name = prompt('Enter new semester name (e.g., Semester 1):'); if (!name) return; const id = name.toLowerCase().replace(/\s+/g, '_'); await addDoc(collection(db, `RESOURCES_STUDYPEDIA/${newDoc.courseId}/semesters`), { name, createdAt: serverTimestamp() }); alert('Semester created!'); loadSemesters(newDoc.courseId); setNewDoc({ ...newDoc, semesterId: id }); }} className="mt-7 px-3 py-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 disabled:bg-gray-100" disabled={!newDoc.courseId}>+</button>
-                </div>
-
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
-                    <select value={newDoc.unitId} onChange={(e) => setNewDoc({ ...newDoc, unitId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" required disabled={!newDoc.semesterId}>
-                      <option value="">Select Unit</option>
-                      {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                    </select>
-                  </div>
-                  <button type="button" onClick={async () => { if (!newDoc.courseId || !newDoc.semesterId) { alert('Please select course and semester first'); return; } const name = prompt('Enter new unit name (e.g., Anatomy):'); if (!name) return; const id = name.toLowerCase().replace(/\s+/g, '_'); await addDoc(collection(db, `RESOURCES_STUDYPEDIA/${newDoc.courseId}/semesters/${newDoc.semesterId}/courseunits`), { name, createdAt: serverTimestamp() }); alert('Unit created!'); loadUnits(newDoc.courseId, newDoc.semesterId); setNewDoc({ ...newDoc, unitId: id }); }} className="mt-7 px-3 py-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 disabled:bg-gray-100" disabled={!newDoc.semesterId}>+</button>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                  <input type="text" value={newDoc.title} onChange={(e) => setNewDoc({ ...newDoc, title: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Document title" required />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">File Path (URL)</label>
-                  <input type="text" value={newDoc.filePath} onChange={(e) => setNewDoc({ ...newDoc, filePath: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="https://..." required />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Thumbnail URL (optional if uploading)</label>
-                  <input type="text" value={newDoc.thumbnailUrl} onChange={(e) => setNewDoc({ ...newDoc, thumbnailUrl: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="https://..." />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Or Upload Thumbnail Image</label>
-                  <input type="file" accept="image/*" onChange={handleThumbnailChange} ref={fileInputRef} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                  {thumbnailPreview && (
-                    <img src={thumbnailPreview} alt="Preview" className="mt-2 w-32 h-24 object-cover rounded-lg" />
-                  )}
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                  <textarea value={newDoc.description} onChange={(e) => setNewDoc({ ...newDoc, description: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" rows="3" placeholder="Document description" />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
-                  <select value={newDoc.time} onChange={(e) => setNewDoc({ ...newDoc, time: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                    <option value="normal">Normal</option>
-                    <option value="latest">Latest</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                  <select value={newDoc.status} onChange={(e) => setNewDoc({ ...newDoc, status: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                    <option value="free">Free</option>
-                    <option value="premium">Premium</option>
-                  </select>
-                </div>
+                {filteredDocuments.length === 0 && (
+                  <div className="text-center py-12 text-gray-500">No documents found</div>
+                )}
               </div>
+            )}
 
-              <div className="flex gap-4 mt-6">
-                <button type="submit" disabled={addingDoc} className="px-6 py-3 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 disabled:bg-gray-400">
-                  {addingDoc ? 'Adding...' : 'Add Document'}
-                </button>
-                <button type="button" onClick={() => setActiveTab('documents')} className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {activeTab === 'users' && (
-          <div className="bg-white rounded-xl shadow-md overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subscription</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Plan</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {filteredUsers.map((u) => (
-                    <tr key={u.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <div className="font-medium text-gray-900">{u.name || 'No name'}</div>
-                        <div className="text-sm text-gray-500">{u.email}</div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {u.phone || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-1 text-xs rounded-full ${u.subscriptionApproved ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-800'}`}>
-                          {u.subscriptionApproved ? 'Premium' : 'Free'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
-                          {u.subscriptionPlan ? SUBSCRIPTION_PLANS[u.subscriptionPlan]?.label || u.subscriptionPlan : 'None'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-1 text-xs rounded-full ${u.banned ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                          {u.banned ? 'Banned' : 'Active'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex gap-2 flex-wrap">
-                          {!u.subscriptionApproved && (
-                            <select onChange={(e) => handleApproveSubscription(u.id, e.target.value)} className="text-xs px-2 py-1 border rounded" defaultValue="">
-                              <option value="" disabled>Approve</option>
-                              <option value="weekly">Weekly</option>
-                              <option value="monthly">Monthly</option>
-                              <option value="yearly">Yearly</option>
-                            </select>
-                          )}
-                          <button onClick={() => handleBanUser(u.id, u.banned)} className={`px-3 py-1 rounded text-sm ${u.banned ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}>
-                            {u.banned ? 'Unban' : 'Ban'}
+            {activeTab === 'add' && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Course</h3>
+                    {!showCourseForm ? (
+                      <button
+                        onClick={() => setShowCourseForm(true)}
+                        className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:border-emerald-500 hover:text-emerald-600 transition-colors"
+                      >
+                        + Create New Course
+                      </button>
+                    ) : (
+                      <form onSubmit={handleAddCourse} className="space-y-3">
+                        <input
+                          value={newCourseName}
+                          onChange={(e) => setNewCourseName(e.target.value)}
+                          placeholder="Course name"
+                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          required
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="submit"
+                            disabled={addingCourse}
+                            className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg disabled:bg-gray-400"
+                          >
+                            {addingCourse ? 'Saving...' : 'Save'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setShowCourseForm(false); setNewCourseName(''); }}
+                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                          >
+                            Cancel
                           </button>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {filteredUsers.length === 0 && (
-              <div className="text-center py-12 text-gray-500">No users found</div>
+                      </form>
+                    )}
+                  </div>
+
+                  <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Semester</h3>
+                    {!showSemesterForm ? (
+                      <button
+                        onClick={() => setShowSemesterForm(true)}
+                        disabled={!newDoc.courseId}
+                        className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:border-emerald-500 hover:text-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        + Create New Semester
+                      </button>
+                    ) : (
+                      <form onSubmit={handleAddSemester} className="space-y-3">
+                        <input
+                          value={newSemesterName}
+                          onChange={(e) => setNewSemesterName(e.target.value)}
+                          placeholder="Semester name"
+                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          required
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="submit"
+                            disabled={addingSemester}
+                            className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg disabled:bg-gray-400"
+                          >
+                            {addingSemester ? 'Saving...' : 'Save'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setShowSemesterForm(false); setNewSemesterName(''); }}
+                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </form>
+                    )}
+                    {!newDoc.courseId && (
+                      <p className="text-sm text-gray-500 mt-2">Select a course first</p>
+                    )}
+                  </div>
+
+                  <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Unit</h3>
+                    {!showUnitForm ? (
+                      <button
+                        onClick={() => setShowUnitForm(true)}
+                        disabled={!newDoc.semesterId}
+                        className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:border-emerald-500 hover:text-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        + Create New Unit
+                      </button>
+                    ) : (
+                      <form onSubmit={handleAddUnit} className="space-y-3">
+                        <input
+                          value={newUnitName}
+                          onChange={(e) => setNewUnitName(e.target.value)}
+                          placeholder="Unit name"
+                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          required
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="submit"
+                            disabled={addingUnit}
+                            className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg disabled:bg-gray-400"
+                          >
+                            {addingUnit ? 'Saving...' : 'Save'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setShowUnitForm(false); setNewUnitName(''); }}
+                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </form>
+                    )}
+                    {(!newDoc.courseId || !newDoc.semesterId) && (
+                      <p className="text-sm text-gray-500 mt-2">Select course and semester first</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-6">Add New Document</h3>
+                  <form onSubmit={addDocument} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Course</label>
+                        <select
+                          value={newDoc.courseId}
+                          onChange={(e) => {
+                            setNewDoc({ ...newDoc, courseId: e.target.value, semesterId: '', unitId: '' });
+                            loadSemesters(e.target.value);
+                          }}
+                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          required
+                        >
+                          <option value="">Select Course</option>
+                          {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Semester</label>
+                        <select
+                          value={newDoc.semesterId}
+                          onChange={(e) => {
+                            setNewDoc({ ...newDoc, semesterId: e.target.value, unitId: '' });
+                            loadUnits(newDoc.courseId, e.target.value);
+                          }}
+                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          required
+                          disabled={!newDoc.courseId}
+                        >
+                          <option value="">Select Semester</option>
+                          {semesters.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Unit</label>
+                        <select
+                          value={newDoc.unitId}
+                          onChange={(e) => setNewDoc({ ...newDoc, unitId: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          required
+                          disabled={!newDoc.semesterId}
+                        >
+                          <option value="">Select Unit</option>
+                          {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Title</label>
+                        <input
+                          type="text"
+                          value={newDoc.title}
+                          onChange={(e) => setNewDoc({ ...newDoc, title: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          placeholder="Document title"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">File Path (URL)</label>
+                        <input
+                          type="text"
+                          value={newDoc.filePath}
+                          onChange={(e) => setNewDoc({ ...newDoc, filePath: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          placeholder="https://..."
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Thumbnail URL</label>
+                        <input
+                          type="text"
+                          value={newDoc.thumbnailUrl}
+                          onChange={(e) => setNewDoc({ ...newDoc, thumbnailUrl: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          placeholder="https://..."
+                        />
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Or Upload Thumbnail</label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleThumbnailChange}
+                          ref={fileInputRef}
+                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                        {thumbnailPreview && (
+                          <img src={thumbnailPreview} alt="Preview" className="mt-2 w-32 h-24 object-cover rounded-lg shadow-sm" />
+                        )}
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                        <textarea
+                          value={newDoc.description}
+                          onChange={(e) => setNewDoc({ ...newDoc, description: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          rows="3"
+                          placeholder="Document description"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Time</label>
+                        <select
+                          value={newDoc.time}
+                          onChange={(e) => setNewDoc({ ...newDoc, time: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        >
+                          <option value="normal">Normal</option>
+                          <option value="latest">Latest</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                        <select
+                          value={newDoc.status}
+                          onChange={(e) => setNewDoc({ ...newDoc, status: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        >
+                          <option value="free">Free</option>
+                          <option value="premium">Premium</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4">
+                      <button
+                        type="submit"
+                        disabled={addingDoc}
+                        className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 disabled:bg-gray-400 transition-colors shadow-sm"
+                      >
+                        {addingDoc ? 'Adding...' : 'Add Document'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('documents')}
+                        className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-300 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'users' && (
+              <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subscription</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plan</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {filteredUsers.map((u) => (
+                        <tr key={u.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="font-medium text-gray-900">{u.name || 'No name'}</div>
+                            <div className="text-sm text-gray-500">{u.email}</div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600">
+                            {u.phone || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${u.subscriptionApproved ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-800'}`}>
+                              {u.subscriptionApproved ? 'Premium' : 'Free'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="px-2 py-1 text-xs rounded-full font-medium bg-blue-100 text-blue-800">
+                              {u.subscriptionPlan ? SUBSCRIPTION_PLANS[u.subscriptionPlan]?.label || u.subscriptionPlan : 'None'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${u.banned ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+                              {u.banned ? 'Banned' : 'Active'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex gap-2 flex-wrap">
+                              {!u.subscriptionApproved && (
+                                <select
+                                  onChange={(e) => handleApproveSubscription(u.id, e.target.value)}
+                                  className="text-xs px-2 py-1 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                  defaultValue=""
+                                >
+                                  <option value="" disabled>Approve</option>
+                                  <option value="weekly">Weekly</option>
+                                  <option value="monthly">Monthly</option>
+                                  <option value="yearly">Yearly</option>
+                                </select>
+                              )}
+                              <button
+                                onClick={() => handleBanUser(u.id, u.banned)}
+                                className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${u.banned ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
+                              >
+                                {u.banned ? 'Unban' : 'Ban'}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {filteredUsers.length === 0 && (
+                  <div className="text-center py-12 text-gray-500">No users found</div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'payments' && (
+              <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plan</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {filteredPayments.map((p) => (
+                        <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 text-sm font-medium text-gray-900">{p.reference || p.id}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600">UGX {p.amount ? Number(p.amount).toLocaleString() : 'N/A'}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600">{p.phoneNumber || 'N/A'}</td>
+                          <td className="px-6 py-4">
+                            <span className="px-2 py-1 text-xs rounded-full font-medium bg-blue-100 text-blue-800">
+                              {p.planLabel || p.plan || 'N/A'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${p.status === 'success' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
+                              {p.status || 'pending'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600">
+                            {p.createdAtDate ? new Date(p.createdAtDate).toLocaleDateString() : 'N/A'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {filteredPayments.length === 0 && (
+                  <div className="text-center py-12 text-gray-500">No payments found</div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'register' && (
+              <div className="bg-white rounded-xl shadow-md p-6 max-w-2xl">
+                <h2 className="text-2xl font-bold mb-6 text-gray-800">Register New User</h2>
+                <form onSubmit={handleRegisterUser} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
+                    <input
+                      name="regName"
+                      type="text"
+                      required
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="John Doe"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+                    <input
+                      name="regEmail"
+                      type="email"
+                      required
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="user@example.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                    <input
+                      name="regPhone"
+                      type="tel"
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="256749846848"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Password *</label>
+                    <input
+                      name="regPassword"
+                      type="password"
+                      required
+                      minLength="6"
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="Min 6 characters"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors shadow-sm"
+                  >
+                    Register User
+                  </button>
+                </form>
+              </div>
             )}
           </div>
-        )}
-
-        {activeTab === 'payments' && (
-          <div className="bg-white rounded-xl shadow-md overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reference</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Plan</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {filteredPayments.map((p) => (
-                    <tr key={p.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{p.reference || p.id}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">UGX {p.amount ? Number(p.amount).toLocaleString() : 'N/A'}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{p.phoneNumber || 'N/A'}</td>
-                      <td className="px-6 py-4">
-                        <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
-                          {p.planLabel || p.plan || 'N/A'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-1 text-xs rounded-full ${p.status === 'success' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
-                          {p.status || 'pending'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {p.createdAtDate ? new Date(p.createdAtDate).toLocaleDateString() : 'N/A'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {filteredPayments.length === 0 && (
-              <div className="text-center py-12 text-gray-500">No payments found</div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'register' && (
-          <div className="bg-white rounded-xl shadow-md p-6 max-w-2xl">
-            <h2 className="text-2xl font-bold mb-6 text-gray-800">Register New User</h2>
-            <form onSubmit={handleRegisterUser} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
-                <input name="regName" type="text" required className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="John Doe" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
-                <input name="regEmail" type="email" required className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="user@example.com" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                <input name="regPhone" type="tel" className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="256749846848" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
-                <input name="regPassword" type="password" required minLength="6" className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Min 6 characters" />
-              </div>
-              <button type="submit" className="px-6 py-3 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600">
-                Register User
-              </button>
-            </form>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );
