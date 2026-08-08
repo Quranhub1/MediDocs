@@ -2,20 +2,7 @@
   "short_name": "MediDocs",
   "name": "MediDocs - Medical Study Platform",
   "description": "Your personal medical study assistant with AI-powered learning",
-  "icons": [
-    {
-      "src": "https://res.cloudinary.com/your-cloud/image/upload/v1/medidocs-icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "https://res.cloudinary.com/your-cloud/image/upload/v1/medidocs-icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ],
+  "icons": [],
   "start_url": "/",
   "display": "standalone",
   "theme_color": "#059669",
@@ -23,29 +10,7 @@
   "orientation": "portrait-primary",
   "categories": ["education", "medical"],
   "screenshots": [],
-  "shortcuts": [
-    {
-      "name": "Browse Courses",
-      "short_name": "Courses",
-      "description": "View all available medical courses",
-      "url": "/?view=courses",
-      "icons": [{ "src": "https://res.cloudinary.com/your-cloud/image/upload/v1/course-icon.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "AI Assistant",
-      "short_name": "AI Chat",
-      "description": "Ask AI your medical questions",
-      "url": "/?view=aichat",
-      "icons": [{ "src": "https://res.cloudinary.com/your-cloud/image/upload/v1/ai-icon.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "Latest Documents",
-      "short_name": "Documents",
-      "description": "View latest study materials",
-      "url": "/?view=documents",
-      "icons": [{ "src": "https://res.cloudinary.com/your-cloud/image/upload/v1/doc-icon.png", "sizes": "192x192" }]
-    }
-  ],
+  "shortcuts": [],
   "related_applications": [],
   "prefer_related_applications": false
 }
