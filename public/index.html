@@ -385,8 +385,35 @@
       rel="stylesheet"
     />
     <title>MediDocs Uganda - Medical Study Materials | Certificate & Diploma Courses | AI Search</title>
+    <style>
+      #root {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f9fafb;
+      }
+      .loading-fallback {
+        text-align: center;
+        padding: 2rem;
+      }
+      .loading-fallback h1 {
+        font-family: Inter, sans-serif;
+        color: #059669;
+        margin-bottom: 0.5rem;
+      }
+      .loading-fallback p {
+        font-family: Inter, sans-serif;
+        color: #6b7280;
+      }
+    </style>
   </head>
   <body class="font-inter antialiased">
-    <div id="root"></div>
+    <div id="root">
+      <div class="loading-fallback">
+        <h1>MediDocs</h1>
+        <p>Loading...</p>
+      </div>
+    </div>
   </body>
 </html>
