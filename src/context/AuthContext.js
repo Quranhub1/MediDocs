@@ -26,10 +26,16 @@ export const AuthProvider = ({ children }) => {
   const [isBanned, setIsBanned] = useState(false);
 
   useEffect(() => {
+    if (!auth || !db) {
+      console.warn('Firebase not initialized - skipping auth state listener');
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       setIsBanned(false);
-      
+
       if (user) {
         try {
           const userDoc = await getDoc(doc(db, 'users', user.uid));
@@ -52,7 +58,7 @@ export const AuthProvider = ({ children }) => {
         setUserProfile(null);
         setIsBanned(false);
       }
-      
+
       setLoading(false);
     });
 
