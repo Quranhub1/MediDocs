@@ -1,7 +1,8 @@
-const CACHE_NAME = 'medidocs-v3';
+const CACHE_NAME = 'medidocs-v4';
+
 const STATIC_ASSETS = [
-  '/static/js/',
-  '/static/css/',
+  '/',
+  '/index.html',
   '/manifest.json'
 ];
 
@@ -39,11 +40,14 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
+          if (response && response.status === 200) {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME)
+              .then((cache) => cache.put(request, responseToCache));
+          }
           return response;
         })
-        .catch(() => {
-          return caches.match('/index.html');
-        })
+        .catch(() => caches.match('/index.html'))
     );
     return;
   }
@@ -79,30 +83,5 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(() => caches.match(request))
-  );
-});
-
-self.addEventListener('push', (event) => {
-  const options = {
-    body: event.data ? event.data.text() : 'New notification from MediDocs',
-    icon: '/icon-192x192.png',
-    badge: '/badge-72x72.png',
-    vibrate: [100, 50, 100],
-    data: {
-      dateOfArrival: Date.now(),
-      primaryKey: 1
-    },
-    actions: [
-      { action: 'explore', title: 'Go to MediDocs' },
-      { action: 'close', title: 'Close' }
-    ]
-  };
-  event.waitUntil(self.registration.showNotification('MediDocs', options));
-});
-
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  event.waitUntil(
-    clients.openWindow('/')
   );
 });
