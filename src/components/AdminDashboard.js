@@ -69,6 +69,32 @@ const AdminDashboard = ({ user, onViewChange }) => {
   const [newUnitName, setNewUnitName] = useState('');
   const [addingUnit, setAddingUnit] = useState(false);
 
+  const [editingCourse, setEditingCourse] = useState(null);
+  const [editCourseName, setEditCourseName] = useState('');
+  const [updatingCourse, setUpdatingCourse] = useState(false);
+
+  const [editingSemester, setEditingSemester] = useState(null);
+  const [editSemesterName, setEditSemesterName] = useState('');
+  const [updatingSemester, setUpdatingSemester] = useState(false);
+
+  const [editingUnit, setEditingUnit] = useState(null);
+  const [editUnitName, setEditUnitName] = useState('');
+  const [updatingUnit, setUpdatingUnit] = useState(false);
+
+  const [editingDocument, setEditingDocument] = useState(null);
+  const [editDocForm, setEditDocForm] = useState({
+    title: '',
+    filePath: '',
+    thumbnailUrl: '',
+    description: '',
+    time: 'normal',
+    status: 'free',
+    courseId: '',
+    semesterId: '',
+    unitId: ''
+  });
+  const [updatingDocument, setUpdatingDocument] = useState(false);
+
   const ADMIN_EMAIL = 'kaigwaakram123@gmail.com';
   const ADMIN_PHONE = '256749846848';
   const isAdmin = user?.phone === ADMIN_PHONE ||
@@ -267,6 +293,148 @@ const AdminDashboard = ({ user, onViewChange }) => {
       alert('Failed to add unit: ' + error.message);
     } finally {
       setAddingUnit(false);
+    }
+  };
+
+  const handleUpdateCourse = async (e) => {
+    e.preventDefault();
+    if (!editingCourse || !editCourseName.trim()) return;
+    setUpdatingCourse(true);
+    try {
+      await updateDoc(docRef(db, `RESOURCES_STUDYPEDIA/${editingCourse.id}`), {
+        name: editCourseName.trim()
+      });
+      setEditingCourse(null);
+      setEditCourseName('');
+      loadCourses();
+      loadData();
+      alert('Course updated successfully!');
+    } catch (error) {
+      console.error('Error updating course:', error);
+      alert('Failed to update course: ' + error.message);
+    } finally {
+      setUpdatingCourse(false);
+    }
+  };
+
+  const handleDeleteCourse = async (courseId) => {
+    if (!window.confirm('Are you sure you want to delete this course? This will also delete all semesters, units, and documents under it.')) return;
+    try {
+      await deleteDoc(docRef(db, `RESOURCES_STUDYPEDIA/${courseId}`));
+      alert('Course deleted successfully!');
+      loadCourses();
+      setSemesters([]);
+      setUnits([]);
+      loadData();
+    } catch (error) {
+      console.error('Error deleting course:', error);
+      alert('Failed to delete course: ' + error.message);
+    }
+  };
+
+  const handleUpdateSemester = async (e) => {
+    e.preventDefault();
+    if (!editingSemester || !editSemesterName.trim() || !newDoc.courseId) return;
+    setUpdatingSemester(true);
+    try {
+      await updateDoc(docRef(db, `RESOURCES_STUDYPEDIA/${newDoc.courseId}/semesters/${editingSemester.id}`), {
+        name: editSemesterName.trim()
+      });
+      setEditingSemester(null);
+      setEditSemesterName('');
+      loadSemesters(newDoc.courseId);
+      loadData();
+      alert('Semester updated successfully!');
+    } catch (error) {
+      console.error('Error updating semester:', error);
+      alert('Failed to update semester: ' + error.message);
+    } finally {
+      setUpdatingSemester(false);
+    }
+  };
+
+  const handleDeleteSemester = async (courseId, semesterId) => {
+    if (!window.confirm('Are you sure you want to delete this semester? This will also delete all units and documents under it.')) return;
+    try {
+      await deleteDoc(docRef(db, `RESOURCES_STUDYPEDIA/${courseId}/semesters/${semesterId}`));
+      alert('Semester deleted successfully!');
+      loadSemesters(courseId);
+      setUnits([]);
+      loadData();
+    } catch (error) {
+      console.error('Error deleting semester:', error);
+      alert('Failed to delete semester: ' + error.message);
+    }
+  };
+
+  const handleUpdateUnit = async (e) => {
+    e.preventDefault();
+    if (!editingUnit || !editUnitName.trim() || !newDoc.courseId || !newDoc.semesterId) return;
+    setUpdatingUnit(true);
+    try {
+      await updateDoc(docRef(db, `RESOURCES_STUDYPEDIA/${newDoc.courseId}/semesters/${newDoc.semesterId}/courseunits/${editingUnit.id}`), {
+        name: editUnitName.trim()
+      });
+      setEditingUnit(null);
+      setEditUnitName('');
+      loadUnits(newDoc.courseId, newDoc.semesterId);
+      loadData();
+      alert('Unit updated successfully!');
+    } catch (error) {
+      console.error('Error updating unit:', error);
+      alert('Failed to update unit: ' + error.message);
+    } finally {
+      setUpdatingUnit(false);
+    }
+  };
+
+  const handleDeleteUnit = async (courseId, semesterId, unitId) => {
+    if (!window.confirm('Are you sure you want to delete this unit? This will also delete all documents under it.')) return;
+    try {
+      await deleteDoc(docRef(db, `RESOURCES_STUDYPEDIA/${courseId}/semesters/${semesterId}/courseunits/${unitId}`));
+      alert('Unit deleted successfully!');
+      loadUnits(courseId, semesterId);
+      loadData();
+    } catch (error) {
+      console.error('Error deleting unit:', error);
+      alert('Failed to delete unit: ' + error.message);
+    }
+  };
+
+  const handleUpdateDocument = async (e) => {
+    e.preventDefault();
+    if (!editingDocument) return;
+    setUpdatingDocument(true);
+    try {
+      const docPath = editingDocument.fullPath || `RESOURCES_STUDYPEDIA/${editDocForm.courseId}/semesters/${editDocForm.semesterId}/courseunits/${editDocForm.unitId}/documents/${editingDocument.id}`;
+      await updateDoc(docRef(db, docPath), {
+        title: editDocForm.title,
+        filePath: editDocForm.filePath,
+        thumbnailUrl: editDocForm.thumbnailUrl || '',
+        description: editDocForm.description || '',
+        time: editDocForm.time,
+        status: editDocForm.status
+      });
+      setEditingDocument(null);
+      setEditDocForm({
+        title: '',
+        filePath: '',
+        thumbnailUrl: '',
+        description: '',
+        time: 'normal',
+        status: 'free',
+        courseId: '',
+        semesterId: '',
+        unitId: ''
+      });
+      loadDocuments();
+      loadData();
+      alert('Document updated successfully!');
+    } catch (error) {
+      console.error('Error updating document:', error);
+      alert('Failed to update document: ' + error.message);
+    } finally {
+      setUpdatingDocument(false);
     }
   };
 
@@ -816,283 +984,240 @@ const AdminDashboard = ({ user, onViewChange }) => {
 
             {activeTab === 'add' && (
               <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Course</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Courses</h3>
+                    <div className="space-y-2 mb-4 max-h-60 overflow-y-auto">
+                      {courses.map((course) => (
+                        <div key={course.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          {editingCourse?.id === course.id ? (
+                            <form onSubmit={handleUpdateCourse} className="flex gap-2 w-full">
+                              <input
+                                value={editCourseName}
+                                onChange={(e) => setEditCourseName(e.target.value)}
+                                className="flex-1 px-2 py-1 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                required
+                              />
+                              <button type="submit" disabled={updatingCourse} className="px-2 py-1 bg-emerald-600 text-white rounded-lg text-sm disabled:bg-gray-400">
+                                {updatingCourse ? '...' : 'Save'}
+                              </button>
+                              <button type="button" onClick={() => { setEditingCourse(null); setEditCourseName(''); }} className="px-2 py-1 bg-gray-200 text-gray-700 rounded-lg text-sm">Cancel</button>
+                            </form>
+                          ) : (
+                            <>
+                              <span className="text-sm font-medium text-gray-700 flex-1">{course.name}</span>
+                              <div className="flex gap-1">
+                                <button onClick={() => { setEditingCourse(course); setEditCourseName(course.name); }} className="px-2 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs hover:bg-blue-200">Edit</button>
+                                <button onClick={() => handleDeleteCourse(course.id)} className="px-2 py-1 bg-red-100 text-red-700 rounded-lg text-xs hover:bg-red-200">Delete</button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                      {courses.length === 0 && <p className="text-sm text-gray-500 text-center py-4">No courses yet</p>}
+                    </div>
                     {!showCourseForm ? (
-                      <button
-                        onClick={() => setShowCourseForm(true)}
-                        className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:border-emerald-500 hover:text-emerald-600 transition-colors"
-                      >
-                        + Create New Course
+                      <button onClick={() => setShowCourseForm(true)} className="w-full py-2 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:border-emerald-500 hover:text-emerald-600 transition-colors text-sm">
+                        + Add Course
                       </button>
                     ) : (
-                      <form onSubmit={handleAddCourse} className="space-y-3">
-                        <input
-                          value={newCourseName}
-                          onChange={(e) => setNewCourseName(e.target.value)}
-                          placeholder="Course name"
-                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                          required
-                        />
+                      <form onSubmit={handleAddCourse} className="space-y-2">
+                        <input value={newCourseName} onChange={(e) => setNewCourseName(e.target.value)} placeholder="Course name" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" required />
                         <div className="flex gap-2">
-                          <button
-                            type="submit"
-                            disabled={addingCourse}
-                            className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg disabled:bg-gray-400"
-                          >
-                            {addingCourse ? 'Saving...' : 'Save'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setShowCourseForm(false); setNewCourseName(''); }}
-                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-                          >
-                            Cancel
-                          </button>
+                          <button type="submit" disabled={addingCourse} className="flex-1 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm disabled:bg-gray-400">{addingCourse ? 'Saving...' : 'Save'}</button>
+                          <button type="button" onClick={() => { setShowCourseForm(false); setNewCourseName(''); }} className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm">Cancel</button>
                         </div>
                       </form>
                     )}
                   </div>
 
                   <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Semester</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Semesters</h3>
+                    <div className="space-y-2 mb-4 max-h-60 overflow-y-auto">
+                      {!newDoc.courseId ? (
+                        <p className="text-sm text-gray-500 text-center py-4">Select a course first</p>
+                      ) : semesters.length === 0 ? (
+                        <p className="text-sm text-gray-500 text-center py-4">No semesters yet</p>
+                      ) : (
+                        semesters.map((semester) => (
+                          <div key={semester.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            {editingSemester?.id === semester.id ? (
+                              <form onSubmit={handleUpdateSemester} className="flex gap-2 w-full">
+                                <input
+                                  value={editSemesterName}
+                                  onChange={(e) => setEditSemesterName(e.target.value)}
+                                  className="flex-1 px-2 py-1 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                  required
+                                />
+                                <button type="submit" disabled={updatingSemester} className="px-2 py-1 bg-emerald-600 text-white rounded-lg text-sm disabled:bg-gray-400">
+                                  {updatingSemester ? '...' : 'Save'}
+                                </button>
+                                <button type="button" onClick={() => { setEditingSemester(null); setEditSemesterName(''); }} className="px-2 py-1 bg-gray-200 text-gray-700 rounded-lg text-sm">Cancel</button>
+                              </form>
+                            ) : (
+                              <>
+                                <span className="text-sm font-medium text-gray-700 flex-1">{semester.name}</span>
+                                <div className="flex gap-1">
+                                  <button onClick={() => { setEditingSemester(semester); setEditSemesterName(semester.name); }} className="px-2 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs hover:bg-blue-200">Edit</button>
+                                  <button onClick={() => handleDeleteSemester(newDoc.courseId, semester.id)} className="px-2 py-1 bg-red-100 text-red-700 rounded-lg text-xs hover:bg-red-200">Delete</button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
                     {!showSemesterForm ? (
-                      <button
-                        onClick={() => setShowSemesterForm(true)}
-                        disabled={!newDoc.courseId}
-                        className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:border-emerald-500 hover:text-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        + Create New Semester
+                      <button onClick={() => setShowSemesterForm(true)} disabled={!newDoc.courseId} className="w-full py-2 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:border-emerald-500 hover:text-emerald-600 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                        + Add Semester
                       </button>
                     ) : (
-                      <form onSubmit={handleAddSemester} className="space-y-3">
-                        <input
-                          value={newSemesterName}
-                          onChange={(e) => setNewSemesterName(e.target.value)}
-                          placeholder="Semester name"
-                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                          required
-                        />
+                      <form onSubmit={handleAddSemester} className="space-y-2">
+                        <input value={newSemesterName} onChange={(e) => setNewSemesterName(e.target.value)} placeholder="Semester name" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" required />
                         <div className="flex gap-2">
-                          <button
-                            type="submit"
-                            disabled={addingSemester}
-                            className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg disabled:bg-gray-400"
-                          >
-                            {addingSemester ? 'Saving...' : 'Save'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setShowSemesterForm(false); setNewSemesterName(''); }}
-                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-                          >
-                            Cancel
-                          </button>
+                          <button type="submit" disabled={addingSemester} className="flex-1 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm disabled:bg-gray-400">{addingSemester ? 'Saving...' : 'Save'}</button>
+                          <button type="button" onClick={() => { setShowSemesterForm(false); setNewSemesterName(''); }} className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm">Cancel</button>
                         </div>
                       </form>
-                    )}
-                    {!newDoc.courseId && (
-                      <p className="text-sm text-gray-500 mt-2">Select a course first</p>
                     )}
                   </div>
 
                   <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Unit</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Units</h3>
+                    <div className="space-y-2 mb-4 max-h-60 overflow-y-auto">
+                      {!newDoc.semesterId ? (
+                        <p className="text-sm text-gray-500 text-center py-4">Select course and semester first</p>
+                      ) : units.length === 0 ? (
+                        <p className="text-sm text-gray-500 text-center py-4">No units yet</p>
+                      ) : (
+                        units.map((unit) => (
+                          <div key={unit.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            {editingUnit?.id === unit.id ? (
+                              <form onSubmit={handleUpdateUnit} className="flex gap-2 w-full">
+                                <input
+                                  value={editUnitName}
+                                  onChange={(e) => setEditUnitName(e.target.value)}
+                                  className="flex-1 px-2 py-1 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                  required
+                                />
+                                <button type="submit" disabled={updatingUnit} className="px-2 py-1 bg-emerald-600 text-white rounded-lg text-sm disabled:bg-gray-400">
+                                  {updatingUnit ? '...' : 'Save'}
+                                </button>
+                                <button type="button" onClick={() => { setEditingUnit(null); setEditUnitName(''); }} className="px-2 py-1 bg-gray-200 text-gray-700 rounded-lg text-sm">Cancel</button>
+                              </form>
+                            ) : (
+                              <>
+                                <span className="text-sm font-medium text-gray-700 flex-1">{unit.name}</span>
+                                <div className="flex gap-1">
+                                  <button onClick={() => { setEditingUnit(unit); setEditUnitName(unit.name); }} className="px-2 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs hover:bg-blue-200">Edit</button>
+                                  <button onClick={() => handleDeleteUnit(newDoc.courseId, newDoc.semesterId, unit.id)} className="px-2 py-1 bg-red-100 text-red-700 rounded-lg text-xs hover:bg-red-200">Delete</button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
                     {!showUnitForm ? (
-                      <button
-                        onClick={() => setShowUnitForm(true)}
-                        disabled={!newDoc.semesterId}
-                        className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:border-emerald-500 hover:text-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        + Create New Unit
+                      <button onClick={() => setShowUnitForm(true)} disabled={!newDoc.semesterId} className="w-full py-2 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:border-emerald-500 hover:text-emerald-600 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                        + Add Unit
                       </button>
                     ) : (
-                      <form onSubmit={handleAddUnit} className="space-y-3">
-                        <input
-                          value={newUnitName}
-                          onChange={(e) => setNewUnitName(e.target.value)}
-                          placeholder="Unit name"
-                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                          required
-                        />
+                      <form onSubmit={handleAddUnit} className="space-y-2">
+                        <input value={newUnitName} onChange={(e) => setNewUnitName(e.target.value)} placeholder="Unit name" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" required />
                         <div className="flex gap-2">
-                          <button
-                            type="submit"
-                            disabled={addingUnit}
-                            className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg disabled:bg-gray-400"
-                          >
-                            {addingUnit ? 'Saving...' : 'Save'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setShowUnitForm(false); setNewUnitName(''); }}
-                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-                          >
-                            Cancel
-                          </button>
+                          <button type="submit" disabled={addingUnit} className="flex-1 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm disabled:bg-gray-400">{addingUnit ? 'Saving...' : 'Save'}</button>
+                          <button type="button" onClick={() => { setShowUnitForm(false); setNewUnitName(''); }} className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm">Cancel</button>
                         </div>
                       </form>
-                    )}
-                    {(!newDoc.courseId || !newDoc.semesterId) && (
-                      <p className="text-sm text-gray-500 mt-2">Select course and semester first</p>
                     )}
                   </div>
                 </div>
 
                 <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-6">Add New Document</h3>
-                  <form onSubmit={addDocument} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Course</label>
-                        <select
-                          value={newDoc.courseId}
-                          onChange={(e) => {
-                            setNewDoc({ ...newDoc, courseId: e.target.value, semesterId: '', unitId: '' });
-                            loadSemesters(e.target.value);
-                          }}
-                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                          required
-                        >
-                          <option value="">Select Course</option>
-                          {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-6">Documents</h3>
+                  {editingDocument ? (
+                    <form onSubmit={handleUpdateDocument} className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Title</label>
+                          <input type="text" value={editDocForm.title} onChange={(e) => setEditDocForm({ ...editDocForm, title: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" required />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">File Path (URL)</label>
+                          <input type="text" value={editDocForm.filePath} onChange={(e) => setEditDocForm({ ...editDocForm, filePath: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" required />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Thumbnail URL</label>
+                          <input type="text" value={editDocForm.thumbnailUrl} onChange={(e) => setEditDocForm({ ...editDocForm, thumbnailUrl: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                          <select value={editDocForm.status} onChange={(e) => setEditDocForm({ ...editDocForm, status: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            <option value="free">Free</option>
+                            <option value="premium">Premium</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Time</label>
+                          <select value={editDocForm.time} onChange={(e) => setEditDocForm({ ...editDocForm, time: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            <option value="normal">Normal</option>
+                            <option value="latest">Latest</option>
+                          </select>
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                          <textarea value={editDocForm.description} onChange={(e) => setEditDocForm({ ...editDocForm, description: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" rows="3" />
+                        </div>
                       </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Semester</label>
-                        <select
-                          value={newDoc.semesterId}
-                          onChange={(e) => {
-                            setNewDoc({ ...newDoc, semesterId: e.target.value, unitId: '' });
-                            loadUnits(newDoc.courseId, e.target.value);
-                          }}
-                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                          required
-                          disabled={!newDoc.courseId}
-                        >
-                          <option value="">Select Semester</option>
-                          {semesters.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                        </select>
+                      <div className="flex gap-4">
+                        <button type="submit" disabled={updatingDocument} className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 disabled:bg-gray-400 transition-colors shadow-sm">
+                          {updatingDocument ? 'Updating...' : 'Update Document'}
+                        </button>
+                        <button type="button" onClick={() => { setEditingDocument(null); setEditDocForm({ title: '', filePath: '', thumbnailUrl: '', description: '', time: 'normal', status: 'free', courseId: '', semesterId: '', unitId: '' }); }} className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-300 transition-colors">Cancel</button>
                       </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Unit</label>
-                        <select
-                          value={newDoc.unitId}
-                          onChange={(e) => setNewDoc({ ...newDoc, unitId: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                          required
-                          disabled={!newDoc.semesterId}
-                        >
-                          <option value="">Select Unit</option>
-                          {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                        </select>
+                    </form>
+                  ) : (
+                    <>
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200">
+                            {filteredDocuments.map((doc) => (
+                              <tr key={doc.id} className="hover:bg-gray-50 transition-colors">
+                                <td className="px-6 py-4">
+                                  <div className="font-medium text-gray-900">{doc.title || doc.id}</div>
+                                  <div className="text-sm text-gray-500">{doc.description?.substring(0, 50)}...</div>
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-600">{doc.courseId?.toUpperCase()}</td>
+                                <td className="px-6 py-4">
+                                  <span className={`px-2 py-1 text-xs rounded-full font-medium ${doc.status === 'premium' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-800'}`}>
+                                    {doc.status || 'free'}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="flex gap-2">
+                                    <button onClick={() => { setEditingDocument(doc); setEditDocForm({ title: doc.title || '', filePath: doc.filePath || '', thumbnailUrl: doc.thumbnailUrl || '', description: doc.description || '', time: doc.time || 'normal', status: doc.status || 'free', courseId: doc.courseId || '', semesterId: doc.semesterId || '', unitId: doc.unitId || '' }); }} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors">Edit</button>
+                                    <button onClick={() => deleteDocument(doc)} className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors">Delete</button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Title</label>
-                        <input
-                          type="text"
-                          value={newDoc.title}
-                          onChange={(e) => setNewDoc({ ...newDoc, title: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                          placeholder="Document title"
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">File Path (URL)</label>
-                        <input
-                          type="text"
-                          value={newDoc.filePath}
-                          onChange={(e) => setNewDoc({ ...newDoc, filePath: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                          placeholder="https://..."
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Thumbnail URL</label>
-                        <input
-                          type="text"
-                          value={newDoc.thumbnailUrl}
-                          onChange={(e) => setNewDoc({ ...newDoc, thumbnailUrl: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                          placeholder="https://..."
-                        />
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Or Upload Thumbnail</label>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleThumbnailChange}
-                          ref={fileInputRef}
-                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        />
-                        {thumbnailPreview && (
-                          <img src={thumbnailPreview} alt="Preview" className="mt-2 w-32 h-24 object-cover rounded-lg shadow-sm" />
-                        )}
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                        <textarea
-                          value={newDoc.description}
-                          onChange={(e) => setNewDoc({ ...newDoc, description: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                          rows="3"
-                          placeholder="Document description"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Time</label>
-                        <select
-                          value={newDoc.time}
-                          onChange={(e) => setNewDoc({ ...newDoc, time: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        >
-                          <option value="normal">Normal</option>
-                          <option value="latest">Latest</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                        <select
-                          value={newDoc.status}
-                          onChange={(e) => setNewDoc({ ...newDoc, status: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        >
-                          <option value="free">Free</option>
-                          <option value="premium">Premium</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-4">
-                      <button
-                        type="submit"
-                        disabled={addingDoc}
-                        className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 disabled:bg-gray-400 transition-colors shadow-sm"
-                      >
-                        {addingDoc ? 'Adding...' : 'Add Document'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('documents')}
-                        className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-300 transition-colors"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </form>
+                      {filteredDocuments.length === 0 && (
+                        <div className="text-center py-12 text-gray-500">No documents found</div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             )}
