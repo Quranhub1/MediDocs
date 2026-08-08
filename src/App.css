@@ -12,6 +12,11 @@ html {
   font-weight: 600;
 }
 
+.dark .active-menu {
+  background-color: #1e40af !important;
+  color: #60a5fa !important;
+}
+
 /* Latest docs slide animation */
 .slide-in {
   animation: slideIn 0.3s ease-out;
@@ -45,6 +50,12 @@ html {
 
 .carousel-dot:hover {
   background-color: #64748b;
+}
+
+/* Toast animations */
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(100%); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 /* Responsive adjustments */

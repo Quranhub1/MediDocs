@@ -8,6 +8,17 @@ import HeroSection from './HeroSection';
 import StatsSection from './StatsSection';
 import BackgroundImages from './BackgroundImages';
 import DocumentCarousel from './DocumentCarousel';
+import DocumentReader from './DocumentReader';
+import FlashcardStudy from './FlashcardStudy';
+import QuizMode from './QuizMode';
+import CollaborativeNotes from './CollaborativeNotes';
+import AudioPlayer from './AudioPlayer';
+import AnalyticsDashboard from './AnalyticsDashboard';
+import AdvancedSearch from './AdvancedSearch';
+import { useTheme } from '../context/ThemeContext';
+import { useStudy } from '../context/StudyContext';
+import { useBookmarks } from '../context/BookmarkContext';
+import { useToast } from '../context/ToastContext';
 import { fetchCourses, fetchSemesters, fetchCourseUnits, fetchDocuments, fetchAllDocuments } from '../services/FirestoreService';
 
 const canAccessDocument = (doc, userProfile) => {
@@ -26,6 +37,9 @@ const canAccessDocument = (doc, userProfile) => {
 };
 
 const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, onPaymentClick, onContactClick, onAIChatClick, setView }) => {
+  const { theme } = useTheme();
+  const { recordStudySession } = useStudy();
+  const { addToast } = useToast();
   const [courses, setCourses] = useState([]);
   const [latestDocuments, setLatestDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,6 +50,14 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   const [semesters, setSemesters] = useState([]);
   const [courseUnits, setCourseUnits] = useState([]);
   const [documents, setDocuments] = useState([]);
+  const [selectedDocument, setSelectedDocument] = useState(null);
+  const [showReader, setShowReader] = useState(false);
+  const [showFlashcards, setShowFlashcards] = useState(false);
+  const [showQuiz, setShowQuiz] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+  const [audioText, setAudioText] = useState('');
 
   useEffect(() => {
     const initData = async () => {
@@ -54,6 +76,12 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
     };
     initData();
   }, [user]);
+
+  useEffect(() => {
+    if (view !== 'home' && user) {
+      recordStudySession(5);
+    }
+  }, [view, user]);
 
   const handleCourseClick = async (course) => {
     setSelectedCourse(course);
@@ -105,25 +133,38 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
       onPaymentClick();
       return;
     }
-    const url = doc.filePath;
-    if (url) {
-      window.location.href = url;
-    } else {
-      alert('No read online link available for this document');
-    }
+    setSelectedDocument(doc);
+    setShowReader(true);
   };
 
-  const handleDownload = (doc) => {
+  const handleDownload = async (doc) => {
     if (!canAccessDocument(doc, userProfile)) {
       onPaymentClick();
       return;
     }
-    const url = doc.filePath;
-    if (url) {
-      window.location.href = url;
-    } else {
-      alert('No link available for this document');
+    try {
+      const response = await fetch(doc.filePath);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${doc.title || 'document'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      addToast('Download started!', 'success');
+    } catch (error) {
+      window.open(doc.filePath, '_blank');
     }
+  };
+
+  const handleListen = (doc) => {
+    if (!canAccessDocument(doc, userProfile)) {
+      onPaymentClick();
+      return;
+    }
+    setAudioText(doc.description || doc.title || 'Document content');
   };
 
   const goBack = () => {
@@ -208,9 +249,16 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   switch (view) {
     case 'home':
       return (
-        <div className="space-y-0">
+        <>
           <HeroSection user={user} onLoginClick={onLoginClick} onRegisterClick={onRegisterClick} />
           <StatsSection />
+          <div className="flex justify-center gap-4 py-4">
+            <button onClick={() => setShowFlashcards(true)} className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700">Flashcards</button>
+            <button onClick={() => setShowQuiz(true)} className="px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700">Quiz</button>
+            <button onClick={() => setShowNotes(true)} className="px-4 py-2 bg-teal-600 text-white rounded-xl hover:bg-teal-700">Notes</button>
+            <button onClick={() => setShowAnalytics(true)} className="px-4 py-2 bg-amber-600 text-white rounded-xl hover:bg-amber-700">Analytics</button>
+            <button onClick={() => setShowAdvancedSearch(true)} className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700">Search</button>
+          </div>
           <div className="space-y-0">
             <LatestDocuments 
               documents={latestDocuments} 
@@ -222,13 +270,20 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
             />
             <CourseGrid courses={courses} onBrowseClick={handleCourseClick} />
           </div>
-        </div>
+          {showReader && selectedDocument && <DocumentReader document={selectedDocument} onClose={() => setShowReader(false)} />}
+          {showFlashcards && <FlashcardStudy courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowFlashcards(false)} />}
+          {showQuiz && <QuizMode courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowQuiz(false)} />}
+          {showNotes && <CollaborativeNotes courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowNotes(false)} />}
+          {audioText && <AudioPlayer text={audioText} onClose={() => setAudioText('')} />}
+          {showAnalytics && <AnalyticsDashboard onClose={() => setShowAnalytics(false)} />}
+          {showAdvancedSearch && <AdvancedSearch onClose={() => setShowAdvancedSearch(false)} onViewChange={setView} />}
+        </>
       );
     case 'courses':
       return (
         <div className="relative min-h-screen">
           <BackgroundImages />
-          <div className="relative z-10 bg-gradient-to-br from-emerald-50 to-teal-50 min-h-screen py-8">
+          <div className="relative z-10 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-900 dark:to-gray-800 min-h-screen py-8">
             <CourseGrid courses={courses} onBrowseClick={handleCourseClick} />
           </div>
         </div>
@@ -237,7 +292,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
       return (
         <div className="relative min-h-screen">
           <BackgroundImages />
-          <div className="relative z-10 bg-gradient-to-br from-emerald-50 to-teal-50 min-h-screen py-8">
+          <div className="relative z-10 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-900 dark:to-gray-800 min-h-screen py-8">
             <div className="max-w-7xl mx-auto px-4">
               <button onClick={() => { setSelectedCourse(null); setView && setView('courses'); }} className="mb-6 flex items-center text-emerald-600 hover:text-emerald-700">
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -245,7 +300,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
                 </svg>
                 Back to Courses
               </button>
-              <h2 className="text-3xl font-bold text-gray-800 mb-6">{selectedCourse?.name || 'Select a Course'}</h2>
+              <h2 className="text-3xl font-bold text-gray-800 dark:text-dark-text mb-6">{selectedCourse?.name || 'Select a Course'}</h2>
               {subLoading ? (
                 <div className="flex justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
@@ -269,7 +324,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
       return (
         <div className="relative min-h-screen">
           <BackgroundImages />
-          <div className="relative z-10 bg-gradient-to-br from-emerald-50 to-teal-50 min-h-screen py-8">
+          <div className="relative z-10 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-900 dark:to-gray-800 min-h-screen py-8">
             <DocumentCarousel documents={documents} user={user} userProfile={userProfile} onPaymentClick={onPaymentClick} />
             <div className="max-w-7xl mx-auto px-4">
               <button onClick={goBack} className="mb-6 flex items-center text-emerald-600 hover:text-emerald-700">
@@ -278,7 +333,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
                 </svg>
                 Back to Semesters
               </button>
-              <h2 className="text-3xl font-bold text-gray-800 mb-6">{selectedSemester?.name || 'Select a Semester'}</h2>
+              <h2 className="text-3xl font-bold text-gray-800 dark:text-dark-text mb-6">{selectedSemester?.name || 'Select a Semester'}</h2>
               {subLoading ? (
                 <div className="flex justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
@@ -302,7 +357,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
       return (
         <div className="relative min-h-screen">
           <BackgroundImages />
-          <div className="relative z-10 bg-gradient-to-br from-emerald-50 to-teal-50 min-h-screen py-8">
+          <div className="relative z-10 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-900 dark:to-gray-800 min-h-screen py-8">
             <div className="max-w-7xl mx-auto px-4">
               <button onClick={goBack} className="mb-6 flex items-center text-emerald-600 hover:text-emerald-700">
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -310,7 +365,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
                 </svg>
                 Back to Course Units
               </button>
-              <h2 className="text-3xl font-bold text-gray-800 mb-6">{selectedUnit?.name || 'Documents'}</h2>
+              <h2 className="text-3xl font-bold text-gray-800 dark:text-dark-text mb-6">{selectedUnit?.name || 'Documents'}</h2>
               {subLoading ? (
                 <div className="flex justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
@@ -330,6 +385,11 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
                         {doc.filePath && (
                           <button onClick={() => handleDownload(doc)} className="px-4 py-2 bg-emerald-800 text-white rounded-lg text-sm font-medium hover:bg-emerald-900">
                             Download
+                          </button>
+                        )}
+                        {doc.description && (
+                          <button onClick={() => { setAudioText(doc.description); }} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+                            Listen
                           </button>
                         )}
                       </div>
@@ -353,6 +413,13 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
         <div className="space-y-0">
           <HeroSection user={user} onLoginClick={onLoginClick} onRegisterClick={onRegisterClick} />
           <StatsSection />
+          <div className="flex justify-center gap-4 py-4">
+            <button onClick={() => setShowFlashcards(true)} className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700">Flashcards</button>
+            <button onClick={() => setShowQuiz(true)} className="px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700">Quiz</button>
+            <button onClick={() => setShowNotes(true)} className="px-4 py-2 bg-teal-600 text-white rounded-xl hover:bg-teal-700">Notes</button>
+            <button onClick={() => setShowAnalytics(true)} className="px-4 py-2 bg-amber-600 text-white rounded-xl hover:bg-amber-700">Analytics</button>
+            <button onClick={() => setShowAdvancedSearch(true)} className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700">Search</button>
+          </div>
           <div className="space-y-0">
             <LatestDocuments 
               documents={latestDocuments} 

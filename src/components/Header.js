@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTheme } from '../context/ThemeContext';
 
 const Header = ({ 
   user, 
@@ -10,6 +11,7 @@ const Header = ({
   currentView,
   onViewChange 
 }) => {
+  const { theme, toggleTheme } = useTheme();
   const [aiSearchQuery, setAiSearchQuery] = useState('');
   const [scrolled, setScrolled] = useState(false);
 
@@ -41,12 +43,10 @@ const Header = ({
     { id: 'contact', label: 'Contact', section: 'contact' },
   ];
 
-  // Add admin to menu items if user is admin
   const allMenuItems = isAdmin ? [...menuItems, { id: 'admin', label: 'Admin', section: 'admin' }] : menuItems;
 
   const handleNavClick = (item) => {
     onViewChange(item.id);
-    // Scroll to top when changing views
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -54,10 +54,9 @@ const Header = ({
     return (
       <header 
         className={`sticky top-0 z-50 transition-all duration-300 ${
-          scrolled ? 'bg-white shadow-lg' : 'bg-white'
+          scrolled ? 'bg-white dark:bg-dark-card shadow-lg' : 'bg-white dark:bg-dark-card'
         }`}
       >
-        {/* Top Bar */}
         <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-1 px-4">
           <div className="max-w-7xl mx-auto flex justify-between items-center text-xs">
             <span className="flex items-center gap-1">📞 +256 749 846 848</span>
@@ -65,15 +64,12 @@ const Header = ({
           </div>
         </div>
         
-        {/* Main Header */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            {/* Left - Menu Button + Logo */}
             <div className="flex items-center space-x-4">
-              {/* Mobile Menu Button */}
               <button 
                 id="menu-button"
-                className="lg:hidden p-2 rounded-lg hover:bg-emerald-50 text-gray-600 hover:text-emerald-600 transition-all duration-200"
+                className="lg:hidden p-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-gray-700 text-gray-600 dark:text-dark-muted hover:text-emerald-600 transition-all duration-200"
                 onClick={onMenuClick}
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -81,7 +77,6 @@ const Header = ({
                 </svg>
               </button>
               
-              {/* Logo */}
               <button 
                 id="home-button"
                 onClick={() => handleNavClick({ id: 'home' })}
@@ -98,7 +93,6 @@ const Header = ({
               </button>
             </div>
 
-            {/* Desktop Navigation - Center */}
             <nav className="hidden lg:flex items-center space-x-2">
               {allMenuItems.map((item) => (
                 <button
@@ -106,8 +100,8 @@ const Header = ({
                   onClick={() => handleNavClick(item)}
                   className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
                     currentView === item.id
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : 'text-gray-600 hover:text-emerald-600 hover:bg-emerald-50'
+                      ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+                      : 'text-gray-600 dark:text-dark-muted hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-gray-700'
                   }`}
                 >
                   <span>{item.label}</span>
@@ -115,9 +109,9 @@ const Header = ({
               ))}
             </nav>
 
-            {/* Right - Search + Auth */}
             <div className="flex items-center space-x-3">
-              {/* AI Search */}
+              <ThemeToggle />
+              
               <div className="hidden md:block relative">
                 <form onSubmit={handleAiSearch} className="relative">
                   <input
@@ -126,7 +120,7 @@ const Header = ({
                     placeholder="Ask AI..."
                     value={aiSearchQuery}
                     onChange={(e) => setAiSearchQuery(e.target.value)}
-                    className="w-40 lg:w-48 px-4 py-2 pl-10 text-sm border-2 border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    className="w-40 lg:w-48 px-4 py-2 pl-10 text-sm border-2 border-gray-200 dark:border-dark-border rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-dark-card text-gray-900 dark:text-dark-text"
                   />
                   <div className="absolute left-3 top-1/2 -translate-y-1/2">
                     <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -136,11 +130,10 @@ const Header = ({
                 </form>
               </div>
 
-              {/* Auth Buttons */}
               <button 
                 id="login-button"
                 onClick={onLoginClick}
-                className="px-4 py-2 text-emerald-600 font-medium hover:bg-emerald-50 rounded-lg transition-all duration-200"
+                className="px-4 py-2 text-emerald-600 dark:text-emerald-400 font-medium hover:bg-emerald-50 dark:hover:bg-gray-700 rounded-lg transition-all duration-200"
               >
                 Login
               </button>
@@ -155,7 +148,6 @@ const Header = ({
           </div>
         </div>
 
-        {/* Mobile Search */}
         <div className="md:hidden px-4 pb-3">
           <form onSubmit={handleAiSearch} className="relative">
             <input
@@ -163,7 +155,7 @@ const Header = ({
               placeholder="Ask AI about your studies..."
               value={aiSearchQuery}
               onChange={(e) => setAiSearchQuery(e.target.value)}
-              className="w-full px-4 py-2 pl-10 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full px-4 py-2 pl-10 text-sm border border-gray-200 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-dark-card text-gray-900 dark:text-dark-text"
             />
             <div className="absolute left-3 top-1/2 -translate-y-1/2">
               <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -176,10 +168,8 @@ const Header = ({
     );
   }
 
-  // Logged in state
   return (
-    <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white shadow-lg' : 'bg-white'}`}>
-      {/* Top Bar */}
+    <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white dark:bg-dark-card shadow-lg' : 'bg-white dark:bg-dark-card'}`}>
       <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-1 px-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center text-xs">
           <span className="flex items-center gap-1">📞 +256 749 846 848</span>
@@ -187,14 +177,12 @@ const Header = ({
         </div>
       </div>
       
-      {/* Main Header */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Left - Menu Button + Logo */}
           <div className="flex items-center space-x-4">
             <button 
               id="menu-button"
-              className="lg:hidden p-2 rounded-lg hover:bg-emerald-50 text-gray-600 hover:text-emerald-600 transition-all duration-200"
+              className="lg:hidden p-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-gray-700 text-gray-600 dark:text-dark-muted hover:text-emerald-600 transition-all duration-200"
               onClick={onMenuClick}
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -218,7 +206,6 @@ const Header = ({
             </button>
           </div>
 
-          {/* Desktop Navigation - Center */}
           <nav className="hidden lg:flex items-center space-x-2">
             {allMenuItems.map((item) => (
               <button
@@ -226,8 +213,8 @@ const Header = ({
                 onClick={() => handleNavClick(item)}
                 className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
                   currentView === item.id
-                    ? 'bg-emerald-100 text-emerald-700'
-                    : 'text-gray-600 hover:text-emerald-600 hover:bg-emerald-50'
+                    ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+                    : 'text-gray-600 dark:text-dark-muted hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-gray-700'
                 }`}
               >
                 <span>{item.label}</span>
@@ -235,20 +222,21 @@ const Header = ({
             ))}
           </nav>
 
-          {/* Right - User Menu */}
           <div className="flex items-center space-x-4">
-            <div className="hidden md:flex items-center space-x-2 bg-emerald-50 px-3 py-1.5 rounded-full">
+            <ThemeToggle />
+            
+            <div className="hidden md:flex items-center space-x-2 bg-emerald-50 dark:bg-gray-700 px-3 py-1.5 rounded-full">
               <img 
                 src="https://i.imgur.com/kkopgnq.png" 
                 alt="User" 
                 className="w-8 h-8 rounded-full border-2 border-emerald-200"
               />
-              <span className="text-sm font-medium text-gray-700">{user.email?.split('@')[0]}</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-dark-text">{user.email?.split('@')[0]}</span>
             </div>
             <button 
               id="logout-button"
               onClick={onLogoutClick}
-              className="px-4 py-2 text-red-600 font-medium hover:bg-red-50 rounded-lg transition-all duration-200"
+              className="px-4 py-2 text-red-600 dark:text-red-400 font-medium hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all duration-200"
             >
               Logout
             </button>
