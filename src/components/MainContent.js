@@ -155,15 +155,20 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
       return;
     }
     try {
+      const url = new URL(doc.filePath);
+      if (url.origin !== window.location.origin) {
+        window.open(doc.filePath, '_blank');
+        return;
+      }
       const response = await fetch(doc.filePath);
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      const blobUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
+      a.href = blobUrl;
       a.download = `${doc.title || 'document'}.pdf`;
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
+      window.URL.revokeObjectURL(blobUrl);
       document.body.removeChild(a);
       addToast('Download started!', 'success');
     } catch (error) {

@@ -36,6 +36,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  if (url.origin !== location.origin) {
+    return;
+  }
+
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
