@@ -61,19 +61,28 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
   const [audioText, setAudioText] = useState('');
+  const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
     const initData = async () => {
       setLoading(true);
-      const result = await fetchAllDocuments(50, false);
-      if (result.success) {
-        setLatestDocuments(result.data || []);
-      }
-      if (user) {
-        const coursesResult = await fetchCourses(false);
-        if (coursesResult.success) {
-          setCourses(coursesResult.data);
+      setLoadError(null);
+      try {
+        const result = await fetchAllDocuments(50, false);
+        if (result.success) {
+          setLatestDocuments(result.data || []);
         }
+        if (user) {
+          const coursesResult = await fetchCourses(false);
+          if (coursesResult.success) {
+            setCourses(coursesResult.data);
+          } else if (coursesResult.error) {
+            setLoadError(coursesResult.error);
+          }
+        }
+      } catch (error) {
+        console.error('Error initializing data:', error);
+        setLoadError(error.message);
       }
       setLoading(false);
     };
@@ -192,6 +201,26 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
         <div className="text-center">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-500 mb-4 mx-auto"></div>
           <p className="text-gray-500">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-8">
+          <div className="text-red-500 text-5xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Connection Issue</h2>
+          <p className="text-gray-600 mb-6">
+            We couldn't load your content. This might be due to a temporary network issue.
+          </p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 bg-emerald-500 text-white rounded-xl font-medium hover:bg-emerald-600 transition-colors"
+          >
+            Try Again
+          </button>
         </div>
       </div>
     );

@@ -5,9 +5,14 @@ import {
   serverTimestamp,
   doc as docRef,
   updateDoc,
-  getDoc
+  getDoc,
+  deleteDoc,
+  query,
+  orderBy,
+  limit
 } from 'firebase/firestore';
 import { db } from '../firebase';
+import { retryOperation, isNetworkError } from '../utils/network';
 
 export const RESOURCES_COLLECTION = 'RESOURCES_STUDYPEDIA';
 
@@ -76,7 +81,7 @@ export const fetchCourses = async (forceRefresh = false) => {
 
   try {
     const coursesRef = collection(db, RESOURCES_COLLECTION);
-    const querySnapshot = await getDocs(coursesRef);
+    const querySnapshot = await retryOperation(() => getDocs(coursesRef), 3, 1000);
     const courses = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
@@ -93,7 +98,7 @@ export const fetchCourses = async (forceRefresh = false) => {
 export const fetchSemesters = async (courseId) => {
   try {
     const semestersRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/semesters`);
-    const snapshot = await getDocs(semestersRef);
+    const snapshot = await retryOperation(() => getDocs(semestersRef), 3, 1000);
     const semesters = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
@@ -109,14 +114,14 @@ export const fetchSemesters = async (courseId) => {
 export const fetchCourseUnits = async (courseId, semesterId) => {
   try {
     const unitsRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/semesters/${semesterId}/courseunits`);
-    const snapshot = await getDocs(unitsRef);
+    const snapshot = await retryOperation(() => getDocs(unitsRef), 3, 1000);
     const units = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
     return { success: true, data: units };
   } catch (error) {
-    console.error('Error fetching courseunits:', error);
+    console.error('Error fetching course units:', error);
     return { success: false, error: error.message, data: [] };
   }
 };
@@ -125,7 +130,7 @@ export const fetchCourseUnits = async (courseId, semesterId) => {
 export const fetchDocuments = async (courseId, semesterId, unitId) => {
   try {
     const docsRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/semesters/${semesterId}/courseunits/${unitId}/documents`);
-    const snapshot = await getDocs(docsRef);
+    const snapshot = await retryOperation(() => getDocs(docsRef), 3, 1000);
     const documents = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
@@ -170,7 +175,7 @@ export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => 
   try {
     const allDocuments = [];
     const coursesRef = collection(db, RESOURCES_COLLECTION);
-    const coursesSnapshot = await getDocs(coursesRef);
+    const coursesSnapshot = await retryOperation(() => getDocs(coursesRef), 3, 1000);
     
     if (coursesSnapshot.docs.length === 0) {
       setCache(CACHE_KEYS.DOCUMENTS, []);
@@ -181,7 +186,7 @@ export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => 
       const courseId = courseDoc.id;
       const courseName = courseDoc.data().name || courseId;
       const semestersRef = collection(db, `${RESOURCES_COLLECTION}/${courseId}/semesters`);
-      const semestersSnapshot = await getDocs(semestersRef);
+      const semestersSnapshot = await retryOperation(() => getDocs(semestersRef), 3, 1000);
       return semestersSnapshot.docs.map(semesterDoc => ({
         courseId,
         courseName,
@@ -195,7 +200,7 @@ export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => 
     
     const unitsPromises = flatSemesters.map(async (sem) => {
       const unitsRef = collection(db, `${RESOURCES_COLLECTION}/${sem.courseId}/semesters/${sem.semesterId}/courseunits`);
-      const unitsSnapshot = await getDocs(unitsRef);
+      const unitsSnapshot = await retryOperation(() => getDocs(unitsRef), 3, 1000);
       return unitsSnapshot.docs.map(unitDoc => ({
         courseId: sem.courseId,
         courseName: sem.courseName,
@@ -211,7 +216,7 @@ export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => 
     
     const docsPromises = flatUnits.map(async (unit) => {
       const docsRef = collection(db, `${RESOURCES_COLLECTION}/${unit.courseId}/semesters/${unit.semesterId}/courseunits/${unit.unitId}/documents`);
-      const docsSnapshot = await getDocs(docsRef);
+      const docsSnapshot = await retryOperation(() => getDocs(docsRef), 3, 1000);
       return docsSnapshot.docs.map(doc => {
         const docData = doc.data();
         return {
@@ -234,7 +239,7 @@ export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => 
     
     const semDocsPromises = flatSemesters.map(async (sem) => {
       const semDocsRef = collection(db, `${RESOURCES_COLLECTION}/${sem.courseId}/semesters/${sem.semesterId}/documents`);
-      const semDocsSnapshot = await getDocs(semDocsRef);
+      const semDocsSnapshot = await retryOperation(() => getDocs(semDocsRef), 3, 1000);
       return semDocsSnapshot.docs.map(doc => {
         const docData = doc.data();
         return {
