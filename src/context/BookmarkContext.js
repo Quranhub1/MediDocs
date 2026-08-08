@@ -1,8 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 <<<<<<< ours
+<<<<<<< ours
 import { collection, doc, setDoc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
 =======
+=======
+>>>>>>> theirs
 import { collection, doc, setDoc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 >>>>>>> theirs
