@@ -77,15 +77,26 @@ export const AuthProvider = ({ children }) => {
         banned: false
       });
       
-      await setDoc(doc(db, 'alerts'), {
-        type: 'signup',
-        message: `New user signed up: ${name}`,
-        userEmail: email,
-        userName: name,
-        userId: user.uid,
-        createdAt: serverTimestamp(),
-        read: false
-      });
+      try {
+        const response = await fetch('/api/notify/email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: 'kaigwaakram123@gmail.com',
+            subject: 'New User Signup - MediDocs',
+            message: `A new user has signed up on MediDocs.`,
+            eventType: 'User Signup',
+            userEmail: email,
+            userName: name
+          })
+        });
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          console.warn('Signup email notification failed:', data.error || response.statusText);
+        }
+      } catch (emailError) {
+        console.error('Failed to send signup notification email:', emailError);
+      }
       
       return { success: true, user };
     } catch (error) {
@@ -97,15 +108,26 @@ export const AuthProvider = ({ children }) => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       
-      await setDoc(doc(db, 'alerts'), {
-        type: 'login',
-        message: `User logged in: ${email}`,
-        userEmail: email,
-        userName: userCredential.user.displayName || 'User',
-        userId: userCredential.user.uid,
-        createdAt: serverTimestamp(),
-        read: false
-      });
+      try {
+        const response = await fetch('/api/notify/email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: 'kaigwaakram123@gmail.com',
+            subject: 'User Login Alert - MediDocs',
+            message: `A user has logged into MediDocs.`,
+            eventType: 'User Login',
+            userEmail: email,
+            userName: userCredential.user.displayName || 'User'
+          })
+        });
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          console.warn('Login email notification failed:', data.error || response.statusText);
+        }
+      } catch (emailError) {
+        console.error('Failed to send login notification email:', emailError);
+      }
       
       return { success: true, user: userCredential.user };
     } catch (error) {

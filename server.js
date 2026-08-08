@@ -150,6 +150,63 @@ app.post('/api/ai/chat', aiLimiter, async (req, res) => {
   }
 });
 
+app.post('/api/notify/email', generalLimiter, async (req, res) => {
+  try {
+    const { to, subject, message, eventType, userEmail, userName } = req.body;
+
+    if (!to || !subject || !message) {
+      return res.status(400).json({ success: false, error: 'Missing required fields: to, subject, message' });
+    }
+
+    if (!RESEND_API_KEY) {
+      console.warn('Email skipped: RESEND_API_KEY is not configured.');
+      return res.status(500).json({ success: false, error: 'Email service is not configured on the server.' });
+    }
+
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+        <div style="background: linear-gradient(to right, #059669, #10b981); padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">MediDocs Notification</h1>
+        </div>
+        <div style="background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb;">
+          <h2 style="color: #059669; margin-top: 0;">${subject}</h2>
+          <p style="font-size: 16px; line-height: 1.6;">${message}</p>
+          ${eventType ? `<div style="background: #ecfdf5; border-left: 4px solid #10b981; padding: 10px; margin: 15px 0; border-radius: 4px;"><strong>Event:</strong> ${eventType}</div>` : ''}
+          ${userEmail ? `<p style="color: #6b7280; font-size: 14px;"><strong>User Email:</strong> ${userEmail}</p>` : ''}
+          ${userName ? `<p style="color: #6b7280; font-size: 14px;"><strong>User Name:</strong> ${userName}</p>` : ''}
+          <p style="color: #9ca3af; font-size: 12px; margin-top: 20px;">Sent automatically by MediDocs System</p>
+        </div>
+      </div>
+    `;
+
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${RESEND_API_KEY}`
+      },
+      body: JSON.stringify({
+        from: FROM_EMAIL,
+        to: [to],
+        subject: subject,
+        html: htmlContent
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Resend API error:', response.status, errorData);
+      return res.status(500).json({ success: false, error: errorData.message || 'Failed to send email via Resend' });
+    }
+
+    const data = await response.json();
+    res.json({ success: true, message: 'Email sent successfully', data });
+  } catch (error) {
+    console.error('Email send error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.get('*', generalLimiter, (req, res) => {
   res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
