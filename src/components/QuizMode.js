@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useStudy } from '../context/StudyContext';
 
 const QuizMode = ({ courseId, unitId, onClose }) => {
-  const { quizzes, createQuiz, submitQuizResult } = useStudy();
+  const { submitQuizResult } = useStudy();
   const [currentQuiz, setCurrentQuiz] = useState(null);
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
