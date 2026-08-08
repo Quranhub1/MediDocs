@@ -12,7 +12,6 @@ import DocumentReader from './DocumentReader';
 import FlashcardStudy from './FlashcardStudy';
 import QuizMode from './QuizMode';
 import CollaborativeNotes from './CollaborativeNotes';
-import AudioPlayer from './AudioPlayer';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import AdvancedSearch from './AdvancedSearch';
 import { useTheme } from '../context/ThemeContext';
@@ -60,7 +59,6 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   const [showNotes, setShowNotes] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
-  const [audioText, setAudioText] = useState('');
   const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
@@ -96,6 +94,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   }, [view, user]);
 
   const handleCourseClick = async (course) => {
+    console.log('[MainContent] Course clicked', { courseId: course.id, courseName: course.name });
     setSelectedCourse(course);
     setSelectedSemester(null);
     setSelectedUnit(null);
@@ -106,6 +105,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
     setView('semesters');
     
     const result = await fetchSemesters(course.id);
+    console.log('[MainContent] Fetch semesters result', { success: result.success, count: result.data?.length, error: result.error });
     if (result.success) {
       setSemesters(result.data);
     }
@@ -113,6 +113,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   };
 
   const handleSemesterClick = async (semester) => {
+    console.log('[MainContent] Semester clicked', { courseId: selectedCourse?.id, semesterId: semester.id, semesterName: semester.name });
     setSelectedSemester(semester);
     setSelectedUnit(null);
     setCourseUnits([]);
@@ -121,6 +122,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
     setView('courseunits');
     
     const result = await fetchCourseUnits(selectedCourse.id, semester.id);
+    console.log('[MainContent] Fetch course units result', { success: result.success, count: result.data?.length, error: result.error });
     if (result.success) {
       setCourseUnits(result.data);
     }
@@ -128,12 +130,14 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   };
 
   const handleUnitClick = async (unit) => {
+    console.log('[MainContent] Unit clicked', { courseId: selectedCourse?.id, semesterId: selectedSemester?.id, unitId: unit.id, unitName: unit.name });
     setSelectedUnit(unit);
     setDocuments([]);
     setSubLoading(true);
     setView('documents');
     
     const result = await fetchDocuments(selectedCourse.id, selectedSemester.id, unit.id);
+    console.log('[MainContent] Fetch documents result', { success: result.success, count: result.data?.length, error: result.error });
     if (result.success) {
       setDocuments(result.data);
     }
@@ -141,26 +145,57 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   };
 
   const handleReadOnline = (doc) => {
+    console.log('[MainContent] Read Online clicked', { docId: doc.id, filePath: doc.filePath });
     if (!canAccessDocument(doc, userProfile, user?.email)) {
+      console.warn('[MainContent] Read Online blocked: insufficient permissions');
       onPaymentClick();
       return;
     }
-    setSelectedDocument(doc);
-    setShowReader(true);
+    try {
+      const url = new URL(doc.filePath);
+      const extension = (doc.filePath.split('.').pop() || '').toLowerCase();
+      const isPDF = extension === 'pdf';
+      const isOffice = /\.(doc|docx|ppt|pptx|xls|xlsx)$/i.test(doc.filePath);
+
+      if (url.origin !== window.location.origin) {
+        if (isPDF || isOffice) {
+          const viewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(doc.filePath)}&embedded=true`;
+          console.log('[MainContent] Cross-origin document, opening Google Docs viewer', viewerUrl);
+          window.open(viewerUrl, '_blank');
+        } else {
+          console.log('[MainContent] Cross-origin media, opening directly in new tab', doc.filePath);
+          window.open(doc.filePath, '_blank');
+        }
+        return;
+      }
+      console.log('[MainContent] Opening same-origin document in reader', doc.filePath);
+      setSelectedDocument(doc);
+      setShowReader(true);
+    } catch (error) {
+      console.error('[MainContent] Read Online failed', error);
+      window.open(doc.filePath, '_blank');
+    }
   };
 
   const handleDownload = async (doc) => {
+    console.log('[MainContent] Download clicked', { docId: doc.id, filePath: doc.filePath });
     if (!canAccessDocument(doc, userProfile, user?.email)) {
+      console.warn('[MainContent] Download blocked: insufficient permissions');
       onPaymentClick();
       return;
     }
     try {
       const url = new URL(doc.filePath);
       if (url.origin !== window.location.origin) {
+        console.log('[MainContent] Cross-origin download fallback: opening in new tab', doc.filePath);
         window.open(doc.filePath, '_blank');
         return;
       }
+      console.log('[MainContent] Fetching same-origin file for download', doc.filePath);
       const response = await fetch(doc.filePath);
+      if (!response.ok) {
+        throw new Error(`Download response not OK: ${response.status}`);
+      }
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -170,21 +205,16 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
       a.click();
       window.URL.revokeObjectURL(blobUrl);
       document.body.removeChild(a);
+      console.log('[MainContent] Download started successfully', { docId: doc.id, title: doc.title });
       addToast('Download started!', 'success');
     } catch (error) {
+      console.error('[MainContent] Download failed, falling back to new tab', error);
       window.open(doc.filePath, '_blank');
     }
   };
 
-  const handleListen = (doc) => {
-    if (!canAccessDocument(doc, userProfile, user?.email)) {
-      onPaymentClick();
-      return;
-    }
-    setAudioText(doc.description || doc.title || 'Document content');
-  };
-
   const goBack = () => {
+    console.log('[MainContent] goBack', { view, selectedCourseId: selectedCourse?.id, selectedSemesterId: selectedSemester?.id });
     if (view === 'documents' && selectedSemester) {
       setSelectedUnit(null);
       setDocuments([]);
@@ -356,13 +386,12 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
             />
             <CourseGrid courses={courses} onBrowseClick={handleCourseClick} />
           </div>
-          {showReader && selectedDocument && <DocumentReader document={selectedDocument} onClose={() => setShowReader(false)} />}
-          {showFlashcards && <FlashcardStudy courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowFlashcards(false)} />}
-          {showQuiz && <QuizMode courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowQuiz(false)} />}
-          {showNotes && <CollaborativeNotes courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowNotes(false)} />}
-          {audioText && <AudioPlayer text={audioText} onClose={() => setAudioText('')} />}
-          {showAnalytics && <AnalyticsDashboard onClose={() => setShowAnalytics(false)} />}
-          {showAdvancedSearch && <AdvancedSearch onClose={() => setShowAdvancedSearch(false)} onViewChange={setView} />}
+           {showReader && selectedDocument && <DocumentReader document={selectedDocument} onClose={() => setShowReader(false)} />}
+           {showFlashcards && <FlashcardStudy courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowFlashcards(false)} />}
+           {showQuiz && <QuizMode courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowQuiz(false)} />}
+           {showNotes && <CollaborativeNotes courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowNotes(false)} />}
+           {showAnalytics && <AnalyticsDashboard onClose={() => setShowAnalytics(false)} />}
+           {showAdvancedSearch && <AdvancedSearch onClose={() => setShowAdvancedSearch(false)} onViewChange={setView} />}
         </>
       );
     case 'courses':
@@ -462,23 +491,18 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
                     <div key={doc.id} className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all border border-emerald-400">
                       <h3 className="text-lg font-bold text-white mb-2">{doc.title || doc.id}</h3>
                       <p className="text-emerald-100 text-sm mb-4">{doc.description || 'No description'}</p>
-                      <div className="flex flex-wrap gap-2">
-                        {doc.filePath && (
-                          <button onClick={() => handleReadOnline(doc)} className="px-4 py-2 bg-white text-emerald-600 rounded-lg text-sm font-medium hover:bg-emerald-50">
-                            Read Online
-                          </button>
-                        )}
-                        {doc.filePath && (
-                          <button onClick={() => handleDownload(doc)} className="px-4 py-2 bg-emerald-800 text-white rounded-lg text-sm font-medium hover:bg-emerald-900">
-                            Download
-                          </button>
-                        )}
-                        {doc.description && (
-                          <button onClick={() => { setAudioText(doc.description); }} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
-                            Listen
-                          </button>
-                        )}
-                      </div>
+                       <div className="flex flex-wrap gap-2">
+                         {doc.filePath && (
+                           <button onClick={() => handleReadOnline(doc)} className="px-4 py-2 bg-white text-emerald-600 rounded-lg text-sm font-medium hover:bg-emerald-50">
+                             Read Online
+                           </button>
+                         )}
+                         {doc.filePath && (
+                           <button onClick={() => handleDownload(doc)} className="px-4 py-2 bg-emerald-800 text-white rounded-lg text-sm font-medium hover:bg-emerald-900">
+                             Download
+                           </button>
+                         )}
+                       </div>
                     </div>
                   ))}
                   {documents.length === 0 && <p className="text-gray-500">No documents found for this course unit.</p>}
