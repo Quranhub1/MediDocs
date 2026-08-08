@@ -29,3 +29,9 @@ services:
         value: pk_test_your_paystack_public_key
       - key: PAYSTACK_SECRET_KEY
         value: sk_test_your_paystack_secret_key
+      - key: EMAIL_USER
+        value: your_email@gmail.com
+      - key: EMAIL_PASS
+        value: your_app_password
+      - key: ADMIN_EMAIL
+        value: kaigwaakram123@gmail.com

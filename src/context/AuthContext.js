@@ -77,6 +77,23 @@ export const AuthProvider = ({ children }) => {
         banned: false
       });
       
+      try {
+        await fetch('/api/notify/email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: 'kaigwaakram123@gmail.com',
+            subject: 'New User Signup - MediDocs',
+            message: `A new user has signed up on MediDocs.`,
+            eventType: 'User Signup',
+            userEmail: email,
+            userName: name
+          })
+        });
+      } catch (emailError) {
+        console.error('Failed to send signup notification email:', emailError);
+      }
+      
       return { success: true, user };
     } catch (error) {
       return { success: false, error: error.message };
@@ -86,6 +103,24 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      try {
+        await fetch('/api/notify/email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: 'kaigwaakram123@gmail.com',
+            subject: 'User Login Alert - MediDocs',
+            message: `A user has logged into MediDocs.`,
+            eventType: 'User Login',
+            userEmail: email,
+            userName: userCredential.user.displayName || 'User'
+          })
+        });
+      } catch (emailError) {
+        console.error('Failed to send login notification email:', emailError);
+      }
+      
       return { success: true, user: userCredential.user };
     } catch (error) {
       return { success: false, error: error.message };
