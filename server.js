@@ -3,7 +3,6 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
-const nodemailer = require('nodemailer');
 const app = express();
 
 app.use(cors());
@@ -15,9 +14,9 @@ app.set('trust proxy', 1);
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 const GROQ_API_KEY = process.env.REACT_APP_OPENAI_API_KEY || process.env.GROQ_API_KEY;
 const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
-const EMAIL_USER = process.env.EMAIL_USER;
-const EMAIL_PASS = process.env.EMAIL_PASS;
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
 
 const transporter = (() => {
   if (!EMAIL_USER || !EMAIL_PASS) {
@@ -175,12 +174,9 @@ app.post('/api/notify/email', generalLimiter, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Missing required fields: to, subject, message' });
     }
 
-    if (!EMAIL_USER || !EMAIL_PASS) {
+    if (!RESEND_API_KEY) {
+      console.warn('Email skipped: RESEND_API_KEY is not configured.');
       return res.status(500).json({ success: false, error: 'Email service is not configured on the server.' });
-    }
-
-    if (!transporter) {
-      return res.status(500).json({ success: false, error: 'Email transporter is not initialized.' });
     }
 
     const htmlContent = `
@@ -199,15 +195,28 @@ app.post('/api/notify/email', generalLimiter, async (req, res) => {
       </div>
     `;
 
-    const mailOptions = {
-      from: EMAIL_USER,
-      to: to,
-      subject: subject,
-      html: htmlContent
-    };
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${RESEND_API_KEY}`
+      },
+      body: JSON.stringify({
+        from: FROM_EMAIL,
+        to: [to],
+        subject: subject,
+        html: htmlContent
+      })
+    });
 
-    await transporter.sendMail(mailOptions);
-    res.json({ success: true, message: 'Email sent successfully' });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Resend API error:', response.status, errorData);
+      return res.status(500).json({ success: false, error: errorData.message || 'Failed to send email via Resend' });
+    }
+
+    const data = await response.json();
+    res.json({ success: true, message: 'Email sent successfully', data });
   } catch (error) {
     console.error('Email send error:', error);
     res.status(500).json({ success: false, error: error.message });
