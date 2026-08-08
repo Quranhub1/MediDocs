@@ -9,6 +9,11 @@ import {
   listStorageFiles,
   deleteStorageFile,
   createStorageFolder,
+  declinePayment,
+  updateSubscriptionExpiry,
+  getExpiringSubscriptions,
+  lockExpiredSubscriptions,
+  getSubscriptionCountdown,
   SUBSCRIPTION_PLANS
 } from '../services/FirestoreService';
 import { generateThumbnail } from '../utils/thumbnailGenerator';
@@ -50,6 +55,8 @@ const AdminDashboard = ({ user, onViewChange }) => {
   const [paystackSecretKey, setPaystackSecretKey] = useState('');
   const [savingConfig, setSavingConfig] = useState(false);
   const [configMessage, setConfigMessage] = useState('');
+  const [paymentActionLoading, setPaymentActionLoading] = useState({});
+  const [subscriptionCountdowns, setSubscriptionCountdowns] = useState({});
 
   const [newDoc, setNewDoc] = useState({
     title: '',
@@ -148,6 +155,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
   useEffect(() => {
     if (isAdmin) {
       loadData();
+      loadSubscriptionCountdowns();
     }
   }, [isAdmin, loadData]);
 
@@ -671,6 +679,74 @@ const AdminDashboard = ({ user, onViewChange }) => {
     } catch (error) {
       console.error('Error approving subscription:', error);
       alert('Failed to approve subscription: ' + error.message);
+    }
+  };
+
+  const handleDeclinePayment = async (paymentId) => {
+    if (!paymentId) return;
+    try {
+      const result = await declinePayment(paymentId);
+      if (result.success) {
+        alert('Payment declined');
+        loadData();
+      } else {
+        alert('Failed to decline payment: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error declining payment:', error);
+      alert('Failed to decline payment: ' + error.message);
+    }
+  };
+
+  const handleApprovePayment = async (paymentId, userId, plan = 'monthly') => {
+    if (!paymentId || !userId) return;
+    setPaymentActionLoading(prev => ({ ...prev, [paymentId]: true }));
+    try {
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + (SUBSCRIPTION_PLANS[plan]?.duration || 30));
+
+      await approveUserSubscription(userId, plan, expiryDate);
+      await declinePayment(paymentId);
+      alert('Payment approved and subscription activated!');
+      loadData();
+    } catch (error) {
+      console.error('Error approving payment:', error);
+      alert('Failed to approve payment: ' + error.message);
+    } finally {
+      setPaymentActionLoading(prev => ({ ...prev, [paymentId]: false }));
+    }
+  };
+
+  const handleLockExpiredSubscriptions = async () => {
+    try {
+      const result = await lockExpiredSubscriptions();
+      if (result.success) {
+        alert(`Locked ${result.lockedCount} expired subscriptions`);
+        loadData();
+      } else {
+        alert('Failed to lock expired subscriptions: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error locking expired subscriptions:', error);
+      alert('Failed to lock expired subscriptions: ' + error.message);
+    }
+  };
+
+  const loadSubscriptionCountdowns = async () => {
+    try {
+      const result = await getExpiringSubscriptions();
+      if (result.success) {
+        const countdowns = {};
+        result.data.forEach(user => {
+          const countdown = getSubscriptionCountdown(user);
+          if (countdown) {
+            countdowns[user.id] = countdown;
+          }
+        });
+        setSubscriptionCountdowns(countdowns);
+      }
+    } catch (error) {
+      console.error('Error loading subscription countdowns:', error);
     }
   };
 
@@ -1339,6 +1415,15 @@ const AdminDashboard = ({ user, onViewChange }) => {
 
             {activeTab === 'users' && (
               <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+                  <h2 className="text-2xl font-bold text-gray-800">Users Management</h2>
+                  <button
+                    onClick={handleLockExpiredSubscriptions}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+                  >
+                    Lock Expired Subscriptions
+                  </button>
+                </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className="bg-gray-50">
@@ -1371,11 +1456,20 @@ const AdminDashboard = ({ user, onViewChange }) => {
                               {u.subscriptionPlan ? SUBSCRIPTION_PLANS[u.subscriptionPlan]?.label || u.subscriptionPlan : 'None'}
                             </span>
                           </td>
-                          <td className="px-6 py-4">
-                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${u.banned ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                              {u.banned ? 'Banned' : 'Active'}
-                            </span>
-                          </td>
+                           <td className="px-6 py-4">
+                             <span className={`px-2 py-1 text-xs rounded-full font-medium ${u.banned ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+                               {u.banned ? 'Banned' : 'Active'}
+                             </span>
+                           </td>
+                           <td className="px-6 py-4">
+                             {subscriptionCountdowns[u.id] ? (
+                               <span className={`px-2 py-1 text-xs rounded-full font-medium ${subscriptionCountdowns[u.id].expired ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>
+                                 {subscriptionCountdowns[u.id].text}
+                               </span>
+                             ) : (
+                               <span className="px-2 py-1 text-xs rounded-full font-medium bg-gray-100 text-gray-800">N/A</span>
+                             )}
+                           </td>
                           <td className="px-6 py-4">
                             <div className="flex gap-2 flex-wrap">
                               {!u.subscriptionApproved && (
@@ -1416,17 +1510,24 @@ const AdminDashboard = ({ user, onViewChange }) => {
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plan</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subscription</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
                       {filteredPayments.map((p) => (
                         <tr key={p.id} className="hover:bg-gray-50 transition-colors">
                           <td className="px-6 py-4 text-sm font-medium text-gray-900">{p.reference || p.id}</td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-medium text-gray-900">{p.userName || 'N/A'}</div>
+                            <div className="text-xs text-gray-500">{p.userEmail || 'N/A'}</div>
+                          </td>
                           <td className="px-6 py-4 text-sm text-gray-600">UGX {p.amount ? Number(p.amount).toLocaleString() : 'N/A'}</td>
                           <td className="px-6 py-4 text-sm text-gray-600">{p.phoneNumber || 'N/A'}</td>
                           <td className="px-6 py-4">
@@ -1435,12 +1536,41 @@ const AdminDashboard = ({ user, onViewChange }) => {
                             </span>
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${p.status === 'success' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
+                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${p.status === 'success' ? 'bg-green-100 text-green-800' : p.status === 'declined' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>
                               {p.status || 'pending'}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-600">
                             {p.createdAtDate ? new Date(p.createdAtDate).toLocaleDateString() : 'N/A'}
+                          </td>
+                          <td className="px-6 py-4">
+                            {p.userId && subscriptionCountdowns[p.userId] ? (
+                              <span className={`px-2 py-1 text-xs rounded-full font-medium ${subscriptionCountdowns[p.userId].expired ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>
+                                {subscriptionCountdowns[p.userId].text}
+                              </span>
+                            ) : (
+                              <span className="px-2 py-1 text-xs rounded-full font-medium bg-gray-100 text-gray-800">N/A</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4">
+                            {p.status === 'pending_verification' && (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleApprovePayment(p.id, p.userId, p.plan)}
+                                  disabled={paymentActionLoading[p.id]}
+                                  className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-sm font-medium hover:bg-green-200 disabled:bg-gray-200"
+                                >
+                                  {paymentActionLoading[p.id] ? '...' : 'Approve'}
+                                </button>
+                                <button
+                                  onClick={() => handleDeclinePayment(p.id)}
+                                  disabled={paymentActionLoading[p.id]}
+                                  className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200 disabled:bg-gray-200"
+                                >
+                                  Decline
+                                </button>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       ))}

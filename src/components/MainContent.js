@@ -198,9 +198,58 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   }
 
   if (view === 'home') {
+    const getSubscriptionCountdown = () => {
+      if (!userProfile || !userProfile.subscriptionExpiry || !userProfile.subscriptionApproved) return null;
+      
+      const expiry = userProfile.subscriptionExpiry.toDate ? userProfile.subscriptionExpiry.toDate() : new Date(userProfile.subscriptionExpiry);
+      const now = new Date();
+      const diff = expiry - now;
+      
+      if (diff <= 0) {
+        return { text: 'Subscription Expired', days: 0, expired: true };
+      }
+      
+      const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.ceil((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      
+      if (days > 0) {
+        return { text: `${days} day${days > 1 ? 's' : ''} remaining`, days, expired: false };
+      } else if (hours > 0) {
+        return { text: `${hours} hour${hours > 1 ? 's' : ''} remaining`, days: 0, expired: false };
+      } else {
+        const minutes = Math.ceil((diff % (1000 * 60)) / (1000 * 60));
+        return { text: `${minutes} min remaining`, days: 0, expired: false };
+      }
+    };
+
+    const subscriptionCountdown = getSubscriptionCountdown();
+
     return (
       <div>
         <HeroSection user={user} onLoginClick={onLoginClick} onRegisterClick={onRegisterClick} />
+        {user && subscriptionCountdown && (
+          <div className={`max-w-2xl mx-auto px-4 py-3 rounded-xl mb-4 text-center ${
+            subscriptionCountdown.expired 
+              ? 'bg-red-100 border border-red-400 text-red-700' 
+              : subscriptionCountdown.days <= 5 
+                ? 'bg-amber-100 border border-amber-400 text-amber-700'
+                : 'bg-emerald-100 border border-emerald-400 text-emerald-700'
+          }`}>
+            <p className="font-medium">
+              {subscriptionCountdown.expired 
+                ? 'Your subscription has expired. Please renew to access premium content.' 
+                : `Subscription expires in ${subscriptionCountdown.text}`}
+            </p>
+            {subscriptionCountdown.days <= 5 && !subscriptionCountdown.expired && (
+              <button 
+                onClick={onPaymentClick}
+                className="mt-2 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
+              >
+                Renew Now
+              </button>
+            )}
+          </div>
+        )}
         <DocumentCarousel documents={latestDocuments} user={user} userProfile={userProfile} onPaymentClick={onPaymentClick} />
         {!user && (
           <div className="max-w-2xl mx-auto px-4 py-8 text-center">

@@ -492,3 +492,112 @@ export const getDocumentForAI = async (docId, courseId, semesterId, unitId) => {
     return { success: false, error: error.message };
   }
 };
+
+// Decline payment
+export const declinePayment = async (paymentId) => {
+  try {
+    const paymentRef = docRef(db, 'payments', paymentId);
+    await updateDoc(paymentRef, {
+      status: 'declined',
+      updatedAt: serverTimestamp()
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Error declining payment:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Update subscription expiry
+export const updateSubscriptionExpiry = async (userId, expiryDate) => {
+  try {
+    const userDocRef = docRef(db, 'users', userId);
+    await updateDoc(userDocRef, {
+      subscriptionExpiry: expiryDate,
+      subscriptionStatus: 'active',
+      updatedAt: serverTimestamp()
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating subscription expiry:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Get users with expiring subscriptions (within 5 days)
+export const getExpiringSubscriptions = async () => {
+  try {
+    const usersRef = collection(db, 'users');
+    const snapshot = await getDocs(usersRef);
+    const fiveDaysFromNow = new Date();
+    fiveDaysFromNow.setDate(fiveDaysFromNow.getDate() + 5);
+    
+    const expiringUsers = snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(user => {
+        if (!user.subscriptionExpiry || !user.subscriptionApproved) return false;
+        const expiry = user.subscriptionExpiry.toDate ? user.subscriptionExpiry.toDate() : new Date(user.subscriptionExpiry);
+        return expiry <= fiveDaysFromNow && expiry > new Date();
+      });
+    
+    return { success: true, data: expiringUsers };
+  } catch (error) {
+    console.error('Error fetching expiring subscriptions:', error);
+    return { success: false, error: error.message, data: [] };
+  }
+};
+
+// Lock expired subscriptions
+export const lockExpiredSubscriptions = async () => {
+  try {
+    const usersRef = collection(db, 'users');
+    const snapshot = await getDocs(usersRef);
+    const now = new Date();
+    
+    const expiredUsers = snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(user => {
+        if (!user.subscriptionExpiry || !user.subscriptionApproved) return false;
+        const expiry = user.subscriptionExpiry.toDate ? user.subscriptionExpiry.toDate() : new Date(user.subscriptionExpiry);
+        return expiry < now;
+      });
+    
+    for (const user of expiredUsers) {
+      await updateDoc(docRef(db, 'users', user.id), {
+        subscriptionStatus: 'expired',
+        banned: true,
+        updatedAt: serverTimestamp()
+      });
+    }
+    
+    return { success: true, lockedCount: expiredUsers.length };
+  } catch (error) {
+    console.error('Error locking expired subscriptions:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Get subscription countdown
+export const getSubscriptionCountdown = (user) => {
+  if (!user || !user.subscriptionExpiry) return null;
+  
+  const expiry = user.subscriptionExpiry.toDate ? user.subscriptionExpiry.toDate() : new Date(user.subscriptionExpiry);
+  const now = new Date();
+  const diff = expiry - now;
+  
+  if (diff <= 0) {
+    return { text: 'Expired', days: 0, expired: true };
+  }
+  
+  const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.ceil((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  
+  if (days > 0) {
+    return { text: `${days} day${days > 1 ? 's' : ''} remaining`, days, expired: false };
+  } else if (hours > 0) {
+    return { text: `${hours} hour${hours > 1 ? 's' : ''} remaining`, days: 0, expired: false };
+  } else {
+    const minutes = Math.ceil((diff % (1000 * 60)) / (1000 * 60));
+    return { text: `${minutes} min remaining`, days: 0, expired: false };
+  }
+};

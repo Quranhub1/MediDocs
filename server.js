@@ -301,6 +301,32 @@ app.post('/api/notify/email', generalLimiter, async (req, res) => {
   }
 });
 
+app.get('/api/subscriptions/expiring', generalLimiter, async (req, res) => {
+  try {
+    if (!adminDb) {
+      return res.status(500).json({ success: false, error: 'Admin SDK not initialized' });
+    }
+
+    const usersRef = adminDb.collection('users');
+    const snapshot = await usersRef.get();
+    const fiveDaysFromNow = new Date();
+    fiveDaysFromNow.setDate(fiveDaysFromNow.getDate() + 5);
+
+    const expiringUsers = snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(user => {
+        if (!user.subscriptionExpiry || !user.subscriptionApproved) return false;
+        const expiry = user.subscriptionExpiry.toDate ? user.subscriptionExpiry.toDate() : new Date(user.subscriptionExpiry);
+        return expiry <= fiveDaysFromNow && expiry > new Date();
+      });
+
+    res.json({ success: true, data: expiringUsers });
+  } catch (error) {
+    console.error('Error fetching expiring subscriptions:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.get('*', generalLimiter, (req, res) => {
   res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
