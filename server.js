@@ -10,6 +10,8 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'build')));
 
+app.set('trust proxy', 1);
+
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 const GROQ_API_KEY = process.env.REACT_APP_OPENAI_API_KEY || process.env.GROQ_API_KEY;
 const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
@@ -17,13 +19,21 @@ const EMAIL_USER = process.env.EMAIL_USER;
 const EMAIL_PASS = process.env.EMAIL_PASS;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: EMAIL_USER,
-    pass: EMAIL_PASS
+const transporter = (() => {
+  if (!EMAIL_USER || !EMAIL_PASS) {
+    console.warn('Email service not configured: EMAIL_USER or EMAIL_PASS missing.');
+    return null;
   }
-});
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: EMAIL_USER,
+      pass: EMAIL_PASS
+    },
+    connectionTimeout: 5000,
+    greetingTimeout: 5000
+  });
+})();
 
 const PAYSTACK_BASE_URL = 'https://api.paystack.co';
 const PAYSTACK_VERIFY_PATH = '/transaction/verify';
@@ -167,6 +177,10 @@ app.post('/api/notify/email', generalLimiter, async (req, res) => {
 
     if (!EMAIL_USER || !EMAIL_PASS) {
       return res.status(500).json({ success: false, error: 'Email service is not configured on the server.' });
+    }
+
+    if (!transporter) {
+      return res.status(500).json({ success: false, error: 'Email transporter is not initialized.' });
     }
 
     const htmlContent = `
