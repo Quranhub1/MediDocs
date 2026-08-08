@@ -5,8 +5,10 @@ import {
   getAllPayments,
   approveUserSubscription,
   uploadThumbnail,
+  uploadDocument,
   SUBSCRIPTION_PLANS
 } from '../services/FirestoreService';
+import { generateThumbnail } from '../utils/thumbnailGenerator';
 import {
   collection,
   getDocs,
@@ -51,6 +53,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
     filePath: '',
     thumbnailUrl: '',
     thumbnailFile: null,
+    documentFile: null,
     description: '',
     time: 'normal',
     status: 'free',
@@ -60,6 +63,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
   });
   const [addingDoc, setAddingDoc] = useState(false);
   const [thumbnailPreview, setThumbnailPreview] = useState('');
+  const [generatingThumbnail, setGeneratingThumbnail] = useState(false);
   const fileInputRef = useRef(null);
 
   const [showCourseForm, setShowCourseForm] = useState(false);
@@ -99,6 +103,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
     unitId: ''
   });
   const [updatingDocument, setUpdatingDocument] = useState(false);
+  const [showAddDocForm, setShowAddDocForm] = useState(false);
 
   const ADMIN_EMAIL = 'kaigwaakram123@gmail.com';
   const ADMIN_PHONE = '256749846848';
@@ -458,10 +463,32 @@ const AdminDashboard = ({ user, onViewChange }) => {
     setUpdatingDocument(true);
     try {
       const docPath = editingDocument.fullPath || `RESOURCES_STUDYPEDIA/${editDocForm.courseId}/semesters/${editDocForm.semesterId}/courseunits/${editDocForm.unitId}/documents/${editingDocument.id}`;
+      
+      let filePath = editDocForm.filePath;
+      let thumbnailUrl = editDocForm.thumbnailUrl || '';
+
+      if (editDocForm.documentFile) {
+        const uploadResult = await uploadDocument(editDocForm.documentFile);
+        if (uploadResult.success) {
+          filePath = uploadResult.url;
+        } else {
+          alert('Failed to upload document: ' + uploadResult.error);
+          setUpdatingDocument(false);
+          return;
+        }
+      }
+
+      if (editDocForm.thumbnailFile) {
+        const uploadResult = await uploadThumbnail(editDocForm.thumbnailFile);
+        if (uploadResult.success) {
+          thumbnailUrl = uploadResult.url;
+        }
+      }
+
       await updateDoc(docRef(db, docPath), {
         title: editDocForm.title,
-        filePath: editDocForm.filePath,
-        thumbnailUrl: editDocForm.thumbnailUrl || '',
+        filePath: filePath,
+        thumbnailUrl: thumbnailUrl,
         description: editDocForm.description || '',
         time: editDocForm.time,
         status: editDocForm.status
@@ -471,6 +498,8 @@ const AdminDashboard = ({ user, onViewChange }) => {
         title: '',
         filePath: '',
         thumbnailUrl: '',
+        thumbnailFile: null,
+        documentFile: null,
         description: '',
         time: 'normal',
         status: 'free',
@@ -478,6 +507,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
         semesterId: '',
         unitId: ''
       });
+      setThumbnailPreview('');
       loadDocuments();
       loadData();
       alert('Document updated successfully!');
@@ -501,6 +531,29 @@ const AdminDashboard = ({ user, onViewChange }) => {
     }
   };
 
+  const handleDocumentChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    setNewDoc({ ...newDoc, documentFile: file });
+    setGeneratingThumbnail(true);
+    
+    try {
+      const result = await generateThumbnail(file);
+      if (result.success) {
+        setNewDoc(prev => ({ ...prev, thumbnailFile: result.file }));
+        setThumbnailPreview(result.url);
+      } else {
+        alert('Could not auto-generate thumbnail: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error generating thumbnail:', error);
+      alert('Failed to generate thumbnail');
+    } finally {
+      setGeneratingThumbnail(false);
+    }
+  };
+
   const addDocument = async (e) => {
     e.preventDefault();
 
@@ -511,7 +564,19 @@ const AdminDashboard = ({ user, onViewChange }) => {
 
     setAddingDoc(true);
     try {
+      let filePath = newDoc.filePath;
       let thumbnailUrl = newDoc.thumbnailUrl;
+
+      if (newDoc.documentFile) {
+        const uploadResult = await uploadDocument(newDoc.documentFile);
+        if (uploadResult.success) {
+          filePath = uploadResult.url;
+        } else {
+          alert('Failed to upload document: ' + uploadResult.error);
+          setAddingDoc(false);
+          return;
+        }
+      }
 
       if (newDoc.thumbnailFile) {
         const uploadResult = await uploadThumbnail(newDoc.thumbnailFile);
@@ -524,7 +589,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
 
       await addDoc(docRef, {
         title: newDoc.title,
-        filePath: newDoc.filePath,
+        filePath: filePath,
         thumbnailUrl: thumbnailUrl || '',
         description: newDoc.description || '',
         time: newDoc.time,
@@ -538,6 +603,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
         filePath: '',
         thumbnailUrl: '',
         thumbnailFile: null,
+        documentFile: null,
         description: '',
         time: 'normal',
         status: 'free',
@@ -546,7 +612,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
         unitId: ''
       });
       setThumbnailPreview('');
-      setActiveTab('documents');
+      loadDocuments();
       loadData();
     } catch (error) {
       console.error('Error adding document:', error);
@@ -1198,7 +1264,12 @@ const AdminDashboard = ({ user, onViewChange }) => {
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">File Path (URL)</label>
-                          <input type="text" value={editDocForm.filePath} onChange={(e) => setEditDocForm({ ...editDocForm, filePath: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" required />
+                          <input type="text" value={editDocForm.filePath} onChange={(e) => setEditDocForm({ ...editDocForm, filePath: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Replace Document File</label>
+                          <input type="file" onChange={handleDocumentChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" accept="image/*,.pdf" />
+                          {generatingThumbnail && <p className="text-sm text-emerald-600 mt-1">Generating thumbnail...</p>}
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Thumbnail URL</label>
@@ -1227,11 +1298,86 @@ const AdminDashboard = ({ user, onViewChange }) => {
                         <button type="submit" disabled={updatingDocument} className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 disabled:bg-gray-400 transition-colors shadow-sm">
                           {updatingDocument ? 'Updating...' : 'Update Document'}
                         </button>
-                        <button type="button" onClick={() => { setEditingDocument(null); setEditDocForm({ title: '', filePath: '', thumbnailUrl: '', description: '', time: 'normal', status: 'free', courseId: '', semesterId: '', unitId: '' }); }} className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-300 transition-colors">Cancel</button>
+                        <button type="button" onClick={() => { setEditingDocument(null); setEditDocForm({ title: '', filePath: '', thumbnailUrl: '', thumbnailFile: null, documentFile: null, description: '', time: 'normal', status: 'free', courseId: '', semesterId: '', unitId: '' }); setThumbnailPreview(''); }} className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-300 transition-colors">Cancel</button>
                       </div>
                     </form>
                   ) : (
                     <>
+                      {!showAddDocForm ? (
+                        <button onClick={() => setShowAddDocForm(true)} className="mb-4 px-4 py-2 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors shadow-sm">
+                          + Add Document
+                        </button>
+                      ) : (
+                        <form onSubmit={addDocument} className="mb-6 p-6 bg-gray-50 rounded-xl border border-gray-200 space-y-4">
+                          <h3 className="text-lg font-semibold text-gray-900">Add New Document</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">Title *</label>
+                              <input type="text" value={newDoc.title} onChange={(e) => setNewDoc({ ...newDoc, title: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" required />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">Course *</label>
+                              <select value={newDoc.courseId} onChange={(e) => setNewDoc({ ...newDoc, courseId: e.target.value, semesterId: '', unitId: '' })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" required>
+                                <option value="">Select Course</option>
+                                {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">Semester *</label>
+                              <select value={newDoc.semesterId} onChange={(e) => setNewDoc({ ...newDoc, semesterId: e.target.value, unitId: '' })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" required disabled={!newDoc.courseId}>
+                                <option value="">Select Semester</option>
+                                {semesters.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">Unit *</label>
+                              <select value={newDoc.unitId} onChange={(e) => setNewDoc({ ...newDoc, unitId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" required disabled={!newDoc.semesterId}>
+                                <option value="">Select Unit</option>
+                                {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">Document File</label>
+                              <input type="file" onChange={handleDocumentChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" accept="image/*,.pdf" />
+                              {generatingThumbnail && <p className="text-sm text-emerald-600 mt-1">Generating thumbnail...</p>}
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">Or File Path (URL)</label>
+                              <input type="text" value={newDoc.filePath} onChange={(e) => setNewDoc({ ...newDoc, filePath: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="https://..." />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                              <select value={newDoc.status} onChange={(e) => setNewDoc({ ...newDoc, status: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                <option value="free">Free</option>
+                                <option value="premium">Premium</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">Time</label>
+                              <select value={newDoc.time} onChange={(e) => setNewDoc({ ...newDoc, time: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                <option value="normal">Normal</option>
+                                <option value="latest">Latest</option>
+                              </select>
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                              <textarea value={newDoc.description} onChange={(e) => setNewDoc({ ...newDoc, description: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" rows="3" />
+                            </div>
+                            {thumbnailPreview && (
+                              <div className="md:col-span-2">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Thumbnail Preview</label>
+                                <img src={thumbnailPreview} alt="Thumbnail preview" className="w-32 h-24 object-cover rounded-lg border border-gray-200" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex gap-4">
+                            <button type="submit" disabled={addingDoc} className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 disabled:bg-gray-400 transition-colors shadow-sm">
+                              {addingDoc ? 'Adding...' : 'Add Document'}
+                            </button>
+                            <button type="button" onClick={() => { setShowAddDocForm(false); setNewDoc({ title: '', filePath: '', thumbnailUrl: '', thumbnailFile: null, documentFile: null, description: '', time: 'normal', status: 'free', courseId: '', semesterId: '', unitId: '' }); setThumbnailPreview(''); }} className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-300 transition-colors">Cancel</button>
+                          </div>
+                        </form>
+                      )}
                       <div className="overflow-x-auto">
                         <table className="w-full">
                           <thead className="bg-gray-50">
@@ -1257,7 +1403,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
                                 </td>
                                 <td className="px-6 py-4">
                                   <div className="flex gap-2">
-                                    <button onClick={() => { setEditingDocument(doc); setEditDocForm({ title: doc.title || '', filePath: doc.filePath || '', thumbnailUrl: doc.thumbnailUrl || '', description: doc.description || '', time: doc.time || 'normal', status: doc.status || 'free', courseId: doc.courseId || '', semesterId: doc.semesterId || '', unitId: doc.unitId || '' }); }} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors">Edit</button>
+                                    <button onClick={() => { setEditingDocument(doc); setEditDocForm({ title: doc.title || '', filePath: doc.filePath || '', thumbnailUrl: doc.thumbnailUrl || '', thumbnailFile: null, documentFile: null, description: doc.description || '', time: doc.time || 'normal', status: doc.status || 'free', courseId: doc.courseId || '', semesterId: doc.semesterId || '', unitId: doc.unitId || '' }); setThumbnailPreview(''); }} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors">Edit</button>
                                     <button onClick={() => deleteDocument(doc)} className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors">Delete</button>
                                   </div>
                                 </td>

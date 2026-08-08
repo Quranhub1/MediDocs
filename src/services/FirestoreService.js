@@ -394,6 +394,23 @@ export const uploadThumbnail = async (file, path = 'thumbnails') => {
   }
 };
 
+// Upload document to Firebase Storage
+export const uploadDocument = async (file, path = 'documents') => {
+  try {
+    const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+    const { storage } = await import('../firebase');
+    
+    const fileName = `${path}/${Date.now()}_${file.name}`;
+    const storageRef = ref(storage, fileName);
+    await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(storageRef);
+    return { success: true, url: downloadURL };
+  } catch (error) {
+    console.error('Error uploading document:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 // Get document content for AI context
 export const getDocumentForAI = async (docId, courseId, semesterId, unitId) => {
   try {
