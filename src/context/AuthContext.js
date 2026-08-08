@@ -78,7 +78,7 @@ export const AuthProvider = ({ children }) => {
       });
       
       try {
-        await fetch('/api/notify/email', {
+        const response = await fetch('/api/notify/email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -90,6 +90,10 @@ export const AuthProvider = ({ children }) => {
             userName: name
           })
         });
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          console.warn('Signup email notification failed:', data.error || response.statusText);
+        }
       } catch (emailError) {
         console.error('Failed to send signup notification email:', emailError);
       }
@@ -105,7 +109,7 @@ export const AuthProvider = ({ children }) => {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       
       try {
-        await fetch('/api/notify/email', {
+        const response = await fetch('/api/notify/email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -117,6 +121,10 @@ export const AuthProvider = ({ children }) => {
             userName: userCredential.user.displayName || 'User'
           })
         });
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          console.warn('Login email notification failed:', data.error || response.statusText);
+        }
       } catch (emailError) {
         console.error('Failed to send login notification email:', emailError);
       }
