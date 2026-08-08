@@ -394,6 +394,84 @@ export const uploadThumbnail = async (file, path = 'thumbnails') => {
   }
 };
 
+// Upload document to Firebase Storage
+export const uploadDocument = async (file, path = 'documents') => {
+  try {
+    const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+    const { storage } = await import('../firebase');
+    
+    const fileName = `${path}/${Date.now()}_${file.name}`;
+    const storageRef = ref(storage, fileName);
+    await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(storageRef);
+    return { success: true, url: downloadURL };
+  } catch (error) {
+    console.error('Error uploading document:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// List files from Firebase Storage
+export const listStorageFiles = async (folder = '') => {
+  try {
+    const { ref, listAll, getDownloadURL } = await import('firebase/storage');
+    const { storage } = await import('../firebase');
+    
+    const storageRef = ref(storage, folder);
+    const result = await listAll(storageRef);
+    
+    const files = await Promise.all(
+      result.items.map(async (item) => {
+        const url = await getDownloadURL(item);
+        return {
+          name: item.name,
+          fullPath: item.fullPath,
+          url: url,
+          size: item.size,
+          contentType: item.contentType,
+          updated: item.updated
+        };
+      })
+    );
+    
+    return { success: true, files };
+  } catch (error) {
+    console.error('Error listing storage files:', error);
+    return { success: false, error: error.message, files: [] };
+  }
+};
+
+// Delete file from Firebase Storage
+export const deleteStorageFile = async (filePath) => {
+  try {
+    const { ref, deleteObject } = await import('firebase/storage');
+    const { storage } = await import('../firebase');
+    
+    const fileRef = ref(storage, filePath);
+    await deleteObject(fileRef);
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting storage file:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Create folder in Firebase Storage
+export const createStorageFolder = async (folderName) => {
+  try {
+    const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+    const { storage } = await import('../firebase');
+    
+    const folderRef = ref(storage, `${folderName}/.keep`);
+    const blob = new Blob([''], { type: 'text/plain' });
+    await uploadBytes(folderRef, blob);
+    return { success: true, message: 'Folder created successfully' };
+  } catch (error) {
+    console.error('Error creating folder:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 // Get document content for AI context
 export const getDocumentForAI = async (docId, courseId, semesterId, unitId) => {
   try {
