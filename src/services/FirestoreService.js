@@ -456,6 +456,22 @@ export const deleteStorageFile = async (filePath) => {
   }
 };
 
+// Create folder in Firebase Storage
+export const createStorageFolder = async (folderName) => {
+  try {
+    const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+    const { storage } = await import('../firebase');
+    
+    const folderRef = ref(storage, `${folderName}/.keep`);
+    const blob = new Blob([''], { type: 'text/plain' });
+    await uploadBytes(folderRef, blob);
+    return { success: true, message: 'Folder created successfully' };
+  } catch (error) {
+    console.error('Error creating folder:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 // Get document content for AI context
 export const getDocumentForAI = async (docId, courseId, semesterId, unitId) => {
   try {

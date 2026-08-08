@@ -8,6 +8,7 @@ import {
   uploadDocument,
   listStorageFiles,
   deleteStorageFile,
+  createStorageFolder,
   SUBSCRIPTION_PLANS
 } from '../services/FirestoreService';
 import { generateThumbnail } from '../utils/thumbnailGenerator';
@@ -43,23 +44,18 @@ const AdminDashboard = ({ user, onViewChange }) => {
     totalUnits: 0
   });
   const [alerts, setAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const [paystackPublicKey, setPaystackPublicKey] = useState('');
   const [paystackSecretKey, setPaystackSecretKey] = useState('');
   const [savingConfig, setSavingConfig] = useState(false);
   const [configMessage, setConfigMessage] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [storageFiles, setStorageFiles] = useState([]);
-  const [loadingStorage, setLoadingStorage] = useState(false);
-  const [storageFolder, setStorageFolder] = useState('');
-  const [storageMessage, setStorageMessage] = useState('');
 
   const [newDoc, setNewDoc] = useState({
     title: '',
     filePath: '',
     thumbnailUrl: '',
     thumbnailFile: null,
-    documentFile: null,
     description: '',
     time: 'normal',
     status: 'free',
@@ -69,7 +65,6 @@ const AdminDashboard = ({ user, onViewChange }) => {
   });
   const [addingDoc, setAddingDoc] = useState(false);
   const [thumbnailPreview, setThumbnailPreview] = useState('');
-  const [generatingThumbnail, setGeneratingThumbnail] = useState(false);
   const fileInputRef = useRef(null);
 
   const [showCourseForm, setShowCourseForm] = useState(false);
@@ -109,7 +104,12 @@ const AdminDashboard = ({ user, onViewChange }) => {
     unitId: ''
   });
   const [updatingDocument, setUpdatingDocument] = useState(false);
-  const [showAddDocForm, setShowAddDocForm] = useState(false);
+  const [storageFiles, setStorageFiles] = useState([]);
+  const [loadingStorage, setLoadingStorage] = useState(false);
+  const [storageFolder, setStorageFolder] = useState('');
+  const [storageMessage, setStorageMessage] = useState('');
+  const [newFolderName, setNewFolderName] = useState('');
+  const [creatingFolder, setCreatingFolder] = useState(false);
 
   const ADMIN_EMAIL = 'kaigwaakram123@gmail.com';
   const ADMIN_PHONE = '256749846848';
@@ -148,15 +148,8 @@ const AdminDashboard = ({ user, onViewChange }) => {
   useEffect(() => {
     if (isAdmin) {
       loadData();
-      loadConfig();
     }
   }, [isAdmin, loadData]);
-
-  useEffect(() => {
-    if (isAdmin && activeTab === 'storage') {
-      loadStorageFiles();
-    }
-  }, [isAdmin, activeTab]);
 
   const loadDocuments = async () => {
     try {
@@ -204,6 +197,57 @@ const AdminDashboard = ({ user, onViewChange }) => {
     }
   };
 
+  const loadStorageFiles = async () => {
+    setLoadingStorage(true);
+    setStorageMessage('');
+    try {
+      const result = await listStorageFiles(storageFolder);
+      if (result.success) {
+        setStorageFiles(result.files || []);
+      } else {
+        setStorageMessage(result.error || 'Failed to load storage files');
+      }
+    } catch (error) {
+      setStorageMessage('Error loading storage files');
+    }
+    setLoadingStorage(false);
+  };
+
+  const handleDeleteStorageFile = async (filePath) => {
+    if (!window.confirm('Are you sure you want to delete this file?')) return;
+    try {
+      const result = await deleteStorageFile(filePath);
+      if (result.success) {
+        setStorageMessage('File deleted successfully');
+        loadStorageFiles();
+      } else {
+        setStorageMessage(result.error || 'Failed to delete file');
+      }
+    } catch (error) {
+      setStorageMessage('Error deleting file');
+    }
+  };
+
+  const handleCreateFolder = async (e) => {
+    e.preventDefault();
+    if (!newFolderName.trim()) return;
+    setCreatingFolder(true);
+    setStorageMessage('');
+    try {
+      const result = await createStorageFolder(newFolderName.trim());
+      if (result.success) {
+        setStorageMessage('Folder created successfully');
+        setNewFolderName('');
+        loadStorageFiles();
+      } else {
+        setStorageMessage(result.error || 'Failed to create folder');
+      }
+    } catch (error) {
+      setStorageMessage('Error creating folder');
+    }
+    setCreatingFolder(false);
+  };
+
   const loadConfig = async () => {
     try {
       const token = await user.getIdToken();
@@ -247,37 +291,6 @@ const AdminDashboard = ({ user, onViewChange }) => {
       setConfigMessage('Error saving configuration');
     }
     setSavingConfig(false);
-  };
-
-  const loadStorageFiles = async () => {
-    setLoadingStorage(true);
-    setStorageMessage('');
-    try {
-      const result = await listStorageFiles(storageFolder);
-      if (result.success) {
-        setStorageFiles(result.files || []);
-      } else {
-        setStorageMessage(result.error || 'Failed to load storage files');
-      }
-    } catch (error) {
-      setStorageMessage('Error loading storage files');
-    }
-    setLoadingStorage(false);
-  };
-
-  const handleDeleteStorageFile = async (filePath) => {
-    if (!window.confirm('Are you sure you want to delete this file?')) return;
-    try {
-      const result = await deleteStorageFile(filePath);
-      if (result.success) {
-        setStorageMessage('File deleted successfully');
-        loadStorageFiles();
-      } else {
-        setStorageMessage(result.error || 'Failed to delete file');
-      }
-    } catch (error) {
-      setStorageMessage('Error deleting file');
-    }
   };
 
   const loadCourses = async () => {
@@ -506,32 +519,10 @@ const AdminDashboard = ({ user, onViewChange }) => {
     setUpdatingDocument(true);
     try {
       const docPath = editingDocument.fullPath || `RESOURCES_STUDYPEDIA/${editDocForm.courseId}/semesters/${editDocForm.semesterId}/courseunits/${editDocForm.unitId}/documents/${editingDocument.id}`;
-      
-      let filePath = editDocForm.filePath;
-      let thumbnailUrl = editDocForm.thumbnailUrl || '';
-
-      if (editDocForm.documentFile) {
-        const uploadResult = await uploadDocument(editDocForm.documentFile);
-        if (uploadResult.success) {
-          filePath = uploadResult.url;
-        } else {
-          alert('Failed to upload document: ' + uploadResult.error);
-          setUpdatingDocument(false);
-          return;
-        }
-      }
-
-      if (editDocForm.thumbnailFile) {
-        const uploadResult = await uploadThumbnail(editDocForm.thumbnailFile);
-        if (uploadResult.success) {
-          thumbnailUrl = uploadResult.url;
-        }
-      }
-
       await updateDoc(docRef(db, docPath), {
         title: editDocForm.title,
-        filePath: filePath,
-        thumbnailUrl: thumbnailUrl,
+        filePath: editDocForm.filePath,
+        thumbnailUrl: editDocForm.thumbnailUrl || '',
         description: editDocForm.description || '',
         time: editDocForm.time,
         status: editDocForm.status
@@ -541,8 +532,6 @@ const AdminDashboard = ({ user, onViewChange }) => {
         title: '',
         filePath: '',
         thumbnailUrl: '',
-        thumbnailFile: null,
-        documentFile: null,
         description: '',
         time: 'normal',
         status: 'free',
@@ -550,7 +539,6 @@ const AdminDashboard = ({ user, onViewChange }) => {
         semesterId: '',
         unitId: ''
       });
-      setThumbnailPreview('');
       loadDocuments();
       loadData();
       alert('Document updated successfully!');
@@ -574,29 +562,6 @@ const AdminDashboard = ({ user, onViewChange }) => {
     }
   };
 
-  const handleDocumentChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    setNewDoc({ ...newDoc, documentFile: file });
-    setGeneratingThumbnail(true);
-    
-    try {
-      const result = await generateThumbnail(file);
-      if (result.success) {
-        setNewDoc(prev => ({ ...prev, thumbnailFile: result.file }));
-        setThumbnailPreview(result.url);
-      } else {
-        alert('Could not auto-generate thumbnail: ' + result.error);
-      }
-    } catch (error) {
-      console.error('Error generating thumbnail:', error);
-      alert('Failed to generate thumbnail');
-    } finally {
-      setGeneratingThumbnail(false);
-    }
-  };
-
   const addDocument = async (e) => {
     e.preventDefault();
 
@@ -607,19 +572,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
 
     setAddingDoc(true);
     try {
-      let filePath = newDoc.filePath;
       let thumbnailUrl = newDoc.thumbnailUrl;
-
-      if (newDoc.documentFile) {
-        const uploadResult = await uploadDocument(newDoc.documentFile);
-        if (uploadResult.success) {
-          filePath = uploadResult.url;
-        } else {
-          alert('Failed to upload document: ' + uploadResult.error);
-          setAddingDoc(false);
-          return;
-        }
-      }
 
       if (newDoc.thumbnailFile) {
         const uploadResult = await uploadThumbnail(newDoc.thumbnailFile);
@@ -632,7 +585,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
 
       await addDoc(docRef, {
         title: newDoc.title,
-        filePath: filePath,
+        filePath: newDoc.filePath,
         thumbnailUrl: thumbnailUrl || '',
         description: newDoc.description || '',
         time: newDoc.time,
@@ -646,7 +599,6 @@ const AdminDashboard = ({ user, onViewChange }) => {
         filePath: '',
         thumbnailUrl: '',
         thumbnailFile: null,
-        documentFile: null,
         description: '',
         time: 'normal',
         status: 'free',
@@ -655,7 +607,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
         unitId: ''
       });
       setThumbnailPreview('');
-      loadDocuments();
+      setActiveTab('documents');
       loadData();
     } catch (error) {
       console.error('Error adding document:', error);
@@ -904,17 +856,17 @@ const AdminDashboard = ({ user, onViewChange }) => {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 mb-8">
           <div className="border-b border-gray-200">
             <nav className="flex -mb-px overflow-x-auto" aria-label="Tabs">
-               {[
-                 { id: 'overview', label: 'Overview', icon: '📊' },
-                 { id: 'documents', label: 'Documents', icon: '📄' },
-                  { id: 'add', label: 'Add Content', icon: '➕' },
-                  { id: 'users', label: 'Users', icon: '👥' },
-                  { id: 'payments', label: 'Payments', icon: '💳' },
-                  { id: 'register', label: 'Register', icon: '📝' },
-                  { id: 'alerts', label: 'Alerts', icon: '🔔' },
-                  { id: 'settings', label: 'Settings', icon: '⚙️' },
-                  { id: 'storage', label: 'Storage', icon: '📁' }
-               ].map((tab) => (
+              {[
+                { id: 'overview', label: 'Overview', icon: '📊' },
+                { id: 'documents', label: 'Documents', icon: '📄' },
+                 { id: 'add', label: 'Add Content', icon: '➕' },
+                 { id: 'users', label: 'Users', icon: '👥' },
+                 { id: 'payments', label: 'Payments', icon: '💳' },
+                 { id: 'register', label: 'Register', icon: '📝' },
+                 { id: 'alerts', label: 'Alerts', icon: '🔔' },
+                 { id: 'settings', label: 'Settings', icon: '⚙️' },
+                 { id: 'storage', label: 'Storage', icon: '📁' }
+              ].map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
@@ -1308,12 +1260,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">File Path (URL)</label>
-                          <input type="text" value={editDocForm.filePath} onChange={(e) => setEditDocForm({ ...editDocForm, filePath: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Replace Document File</label>
-                          <input type="file" onChange={handleDocumentChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" accept="image/*,.pdf" />
-                          {generatingThumbnail && <p className="text-sm text-emerald-600 mt-1">Generating thumbnail...</p>}
+                          <input type="text" value={editDocForm.filePath} onChange={(e) => setEditDocForm({ ...editDocForm, filePath: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" required />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Thumbnail URL</label>
@@ -1342,86 +1289,11 @@ const AdminDashboard = ({ user, onViewChange }) => {
                         <button type="submit" disabled={updatingDocument} className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 disabled:bg-gray-400 transition-colors shadow-sm">
                           {updatingDocument ? 'Updating...' : 'Update Document'}
                         </button>
-                        <button type="button" onClick={() => { setEditingDocument(null); setEditDocForm({ title: '', filePath: '', thumbnailUrl: '', thumbnailFile: null, documentFile: null, description: '', time: 'normal', status: 'free', courseId: '', semesterId: '', unitId: '' }); setThumbnailPreview(''); }} className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-300 transition-colors">Cancel</button>
+                        <button type="button" onClick={() => { setEditingDocument(null); setEditDocForm({ title: '', filePath: '', thumbnailUrl: '', description: '', time: 'normal', status: 'free', courseId: '', semesterId: '', unitId: '' }); }} className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-300 transition-colors">Cancel</button>
                       </div>
                     </form>
                   ) : (
                     <>
-                      {!showAddDocForm ? (
-                        <button onClick={() => setShowAddDocForm(true)} className="mb-4 px-4 py-2 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors shadow-sm">
-                          + Add Document
-                        </button>
-                      ) : (
-                        <form onSubmit={addDocument} className="mb-6 p-6 bg-gray-50 rounded-xl border border-gray-200 space-y-4">
-                          <h3 className="text-lg font-semibold text-gray-900">Add New Document</h3>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">Title *</label>
-                              <input type="text" value={newDoc.title} onChange={(e) => setNewDoc({ ...newDoc, title: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" required />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">Course *</label>
-                              <select value={newDoc.courseId} onChange={(e) => setNewDoc({ ...newDoc, courseId: e.target.value, semesterId: '', unitId: '' })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" required>
-                                <option value="">Select Course</option>
-                                {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">Semester *</label>
-                              <select value={newDoc.semesterId} onChange={(e) => setNewDoc({ ...newDoc, semesterId: e.target.value, unitId: '' })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" required disabled={!newDoc.courseId}>
-                                <option value="">Select Semester</option>
-                                {semesters.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">Unit *</label>
-                              <select value={newDoc.unitId} onChange={(e) => setNewDoc({ ...newDoc, unitId: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" required disabled={!newDoc.semesterId}>
-                                <option value="">Select Unit</option>
-                                {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">Document File</label>
-                              <input type="file" onChange={handleDocumentChange} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" accept="image/*,.pdf" />
-                              {generatingThumbnail && <p className="text-sm text-emerald-600 mt-1">Generating thumbnail...</p>}
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">Or File Path (URL)</label>
-                              <input type="text" value={newDoc.filePath} onChange={(e) => setNewDoc({ ...newDoc, filePath: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="https://..." />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                              <select value={newDoc.status} onChange={(e) => setNewDoc({ ...newDoc, status: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                                <option value="free">Free</option>
-                                <option value="premium">Premium</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">Time</label>
-                              <select value={newDoc.time} onChange={(e) => setNewDoc({ ...newDoc, time: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                                <option value="normal">Normal</option>
-                                <option value="latest">Latest</option>
-                              </select>
-                            </div>
-                            <div className="md:col-span-2">
-                              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                              <textarea value={newDoc.description} onChange={(e) => setNewDoc({ ...newDoc, description: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" rows="3" />
-                            </div>
-                            {thumbnailPreview && (
-                              <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Thumbnail Preview</label>
-                                <img src={thumbnailPreview} alt="Thumbnail preview" className="w-32 h-24 object-cover rounded-lg border border-gray-200" />
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex gap-4">
-                            <button type="submit" disabled={addingDoc} className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 disabled:bg-gray-400 transition-colors shadow-sm">
-                              {addingDoc ? 'Adding...' : 'Add Document'}
-                            </button>
-                            <button type="button" onClick={() => { setShowAddDocForm(false); setNewDoc({ title: '', filePath: '', thumbnailUrl: '', thumbnailFile: null, documentFile: null, description: '', time: 'normal', status: 'free', courseId: '', semesterId: '', unitId: '' }); setThumbnailPreview(''); }} className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-300 transition-colors">Cancel</button>
-                          </div>
-                        </form>
-                      )}
                       <div className="overflow-x-auto">
                         <table className="w-full">
                           <thead className="bg-gray-50">
@@ -1447,7 +1319,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
                                 </td>
                                 <td className="px-6 py-4">
                                   <div className="flex gap-2">
-                                    <button onClick={() => { setEditingDocument(doc); setEditDocForm({ title: doc.title || '', filePath: doc.filePath || '', thumbnailUrl: doc.thumbnailUrl || '', thumbnailFile: null, documentFile: null, description: doc.description || '', time: doc.time || 'normal', status: doc.status || 'free', courseId: doc.courseId || '', semesterId: doc.semesterId || '', unitId: doc.unitId || '' }); setThumbnailPreview(''); }} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors">Edit</button>
+                                    <button onClick={() => { setEditingDocument(doc); setEditDocForm({ title: doc.title || '', filePath: doc.filePath || '', thumbnailUrl: doc.thumbnailUrl || '', description: doc.description || '', time: doc.time || 'normal', status: doc.status || 'free', courseId: doc.courseId || '', semesterId: doc.semesterId || '', unitId: doc.unitId || '' }); }} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors">Edit</button>
                                     <button onClick={() => deleteDocument(doc)} className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors">Delete</button>
                                   </div>
                                 </td>
@@ -1581,173 +1453,189 @@ const AdminDashboard = ({ user, onViewChange }) => {
               </div>
             )}
 
-             {activeTab === 'register' && (
-               <div className="bg-white rounded-xl shadow-md p-6 max-w-2xl">
-                 <h2 className="text-2xl font-bold mb-6 text-gray-800">Register New User</h2>
-                 <form onSubmit={handleRegisterUser} className="space-y-4">
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
-                     <input
-                       name="regName"
-                       type="text"
-                       required
-                       className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                       placeholder="John Doe"
-                     />
-                   </div>
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
-                     <input
-                       name="regEmail"
-                       type="email"
-                       required
-                       className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                       placeholder="user@example.com"
-                     />
-                   </div>
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
-                     <input
-                       name="regPhone"
-                       type="tel"
-                       className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                       placeholder="256749846848"
-                     />
-                   </div>
-                   <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-2">Password *</label>
-                     <input
-                       name="regPassword"
-                       type="password"
-                       required
-                       minLength="6"
-                       className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                       placeholder="Min 6 characters"
-                     />
-                   </div>
-                   <button
-                     type="submit"
-                     className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors shadow-sm"
-                   >
-                     Register User
-                   </button>
-                 </form>
-               </div>
-             )}
+            {activeTab === 'register' && (
+              <div className="bg-white rounded-xl shadow-md p-6 max-w-2xl">
+                <h2 className="text-2xl font-bold mb-6 text-gray-800">Register New User</h2>
+                <form onSubmit={handleRegisterUser} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
+                    <input
+                      name="regName"
+                      type="text"
+                      required
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="John Doe"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+                    <input
+                      name="regEmail"
+                      type="email"
+                      required
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="user@example.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                    <input
+                      name="regPhone"
+                      type="tel"
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="256749846848"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Password *</label>
+                    <input
+                      name="regPassword"
+                      type="password"
+                      required
+                      minLength="6"
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="Min 6 characters"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors shadow-sm"
+                  >
+                    Register User
+                  </button>
+                </form>
+              </div>
+            )}
 
-              {activeTab === 'settings' && (
-                <div className="bg-white rounded-xl shadow-md p-6 max-w-2xl">
-                  <h2 className="text-2xl font-bold mb-6 text-gray-800">Paystack Configuration</h2>
-                  <form onSubmit={saveConfig} className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Public Key</label>
-                      <input
-                        type="text"
-                        value={paystackPublicKey}
-                        onChange={(e) => setPaystackPublicKey(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        placeholder="pk_test_..."
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Secret Key</label>
-                      <input
-                        type="password"
-                        value={paystackSecretKey}
-                        onChange={(e) => setPaystackSecretKey(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        placeholder="sk_test_..."
-                      />
-                    </div>
-                    {configMessage && (
-                      <p className={`text-sm ${configMessage.includes('success') ? 'text-green-600' : 'text-red-600'}`}>
-                        {configMessage}
-                      </p>
-                    )}
-                    <button
-                      type="submit"
-                      disabled={savingConfig}
-                      className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50"
-                    >
-                      {savingConfig ? 'Saving...' : 'Save Configuration'}
-                    </button>
-                  </form>
-                </div>
-              )}
-
-              {activeTab === 'storage' && (
-                <div className="bg-white rounded-xl shadow-md p-6">
-                  <h2 className="text-2xl font-bold mb-6 text-gray-800">Firebase Storage</h2>
-                  <div className="mb-4 flex gap-2">
+            {activeTab === 'settings' && (
+              <div className="bg-white rounded-xl shadow-md p-6 max-w-2xl">
+                <h2 className="text-2xl font-bold mb-6 text-gray-800">Paystack Configuration</h2>
+                <form onSubmit={saveConfig} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Public Key</label>
                     <input
                       type="text"
-                      value={storageFolder}
-                      onChange={(e) => setStorageFolder(e.target.value)}
-                      placeholder="Folder path (e.g., thumbnails, documents)"
-                      className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      value={paystackPublicKey}
+                      onChange={(e) => setPaystackPublicKey(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="pk_test_..."
                     />
-                    <button
-                      onClick={loadStorageFiles}
-                      disabled={loadingStorage}
-                      className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:bg-gray-400"
-                    >
-                      {loadingStorage ? 'Loading...' : 'Load Files'}
-                    </button>
                   </div>
-                  {storageMessage && (
-                    <p className={`text-sm mb-4 ${storageMessage.includes('success') || storageMessage.includes('deleted') ? 'text-green-600' : 'text-red-600'}`}>
-                      {storageMessage}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Secret Key</label>
+                    <input
+                      type="password"
+                      value={paystackSecretKey}
+                      onChange={(e) => setPaystackSecretKey(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="sk_test_..."
+                    />
+                  </div>
+                  {configMessage && (
+                    <p className={`text-sm ${configMessage.includes('success') ? 'text-green-600' : 'text-red-600'}`}>
+                      {configMessage}
                     </p>
                   )}
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Path</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updated</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {storageFiles.map((file, index) => (
-                          <tr key={index} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 text-sm font-medium text-gray-900">{file.name}</td>
-                            <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">{file.fullPath}</td>
-                            <td className="px-6 py-4 text-sm text-gray-600">{file.size ? (file.size / 1024).toFixed(1) + ' KB' : 'N/A'}</td>
-                            <td className="px-6 py-4 text-sm text-gray-600">{file.contentType || 'N/A'}</td>
-                            <td className="px-6 py-4 text-sm text-gray-600">{file.updated ? new Date(file.updated).toLocaleString() : 'N/A'}</td>
-                            <td className="px-6 py-4">
-                              <div className="flex gap-2">
-                                <a
-                                  href={file.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm hover:bg-blue-200"
-                                >
-                                  View
-                                </a>
-                                <button
-                                  onClick={() => handleDeleteStorageFile(file.fullPath)}
-                                  className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm hover:bg-red-200"
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    {storageFiles.length === 0 && !loadingStorage && (
-                      <div className="text-center py-12 text-gray-500">No files found in this folder</div>
-                    )}
-                  </div>
+                  <button
+                    type="submit"
+                    disabled={savingConfig}
+                    className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50"
+                  >
+                    {savingConfig ? 'Saving...' : 'Save Configuration'}
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {activeTab === 'storage' && (
+              <div className="bg-white rounded-xl shadow-md p-6">
+                <h2 className="text-2xl font-bold mb-6 text-gray-800">Firebase Storage</h2>
+                <div className="mb-4 flex gap-2">
+                  <input
+                    type="text"
+                    value={storageFolder}
+                    onChange={(e) => setStorageFolder(e.target.value)}
+                    placeholder="Folder path (e.g., thumbnails, documents)"
+                    className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <button
+                    onClick={loadStorageFiles}
+                    disabled={loadingStorage}
+                    className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:bg-gray-400"
+                  >
+                    {loadingStorage ? 'Loading...' : 'Load Files'}
+                  </button>
                 </div>
-              )}
-            </div>
+                <form onSubmit={handleCreateFolder} className="mb-4 flex gap-2">
+                  <input
+                    type="text"
+                    value={newFolderName}
+                    onChange={(e) => setNewFolderName(e.target.value)}
+                    placeholder="New folder name"
+                    className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <button
+                    type="submit"
+                    disabled={creatingFolder}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+                  >
+                    {creatingFolder ? 'Creating...' : 'Create Folder'}
+                  </button>
+                </form>
+                {storageMessage && (
+                  <p className={`text-sm mb-4 ${storageMessage.includes('success') || storageMessage.includes('deleted') || storageMessage.includes('created') ? 'text-green-600' : 'text-red-600'}`}>
+                    {storageMessage}
+                  </p>
+                )}
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Path</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updated</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {storageFiles.map((file, index) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 text-sm font-medium text-gray-900">{file.name}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">{file.fullPath}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600">{file.size ? (file.size / 1024).toFixed(1) + ' KB' : 'N/A'}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600">{file.contentType || 'N/A'}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600">{file.updated ? new Date(file.updated).toLocaleString() : 'N/A'}</td>
+                          <td className="px-6 py-4">
+                            <div className="flex gap-2">
+                              <a
+                                href={file.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm hover:bg-blue-200"
+                              >
+                                View
+                              </a>
+                              <button
+                                onClick={() => handleDeleteStorageFile(file.fullPath)}
+                                className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm hover:bg-red-200"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {storageFiles.length === 0 && !loadingStorage && (
+                    <div className="text-center py-12 text-gray-500">No files found in this folder</div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
