@@ -4,9 +4,7 @@ import {
   signInWithEmailAndPassword, 
   signOut, 
   onAuthStateChanged,
-  sendPasswordResetEmail,
-  GoogleAuthProvider,
-  signInWithPopup
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
@@ -114,33 +112,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const googleLogin = async () => {
-    try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      
-      const userDoc = await getDoc(doc(db, 'users', result.user.uid));
-      if (!userDoc.exists()) {
-        await setDoc(doc(db, 'users', result.user.uid), {
-          uid: result.user.uid,
-          email: result.user.email,
-          name: result.user.displayName || 'Google User',
-          phone: '',
-          createdAt: serverTimestamp(),
-          role: 'user',
-          subscription: 'free',
-          subscriptionApproved: false,
-          subscriptionStatus: 'inactive',
-          banned: false
-        });
-      }
-      
-      return { success: true, user: result.user };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  };
-
   const createUser = async (email, password, name, phone = '') => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -193,7 +164,6 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     resetPassword,
-    googleLogin,
     createUser,
     banUser,
     updateUserSubscription,
