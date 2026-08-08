@@ -22,12 +22,13 @@ export const AnomalyProvider = ({ children }) => {
   const [userRoles, setUserRoles] = useState([]);
 
   useEffect(() => {
-    if (user) {
+    if (user && db) {
       loadUserRoles();
     }
   }, [user]);
 
   const loadUserRoles = async () => {
+    if (!db) return;
     try {
       const q = query(collection(db, 'userRoles'), orderBy('assignedAt', 'desc'));
       const snapshot = await getDocs(q);

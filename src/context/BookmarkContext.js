@@ -22,15 +22,17 @@ export const BookmarkProvider = ({ children }) => {
   const [trending, setTrending] = useState([]);
 
   useEffect(() => {
-    if (user) {
+    if (user && db) {
       loadBookmarks();
     }
-    loadTrending();
+    if (db) {
+      loadTrending();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const loadBookmarks = async () => {
-    if (!user) return;
+    if (!user || !db) return;
     try {
       const q = query(collection(db, 'users', user.uid, 'bookmarks'), orderBy('createdAt', 'desc'));
       const snapshot = await getDocs(q);

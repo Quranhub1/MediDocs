@@ -25,7 +25,7 @@ export const StudyProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user) {
+    if (user && db) {
       loadStreak();
       loadBadges();
     }
@@ -33,7 +33,7 @@ export const StudyProvider = ({ children }) => {
   }, [user]);
 
   const loadStreak = async () => {
-    if (!user) return;
+    if (!user || !db) return;
     try {
       const docRef = doc(db, 'userStudyData', user.uid);
       const docSnap = await getDoc(docRef);
