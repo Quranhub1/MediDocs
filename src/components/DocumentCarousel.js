@@ -42,6 +42,21 @@ const DocumentCarousel = ({ documents, user, userProfile, onPaymentClick }) => {
     return sortedDocs.slice(0, 5);
   }, [documents]);
 
+  const getFileTypeIcon = (filePath) => {
+    if (!filePath) return '📄';
+    const extension = filePath.split('.').pop().toLowerCase();
+    switch (extension) {
+      case 'pdf': return '📕';
+      case 'doc': case 'docx': return '📘';
+      case 'jpg': case 'jpeg': case 'png': case 'gif': case 'webp': case 'svg': return '🖼️';
+      default: return '📄';
+    }
+  };
+
+  const getThumbnailUrl = (doc) => {
+    return doc.thumbnailUrl || doc.thumbnail || null;
+  };
+
   const isShowingLatest = displayDocs.length > 0 && 
     documents?.some(doc => doc.time && doc.time.toLowerCase() === 'latest');
 
@@ -110,6 +125,20 @@ const DocumentCarousel = ({ documents, user, userProfile, onPaymentClick }) => {
       
       <div className="relative bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl shadow-2xl overflow-hidden">
         <div className="p-8 text-center">
+          <div className="relative w-full h-48 mb-6 rounded-xl overflow-hidden bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50">
+            {getThumbnailUrl(currentDoc) ? (
+              <img
+                src={getThumbnailUrl(currentDoc)}
+                alt={`${currentDoc.title} thumbnail`}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-100 to-teal-100">
+                <span className="text-6xl">{getFileTypeIcon(currentDoc.filePath)}</span>
+              </div>
+            )}
+          </div>
+
           <h3 className="text-2xl font-bold text-white mb-2">
             {currentDoc.title || currentDoc.id}
           </h3>
