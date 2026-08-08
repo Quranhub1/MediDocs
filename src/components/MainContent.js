@@ -21,9 +21,12 @@ import { useBookmarks } from '../context/BookmarkContext';
 import { useToast } from '../context/ToastContext';
 import { fetchCourses, fetchSemesters, fetchCourseUnits, fetchDocuments, fetchAllDocuments } from '../services/FirestoreService';
 
-const canAccessDocument = (doc, userProfile) => {
+const ADMIN_EMAIL = 'kaigwaakram123@gmail.com';
+
+const canAccessDocument = (doc, userProfile, userEmail) => {
   if (!doc) return true;
   if (doc.status === 'free') return true;
+  if (userEmail === ADMIN_EMAIL) return true;
   if (!userProfile) return false;
   if (userProfile.banned) return false;
   if (userProfile.subscriptionApproved && userProfile.subscriptionStatus === 'active') {
@@ -129,7 +132,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   };
 
   const handleReadOnline = (doc) => {
-    if (!canAccessDocument(doc, userProfile)) {
+    if (!canAccessDocument(doc, userProfile, user?.email)) {
       onPaymentClick();
       return;
     }
@@ -138,7 +141,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   };
 
   const handleDownload = async (doc) => {
-    if (!canAccessDocument(doc, userProfile)) {
+    if (!canAccessDocument(doc, userProfile, user?.email)) {
       onPaymentClick();
       return;
     }
@@ -160,7 +163,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   };
 
   const handleListen = (doc) => {
-    if (!canAccessDocument(doc, userProfile)) {
+    if (!canAccessDocument(doc, userProfile, user?.email)) {
       onPaymentClick();
       return;
     }

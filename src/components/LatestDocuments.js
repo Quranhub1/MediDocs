@@ -1,8 +1,11 @@
 import React, { useMemo } from 'react';
 
-const canAccessDocument = (doc, userProfile) => {
+const ADMIN_EMAIL = 'kaigwaakram123@gmail.com';
+
+const canAccessDocument = (doc, userProfile, userEmail) => {
   if (!doc) return true;
   if (doc.status === 'free') return true;
+  if (userEmail === ADMIN_EMAIL) return true;
   if (!userProfile) return false;
   if (userProfile.banned) return false;
   if (userProfile.subscriptionApproved && userProfile.subscriptionStatus === 'active') {
@@ -100,7 +103,7 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange, onPayment
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {displayDocuments.map((doc, index) => {
-            const hasAccess = canAccessDocument(doc, userProfile);
+            const hasAccess = canAccessDocument(doc, userProfile, user?.email);
             return (
               <div
                 key={doc.id}

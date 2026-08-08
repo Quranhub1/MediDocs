@@ -5,8 +5,13 @@ import {
   getAllPayments,
   approveUserSubscription,
   uploadThumbnail,
+  uploadDocument,
+  listStorageFiles,
+  deleteStorageFile,
+  createStorageFolder,
   SUBSCRIPTION_PLANS
 } from '../services/FirestoreService';
+import { generateThumbnail } from '../utils/thumbnailGenerator';
 import {
   collection,
   getDocs,
@@ -41,6 +46,10 @@ const AdminDashboard = ({ user, onViewChange }) => {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [paystackPublicKey, setPaystackPublicKey] = useState('');
+  const [paystackSecretKey, setPaystackSecretKey] = useState('');
+  const [savingConfig, setSavingConfig] = useState(false);
+  const [configMessage, setConfigMessage] = useState('');
 
   const [newDoc, setNewDoc] = useState({
     title: '',
@@ -95,6 +104,12 @@ const AdminDashboard = ({ user, onViewChange }) => {
     unitId: ''
   });
   const [updatingDocument, setUpdatingDocument] = useState(false);
+  const [storageFiles, setStorageFiles] = useState([]);
+  const [loadingStorage, setLoadingStorage] = useState(false);
+  const [storageFolder, setStorageFolder] = useState('');
+  const [storageMessage, setStorageMessage] = useState('');
+  const [newFolderName, setNewFolderName] = useState('');
+  const [creatingFolder, setCreatingFolder] = useState(false);
 
   const ADMIN_EMAIL = 'kaigwaakram123@gmail.com';
   const ADMIN_PHONE = '256749846848';
@@ -180,6 +195,102 @@ const AdminDashboard = ({ user, onViewChange }) => {
       console.error('Error loading payments:', error);
       return [];
     }
+  };
+
+  const loadStorageFiles = async () => {
+    setLoadingStorage(true);
+    setStorageMessage('');
+    try {
+      const result = await listStorageFiles(storageFolder);
+      if (result.success) {
+        setStorageFiles(result.files || []);
+      } else {
+        setStorageMessage(result.error || 'Failed to load storage files');
+      }
+    } catch (error) {
+      setStorageMessage('Error loading storage files');
+    }
+    setLoadingStorage(false);
+  };
+
+  const handleDeleteStorageFile = async (filePath) => {
+    if (!window.confirm('Are you sure you want to delete this file?')) return;
+    try {
+      const result = await deleteStorageFile(filePath);
+      if (result.success) {
+        setStorageMessage('File deleted successfully');
+        loadStorageFiles();
+      } else {
+        setStorageMessage(result.error || 'Failed to delete file');
+      }
+    } catch (error) {
+      setStorageMessage('Error deleting file');
+    }
+  };
+
+  const handleCreateFolder = async (e) => {
+    e.preventDefault();
+    if (!newFolderName.trim()) return;
+    setCreatingFolder(true);
+    setStorageMessage('');
+    try {
+      const result = await createStorageFolder(newFolderName.trim());
+      if (result.success) {
+        setStorageMessage('Folder created successfully');
+        setNewFolderName('');
+        loadStorageFiles();
+      } else {
+        setStorageMessage(result.error || 'Failed to create folder');
+      }
+    } catch (error) {
+      setStorageMessage('Error creating folder');
+    }
+    setCreatingFolder(false);
+  };
+
+  const loadConfig = async () => {
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('/api/config/paystack', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setPaystackPublicKey(data.publicKey || '');
+      }
+    } catch (error) {
+      console.error('Error loading config:', error);
+    }
+  };
+
+  const saveConfig = async (e) => {
+    e.preventDefault();
+    setSavingConfig(true);
+    setConfigMessage('');
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('/api/config/paystack', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          publicKey: paystackPublicKey,
+          secretKey: paystackSecretKey
+        })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setConfigMessage('Paystack configuration saved successfully');
+        setPaystackSecretKey('');
+      } else {
+        setConfigMessage(data.error || 'Failed to save configuration');
+      }
+    } catch (error) {
+      setConfigMessage('Error saving configuration');
+    }
+    setSavingConfig(false);
   };
 
   const loadCourses = async () => {
@@ -752,7 +863,9 @@ const AdminDashboard = ({ user, onViewChange }) => {
                  { id: 'users', label: 'Users', icon: '👥' },
                  { id: 'payments', label: 'Payments', icon: '💳' },
                  { id: 'register', label: 'Register', icon: '📝' },
-                 { id: 'alerts', label: 'Alerts', icon: '🔔' }
+                 { id: 'alerts', label: 'Alerts', icon: '🔔' },
+                 { id: 'settings', label: 'Settings', icon: '⚙️' },
+                 { id: 'storage', label: 'Storage', icon: '📁' }
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -1391,6 +1504,135 @@ const AdminDashboard = ({ user, onViewChange }) => {
                     Register User
                   </button>
                 </form>
+              </div>
+            )}
+
+            {activeTab === 'settings' && (
+              <div className="bg-white rounded-xl shadow-md p-6 max-w-2xl">
+                <h2 className="text-2xl font-bold mb-6 text-gray-800">Paystack Configuration</h2>
+                <form onSubmit={saveConfig} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Public Key</label>
+                    <input
+                      type="text"
+                      value={paystackPublicKey}
+                      onChange={(e) => setPaystackPublicKey(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="pk_test_..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Secret Key</label>
+                    <input
+                      type="password"
+                      value={paystackSecretKey}
+                      onChange={(e) => setPaystackSecretKey(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="sk_test_..."
+                    />
+                  </div>
+                  {configMessage && (
+                    <p className={`text-sm ${configMessage.includes('success') ? 'text-green-600' : 'text-red-600'}`}>
+                      {configMessage}
+                    </p>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={savingConfig}
+                    className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50"
+                  >
+                    {savingConfig ? 'Saving...' : 'Save Configuration'}
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {activeTab === 'storage' && (
+              <div className="bg-white rounded-xl shadow-md p-6">
+                <h2 className="text-2xl font-bold mb-6 text-gray-800">Firebase Storage</h2>
+                <div className="mb-4 flex gap-2">
+                  <input
+                    type="text"
+                    value={storageFolder}
+                    onChange={(e) => setStorageFolder(e.target.value)}
+                    placeholder="Folder path (e.g., thumbnails, documents)"
+                    className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <button
+                    onClick={loadStorageFiles}
+                    disabled={loadingStorage}
+                    className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:bg-gray-400"
+                  >
+                    {loadingStorage ? 'Loading...' : 'Load Files'}
+                  </button>
+                </div>
+                <form onSubmit={handleCreateFolder} className="mb-4 flex gap-2">
+                  <input
+                    type="text"
+                    value={newFolderName}
+                    onChange={(e) => setNewFolderName(e.target.value)}
+                    placeholder="New folder name"
+                    className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <button
+                    type="submit"
+                    disabled={creatingFolder}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+                  >
+                    {creatingFolder ? 'Creating...' : 'Create Folder'}
+                  </button>
+                </form>
+                {storageMessage && (
+                  <p className={`text-sm mb-4 ${storageMessage.includes('success') || storageMessage.includes('deleted') || storageMessage.includes('created') ? 'text-green-600' : 'text-red-600'}`}>
+                    {storageMessage}
+                  </p>
+                )}
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Path</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updated</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {storageFiles.map((file, index) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 text-sm font-medium text-gray-900">{file.name}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">{file.fullPath}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600">{file.size ? (file.size / 1024).toFixed(1) + ' KB' : 'N/A'}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600">{file.contentType || 'N/A'}</td>
+                          <td className="px-6 py-4 text-sm text-gray-600">{file.updated ? new Date(file.updated).toLocaleString() : 'N/A'}</td>
+                          <td className="px-6 py-4">
+                            <div className="flex gap-2">
+                              <a
+                                href={file.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm hover:bg-blue-200"
+                              >
+                                View
+                              </a>
+                              <button
+                                onClick={() => handleDeleteStorageFile(file.fullPath)}
+                                className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm hover:bg-red-200"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {storageFiles.length === 0 && !loadingStorage && (
+                    <div className="text-center py-12 text-gray-500">No files found in this folder</div>
+                  )}
+                </div>
               </div>
             )}
           </div>
