@@ -43,6 +43,7 @@ export const BookmarkProvider = ({ children }) => {
   };
 
   const loadTrending = async () => {
+    if (!db) return;
     try {
       const q = query(collection(db, 'trending'), orderBy('viewCount', 'desc'), limit(10));
       const snapshot = await getDocs(q);

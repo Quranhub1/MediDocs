@@ -11,7 +11,18 @@ window.addEventListener('error', (event) => {
 });
 
 window.addEventListener('unhandledrejection', (event) => {
-  console.error('Unhandled promise rejection caught:', event.reason);
+  const reason = event.reason;
+  if (reason && typeof reason === 'object') {
+    const message = reason.message || reason.code || '';
+    if (message.includes('securetoken.googleapis.com') || 
+        message.includes('Cloud Firestore backend') ||
+        message.includes('client is offline') ||
+        message.includes('ERR_CONNECTION_CLOSED')) {
+      console.warn('Firebase connectivity issue detected. The app will continue in offline mode.');
+      return;
+    }
+  }
+  console.error('Unhandled promise rejection caught:', reason);
 });
 
 root.render(
