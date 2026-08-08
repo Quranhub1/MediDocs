@@ -18,22 +18,6 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
 
-const transporter = (() => {
-  if (!EMAIL_USER || !EMAIL_PASS) {
-    console.warn('Email service not configured: EMAIL_USER or EMAIL_PASS missing.');
-    return null;
-  }
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: EMAIL_USER,
-      pass: EMAIL_PASS
-    },
-    connectionTimeout: 5000,
-    greetingTimeout: 5000
-  });
-})();
-
 const PAYSTACK_BASE_URL = 'https://api.paystack.co';
 const PAYSTACK_VERIFY_PATH = '/transaction/verify';
 
