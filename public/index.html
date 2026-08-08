@@ -388,31 +388,60 @@
     <style>
       #root {
         min-height: 100vh;
+      }
+      .app-loader {
+        min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: #f9fafb;
+        background: linear-gradient(135deg, #059669 0%, #0d9488 100%);
+        font-family: Inter, sans-serif;
+        color: #ffffff;
+        margin: 0;
       }
-      .loading-fallback {
+      .app-loader-inner {
         text-align: center;
         padding: 2rem;
       }
-      .loading-fallback h1 {
-        font-family: Inter, sans-serif;
-        color: #059669;
+      .app-loader-inner h1 {
+        font-size: 2.5rem;
+        font-weight: 800;
         margin-bottom: 0.5rem;
+        letter-spacing: -0.02em;
       }
-      .loading-fallback p {
-        font-family: Inter, sans-serif;
-        color: #6b7280;
+      .app-loader-inner p {
+        font-size: 1rem;
+        opacity: 0.85;
+      }
+      .app-loader-bar {
+        margin-top: 1.25rem;
+        width: 220px;
+        height: 6px;
+        border-radius: 999px;
+        overflow: hidden;
+        background: rgba(255,255,255,0.25);
+      }
+      .app-loader-bar > span {
+        display: block;
+        height: 100%;
+        border-radius: 999px;
+        background: #ffffff;
+        animation: loader-slide 1.2s ease-in-out infinite;
+      }
+      @keyframes loader-slide {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(100%); }
       }
     </style>
   </head>
   <body class="font-inter antialiased">
     <div id="root">
-      <div class="loading-fallback">
-        <h1>MediDocs</h1>
-        <p>Loading...</p>
+      <div class="app-loader">
+        <div class="app-loader-inner">
+          <h1>MediDocs</h1>
+          <p>Loading...</p>
+          <div class="app-loader-bar"><span></span></div>
+        </div>
       </div>
     </div>
   </body>

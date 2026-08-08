@@ -19,6 +19,32 @@ export const useAuth = () => {
   return context;
 };
 
+const AuthLoadingScreen = () => (
+  <div style={{
+    minHeight: '100vh',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'linear-gradient(135deg, #059669 0%, #0d9488 100%)',
+    fontFamily: 'Inter, sans-serif',
+    color: '#ffffff'
+  }}>
+    <div style={{ textAlign: 'center', padding: '2rem' }}>
+      <h1 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '0.5rem', letterSpacing: '-0.02em' }}>MediDocs</h1>
+      <p style={{ fontSize: '1rem', opacity: 0.85 }}>Loading...</p>
+      <div style={{ marginTop: '1.25rem', width: '220px', height: '6px', borderRadius: '999px', overflow: 'hidden', background: 'rgba(255,255,255,0.25)', marginLeft: 'auto', marginRight: 'auto' }}>
+        <span style={{ display: 'block', height: '100%', borderRadius: '999px', background: '#ffffff', animation: 'loader-slide 1.2s ease-in-out infinite' }}></span>
+      </div>
+      <style>{`
+        @keyframes loader-slide {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+      `}</style>
+    </div>
+  </div>
+);
+
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -221,7 +247,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {loading ? <AuthLoadingScreen /> : children}
     </AuthContext.Provider>
   );
 };

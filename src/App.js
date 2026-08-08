@@ -1,26 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import './App.css';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import MainContent from './components/MainContent';
 import AdminDashboard from './components/AdminDashboard';
-import LoginModal from './components/LoginModal';
-import RegisterModal from './components/RegisterModal';
-import PaymentModal from './components/PaymentModal';
-import ContactModal from './components/ContactModal';
-import AIStudyAssistant from './components/AIStudyAssistant';
-import ThemeToggle from './components/ThemeToggle';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
 import { StudyProvider } from './context/StudyContext';
 import { BookmarkProvider } from './context/BookmarkContext';
 import { AnomalyProvider, useAnomaly } from './context/AnomalyContext';
 
+const LoginModal = lazy(() => import('./components/LoginModal'));
+const RegisterModal = lazy(() => import('./components/RegisterModal'));
+const PaymentModal = lazy(() => import('./components/PaymentModal'));
+const ContactModal = lazy(() => import('./components/ContactModal'));
+const AIStudyAssistant = lazy(() => import('./components/AIStudyAssistant'));
+
 function AppContent() {
   const { currentUser, userProfile, isBanned, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const { checkLoginAnomaly } = useAnomaly();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentView, setCurrentView] = useState('home');
@@ -181,40 +180,42 @@ function AppContent() {
           </footer>
         </div>
         
-        <LoginModal 
-          show={showLoginModal} 
-          onClose={() => setShowLoginModal(false)}
-          onSwitchToRegister={() => {
-            setShowLoginModal(false);
-            setShowRegisterModal(true);
-          }}
-        />
-        
-        <RegisterModal 
-          show={showRegisterModal} 
-          onClose={() => setShowRegisterModal(false)}
-          onSwitchToLogin={() => {
-            setShowRegisterModal(false);
-            setShowLoginModal(true);
-          }}
-        />
-        
-        <PaymentModal 
-          show={showPaymentModal} 
-          onClose={() => setShowPaymentModal(false)}
-        />
-        
-        <ContactModal 
-          show={showContactModal} 
-          onClose={() => setShowContactModal(false)}
-        />
-        
-        <AIStudyAssistant 
-          show={showAIChatModal} 
-          onClose={() => setShowAIChatModal(false)}
-          user={currentUser}
-          userProfile={userProfile}
-        />
+        <Suspense fallback={<div style={{ display: 'none' }} />}>
+          <LoginModal 
+            show={showLoginModal} 
+            onClose={() => setShowLoginModal(false)}
+            onSwitchToRegister={() => {
+              setShowLoginModal(false);
+              setShowRegisterModal(true);
+            }}
+          />
+          
+          <RegisterModal 
+            show={showRegisterModal} 
+            onClose={() => setShowRegisterModal(false)}
+            onSwitchToLogin={() => {
+              setShowRegisterModal(false);
+              setShowLoginModal(true);
+            }}
+          />
+          
+          <PaymentModal 
+            show={showPaymentModal} 
+            onClose={() => setShowPaymentModal(false)}
+          />
+          
+          <ContactModal 
+            show={showContactModal} 
+            onClose={() => setShowContactModal(false)}
+          />
+          
+          <AIStudyAssistant 
+            show={showAIChatModal} 
+            onClose={() => setShowAIChatModal(false)}
+            user={currentUser}
+            userProfile={userProfile}
+          />
+        </Suspense>
         
         <button
           onClick={() => setShowAIChatModal(true)}
