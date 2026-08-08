@@ -18,11 +18,53 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
 
+let paystackConfig = {
+  publicKey: process.env.REACT_APP_PAYSTACK_PUBLIC_KEY || '',
+  secretKey: PAYSTACK_SECRET_KEY || ''
+};
+
 const PAYSTACK_BASE_URL = 'https://api.paystack.co';
 const PAYSTACK_VERIFY_PATH = '/transaction/verify';
 
 const aiMemoryCache = new Map();
 const AI_CACHE_MAX_ENTRIES = 10000;
+
+let adminDb = null;
+let adminAuth = null;
+
+try {
+  const admin = require('firebase-admin');
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+    adminDb = admin.firestore();
+    adminAuth = admin.auth();
+  } else {
+    console.warn('Firebase Admin not initialized: FIREBASE_SERVICE_ACCOUNT missing');
+  }
+} catch (error) {
+  console.error('Firebase Admin initialization error:', error);
+}
+
+async function loadPaystackConfig() {
+  try {
+    if (!adminDb) return;
+    const docRef = adminDb.collection('config').doc('paystack');
+    const docSnap = await docRef.get();
+    if (docSnap.exists) {
+      const data = docSnap.data();
+      if (data.publicKey) paystackConfig.publicKey = data.publicKey;
+      if (data.secretKey) paystackConfig.secretKey = data.secretKey;
+      console.log('Paystack config loaded from Firestore');
+    }
+  } catch (error) {
+    console.error('Error loading Paystack config from Firestore:', error);
+  }
+}
+
+loadPaystackConfig();
 
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -71,7 +113,7 @@ app.post('/api/paystack/verify', paystackLimiter, async (req, res) => {
     const response = await fetch(verifyUrl, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${PAYSTACK_SECRET_KEY}`
+        'Authorization': `Bearer ${paystackConfig.secretKey}`
       }
     });
 
@@ -96,6 +138,58 @@ app.post('/api/paystack/webhook', paystackLimiter, (req, res) => {
     console.log('Payment successful:', payload.data);
   }
   res.status(200).send('OK');
+});
+
+app.get('/api/config/paystack', (req, res) => {
+  res.json({
+    publicKey: paystackConfig.publicKey || process.env.REACT_APP_PAYSTACK_PUBLIC_KEY || ''
+  });
+});
+
+app.post('/api/config/paystack', generalLimiter, async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) {
+      return res.status(401).json({ success: false, error: 'Missing authorization token' });
+    }
+
+    if (!adminDb) {
+      return res.status(500).json({ success: false, error: 'Admin SDK not initialized' });
+    }
+
+    let decodedToken;
+    try {
+      decodedToken = await adminAuth.verifyIdToken(token);
+    } catch (error) {
+      return res.status(401).json({ success: false, error: 'Invalid token' });
+    }
+
+    const isAdmin = decodedToken.phone_number === '256749846848' ||
+      (decodedToken.email && decodedToken.email.toLowerCase() === (ADMIN_EMAIL || '').toLowerCase());
+    if (!isAdmin) {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
+    }
+
+    const { publicKey, secretKey } = req.body;
+    if (!publicKey && !secretKey) {
+      return res.status(400).json({ success: false, error: 'At least one key is required' });
+    }
+
+    const updateData = { updatedAt: new Date().toISOString() };
+    if (publicKey) updateData.publicKey = publicKey;
+    if (secretKey) updateData.secretKey = secretKey;
+
+    await adminDb.collection('config').doc('paystack').set(updateData, { merge: true });
+
+    if (publicKey) paystackConfig.publicKey = publicKey;
+    if (secretKey) paystackConfig.secretKey = secretKey;
+
+    res.json({ success: true, message: 'Paystack config updated' });
+  } catch (error) {
+    console.error('Error updating Paystack config:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 app.post('/api/ai/chat', aiLimiter, async (req, res) => {

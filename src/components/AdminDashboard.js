@@ -39,6 +39,10 @@ const AdminDashboard = ({ user, onViewChange }) => {
     totalUnits: 0
   });
   const [alerts, setAlerts] = useState([]);
+  const [paystackPublicKey, setPaystackPublicKey] = useState('');
+  const [paystackSecretKey, setPaystackSecretKey] = useState('');
+  const [savingConfig, setSavingConfig] = useState(false);
+  const [configMessage, setConfigMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -133,6 +137,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
   useEffect(() => {
     if (isAdmin) {
       loadData();
+      loadConfig();
     }
   }, [isAdmin, loadData]);
 
@@ -180,6 +185,51 @@ const AdminDashboard = ({ user, onViewChange }) => {
       console.error('Error loading payments:', error);
       return [];
     }
+  };
+
+  const loadConfig = async () => {
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('/api/config/paystack', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setPaystackPublicKey(data.publicKey || '');
+      }
+    } catch (error) {
+      console.error('Error loading config:', error);
+    }
+  };
+
+  const saveConfig = async (e) => {
+    e.preventDefault();
+    setSavingConfig(true);
+    setConfigMessage('');
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('/api/config/paystack', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          publicKey: paystackPublicKey,
+          secretKey: paystackSecretKey
+        })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setConfigMessage('Paystack configuration saved successfully');
+        setPaystackSecretKey('');
+      } else {
+        setConfigMessage(data.error || 'Failed to save configuration');
+      }
+    } catch (error) {
+      setConfigMessage('Error saving configuration');
+    }
+    setSavingConfig(false);
   };
 
   const loadCourses = async () => {
@@ -745,15 +795,16 @@ const AdminDashboard = ({ user, onViewChange }) => {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 mb-8">
           <div className="border-b border-gray-200">
             <nav className="flex -mb-px overflow-x-auto" aria-label="Tabs">
-              {[
-                { id: 'overview', label: 'Overview', icon: '📊' },
-                { id: 'documents', label: 'Documents', icon: '📄' },
-                 { id: 'add', label: 'Add Content', icon: '➕' },
-                 { id: 'users', label: 'Users', icon: '👥' },
-                 { id: 'payments', label: 'Payments', icon: '💳' },
-                 { id: 'register', label: 'Register', icon: '📝' },
-                 { id: 'alerts', label: 'Alerts', icon: '🔔' }
-              ].map((tab) => (
+               {[
+                 { id: 'overview', label: 'Overview', icon: '📊' },
+                 { id: 'documents', label: 'Documents', icon: '📄' },
+                  { id: 'add', label: 'Add Content', icon: '➕' },
+                  { id: 'users', label: 'Users', icon: '👥' },
+                  { id: 'payments', label: 'Payments', icon: '💳' },
+                  { id: 'register', label: 'Register', icon: '📝' },
+                  { id: 'alerts', label: 'Alerts', icon: '🔔' },
+                  { id: 'settings', label: 'Settings', icon: '⚙️' }
+               ].map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
@@ -1340,60 +1391,100 @@ const AdminDashboard = ({ user, onViewChange }) => {
               </div>
             )}
 
-            {activeTab === 'register' && (
-              <div className="bg-white rounded-xl shadow-md p-6 max-w-2xl">
-                <h2 className="text-2xl font-bold mb-6 text-gray-800">Register New User</h2>
-                <form onSubmit={handleRegisterUser} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
-                    <input
-                      name="regName"
-                      type="text"
-                      required
-                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      placeholder="John Doe"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
-                    <input
-                      name="regEmail"
-                      type="email"
-                      required
-                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      placeholder="user@example.com"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
-                    <input
-                      name="regPhone"
-                      type="tel"
-                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      placeholder="256749846848"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Password *</label>
-                    <input
-                      name="regPassword"
-                      type="password"
-                      required
-                      minLength="6"
-                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      placeholder="Min 6 characters"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors shadow-sm"
-                  >
-                    Register User
-                  </button>
-                </form>
-              </div>
-            )}
-          </div>
+             {activeTab === 'register' && (
+               <div className="bg-white rounded-xl shadow-md p-6 max-w-2xl">
+                 <h2 className="text-2xl font-bold mb-6 text-gray-800">Register New User</h2>
+                 <form onSubmit={handleRegisterUser} className="space-y-4">
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
+                     <input
+                       name="regName"
+                       type="text"
+                       required
+                       className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                       placeholder="John Doe"
+                     />
+                   </div>
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+                     <input
+                       name="regEmail"
+                       type="email"
+                       required
+                       className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                       placeholder="user@example.com"
+                     />
+                   </div>
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                     <input
+                       name="regPhone"
+                       type="tel"
+                       className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                       placeholder="256749846848"
+                     />
+                   </div>
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">Password *</label>
+                     <input
+                       name="regPassword"
+                       type="password"
+                       required
+                       minLength="6"
+                       className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                       placeholder="Min 6 characters"
+                     />
+                   </div>
+                   <button
+                     type="submit"
+                     className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors shadow-sm"
+                   >
+                     Register User
+                   </button>
+                 </form>
+               </div>
+             )}
+
+             {activeTab === 'settings' && (
+               <div className="bg-white rounded-xl shadow-md p-6 max-w-2xl">
+                 <h2 className="text-2xl font-bold mb-6 text-gray-800">Paystack Configuration</h2>
+                 <form onSubmit={saveConfig} className="space-y-4">
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">Public Key</label>
+                     <input
+                       type="text"
+                       value={paystackPublicKey}
+                       onChange={(e) => setPaystackPublicKey(e.target.value)}
+                       className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                       placeholder="pk_test_..."
+                     />
+                   </div>
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">Secret Key</label>
+                     <input
+                       type="password"
+                       value={paystackSecretKey}
+                       onChange={(e) => setPaystackSecretKey(e.target.value)}
+                       className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                       placeholder="sk_test_..."
+                     />
+                   </div>
+                   {configMessage && (
+                     <p className={`text-sm ${configMessage.includes('success') ? 'text-green-600' : 'text-red-600'}`}>
+                       {configMessage}
+                     </p>
+                   )}
+                   <button
+                     type="submit"
+                     disabled={savingConfig}
+                     className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50"
+                   >
+                     {savingConfig ? 'Saving...' : 'Save Configuration'}
+                   </button>
+                 </form>
+               </div>
+             )}
+           </div>
         </div>
       </div>
     </div>

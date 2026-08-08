@@ -11,6 +11,7 @@ const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
   const [paystackLoaded, setPaystackLoaded] = useState(false);
+  const [publicKey, setPublicKey] = useState('');
 
   useEffect(() => {
     if (show) {
@@ -21,6 +22,21 @@ const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) 
       }
     }
   }, [show, selectedPlan]);
+
+  useEffect(() => {
+    const fetchPublicKey = async () => {
+      try {
+        const response = await fetch('/api/config/paystack');
+        if (response.ok) {
+          const data = await response.json();
+          setPublicKey(data.publicKey || '');
+        }
+      } catch (error) {
+        console.error('Error fetching Paystack config:', error);
+      }
+    };
+    fetchPublicKey();
+  }, []);
 
   useEffect(() => {
     if (show && !paystackLoaded) {
@@ -49,7 +65,6 @@ const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) 
 
     setIsSubmitting(true);
     const plan = getPlanDetails();
-    const publicKey = process.env.REACT_APP_PAYSTACK_PUBLIC_KEY;
     
     if (!publicKey || publicKey.includes('your_paystack')) {
       alert('Paystack is not configured. Please contact support.');
