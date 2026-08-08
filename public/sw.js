@@ -1,4 +1,4 @@
-const CACHE_NAME = 'medidocs-v2';
+const CACHE_NAME = 'medidocs-v3';
 const STATIC_ASSETS = [
   '/static/js/',
   '/static/css/',

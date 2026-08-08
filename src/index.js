@@ -5,6 +5,15 @@ import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
+
+window.addEventListener('error', (event) => {
+  console.error('Global error caught:', event.error);
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('Unhandled promise rejection caught:', event.reason);
+});
+
 root.render(
   <React.StrictMode>
     <ErrorBoundary>
