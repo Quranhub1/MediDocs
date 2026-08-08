@@ -38,6 +38,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
     totalSemesters: 0,
     totalUnits: 0
   });
+  const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -747,10 +748,11 @@ const AdminDashboard = ({ user, onViewChange }) => {
               {[
                 { id: 'overview', label: 'Overview', icon: '📊' },
                 { id: 'documents', label: 'Documents', icon: '📄' },
-                { id: 'add', label: 'Add Content', icon: '➕' },
-                { id: 'users', label: 'Users', icon: '👥' },
-                { id: 'payments', label: 'Payments', icon: '💳' },
-                { id: 'register', label: 'Register', icon: '📝' }
+                 { id: 'add', label: 'Add Content', icon: '➕' },
+                 { id: 'users', label: 'Users', icon: '👥' },
+                 { id: 'payments', label: 'Payments', icon: '💳' },
+                 { id: 'register', label: 'Register', icon: '📝' },
+                 { id: 'alerts', label: 'Alerts', icon: '🔔' }
               ].map((tab) => (
                 <button
                   key={tab.id}
