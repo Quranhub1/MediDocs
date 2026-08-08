@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { collection, doc, setDoc, getDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, getDocs } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { db } from '../firebase';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
 
