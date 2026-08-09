@@ -4,14 +4,14 @@ const BackgroundImages = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   
   const images = [
-    'https://picsum.photos/seed/med1/800/600',
-    'https://picsum.photos/seed/med2/800/600',
-    'https://picsum.photos/seed/med3/800/600',
-    'https://picsum.photos/seed/med4/800/600',
-    'https://picsum.photos/seed/med5/800/600',
-    'https://picsum.photos/seed/med6/800/600',
-    'https://picsum.photos/seed/med7/800/600',
-    'https://picsum.photos/seed/med8/800/600'
+    'https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1504813180591-4a21e2030201?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1579684385122-6d0c12c48f2a?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1538108149393-fbbd81895907?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1598256989800-fe5f95da9787?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&w=1200&q=80'
   ];
 
   useEffect(() => {
@@ -62,7 +62,7 @@ const BackgroundImages = () => {
         >
           <img
             src={image}
-            alt={`Medical ${index + 1}`}
+            alt={`Medical background ${index + 1}`}
             className="w-full h-full object-cover"
             style={{ filter: 'brightness(0.7) saturate(1.1)' }}
             loading="lazy"
