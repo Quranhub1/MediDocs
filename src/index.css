@@ -183,21 +183,28 @@ html {
   animation: slideInUp 0.3s ease-out;
 }
 
-/* Force mobile styling for the admin screen at all screen sizes,
-   but fluidly fit any screen instead of a fixed width */
+/* Admin screen layout: fluid and fits any screen width.
+   Keep a clean, legible single-column base on small screens, then expand
+   grids to fill the available width on larger screens. */
 .mobile-admin {
   width: 100%;
 }
 
+/* Constrain inner containers to a comfortable reading width but let them
+   grow with the screen instead of being locked to a narrow column. */
 .mobile-admin .max-w-7xl,
-.mobile-admin .max-w-2xl,
-.mobile-admin .max-w-md,
 .mobile-admin .max-w-4xl {
   max-width: 100% !important;
   margin-left: auto;
   margin-right: auto;
 }
 
+.mobile-admin .max-w-2xl,
+.mobile-admin .max-w-md {
+  max-width: 100% !important;
+}
+
+/* Default (small screens): stack rows and use single-column grids */
 .mobile-admin .sm\:flex-row {
   flex-direction: column !important;
 }
@@ -207,7 +214,7 @@ html {
 }
 
 .mobile-admin .sm\:justify-between {
-  justify-content: flex-start !important;
+  justify-content: space-between !important;
 }
 
 .mobile-admin .sm\:px-6,
@@ -269,7 +276,7 @@ html {
 }
 
 .mobile-admin h2 {
-  font-size: 1.25rem !important;
+  font-size: 1.375rem !important;
 }
 
 .mobile-admin h3 {
@@ -281,7 +288,7 @@ html {
 }
 
 .mobile-admin .text-2xl {
-  font-size: 1.25rem !important;
+  font-size: 1.375rem !important;
 }
 
 .mobile-admin .text-lg {
@@ -292,34 +299,39 @@ html {
   -webkit-overflow-scrolling: touch;
 }
 
-/* On wider screens, scale the mobile layout up so it still fits nicely */
+/* Expand grids to fill the screen as it gets wider */
 @media (min-width: 640px) {
-  .admin-fluid .max-w-7xl {
-    max-width: 640px !important;
+  .mobile-admin .sm\:grid-cols-2,
+  .mobile-admin .md\:grid-cols-2,
+  .mobile-admin .lg\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
 
 @media (min-width: 768px) {
-  .admin-fluid .max-w-7xl {
-    max-width: 720px !important;
+  .mobile-admin .max-w-7xl {
+    max-width: 100% !important;
   }
-  .admin-fluid .lg\:grid-cols-2,
-  .admin-fluid .md\:grid-cols-2 {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  .mobile-admin .p-6 {
+    padding: 1.5rem !important;
+  }
+  .mobile-admin .py-8 {
+    padding-top: 2rem !important;
+    padding-bottom: 2rem !important;
+  }
+  .mobile-admin .lg\:grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+  .mobile-admin .lg\:grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+  .mobile-admin .md\:col-span-2 {
+    grid-column: span 2 !important;
   }
 }
 
 @media (min-width: 1024px) {
-  .admin-fluid .max-w-7xl {
-    max-width: 960px !important;
-  }
-  .admin-fluid .lg\:grid-cols-3 {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  }
-  .admin-fluid .lg\:grid-cols-4 {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-  }
-  .admin-fluid .sm\:grid-cols-2 {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  .mobile-admin .max-w-7xl {
+    max-width: 100% !important;
   }
 }
