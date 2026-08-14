@@ -15,7 +15,7 @@ const CourseGrid = ({ courses, onBrowseClick }) => {
           {courses.map((course) => (
             <div 
               key={course.id} 
-              className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 overflow-hidden group"
+              className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100 overflow-hidden group flex flex-col h-full"
             >
               {/* Card Header with gradient */}
               <div className={`h-3 bg-gradient-to-r ${
@@ -25,7 +25,7 @@ const CourseGrid = ({ courses, onBrowseClick }) => {
                 'from-blue-400 to-indigo-500'
               }`}></div>
               
-              <div className="p-6">
+              <div className="p-6 flex flex-col flex-1">
                 {/* Icon */}
                 <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${
                   course.id === 'clt1' ? 'from-emerald-100 to-teal-100' :
@@ -74,7 +74,7 @@ const CourseGrid = ({ courses, onBrowseClick }) => {
                 
                 {/* Button */}
                 <button 
-                  className={`w-full py-3 rounded-xl font-medium transition-all duration-300 ${
+                  className={`mt-auto w-full py-3 rounded-xl font-medium transition-all duration-300 ${
                     course.id === 'clt1' ? 'bg-emerald-500 hover:bg-emerald-600 text-white' :
                     course.id === 'clt2' ? 'bg-teal-500 hover:bg-teal-600 text-white' :
                     course.id === 'dip1' ? 'bg-cyan-500 hover:bg-cyan-600 text-white' :
