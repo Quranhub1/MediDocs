@@ -119,7 +119,7 @@ MediDocs uses manual Mobile Money payments in UGX:
 - Monthly: UGX 15,000
 - Yearly: UGX 60,000
 
-Users are prompted to send the amount to **KABALI MARINA** at **256749846848** via Mobile Money, then submit the payment for verification.
+Users are prompted to send the amount to **KABALI MADINA** at **256749846848** via Mobile Money, then submit the payment for verification.
 
 After submission, the admin reviews and approves subscriptions from the Admin Dashboard.
 

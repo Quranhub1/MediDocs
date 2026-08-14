@@ -3,7 +3,7 @@ import { submitPayment, SUBSCRIPTION_PLANS } from '../services/FirestoreService'
 import { useAuth } from '../context/AuthContext';
 import { serverTimestamp } from 'firebase/firestore';
 
-const PAYMENT_RECIPIENT_NAME = 'Kabali Marina';
+const PAYMENT_RECIPIENT_NAME = 'Kabali Madina';
 const PAYMENT_RECIPIENT_NUMBER = '256749846848';
 
 const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) => {
