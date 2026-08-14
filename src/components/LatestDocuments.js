@@ -173,6 +173,14 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange, onPayment
     setTimeout(() => { suppressClick.current = false; }, 0);
   };
 
+  const onClickCapture = (e) => {
+    if (dragState.current.moved) {
+      e.stopPropagation();
+      e.preventDefault();
+      dragState.current.moved = false;
+    }
+  };
+
   useEffect(() => {
     setActiveIndex(0);
     const el = scrollRef.current;
@@ -237,6 +245,7 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange, onPayment
             onTouchStart={onDragStart}
             onTouchMove={onDragMove}
             onTouchEnd={onDragEnd}
+            onClickCapture={onClickCapture}
             className="flex gap-8 overflow-x-auto snap-x snap-mandatory px-12 py-2 scrollbar-hide cursor-grab active:cursor-grabbing"
             style={{ scrollBehavior: 'smooth' }}
           >
