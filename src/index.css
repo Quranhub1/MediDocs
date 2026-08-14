@@ -183,10 +183,10 @@ html {
   animation: slideInUp 0.3s ease-out;
 }
 
-/* Force mobile styling for the admin screen at all screen sizes */
+/* Force mobile styling for the admin screen at all screen sizes,
+   but fluidly fit any screen instead of a fixed width */
 .mobile-admin {
-  max-width: 480px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .mobile-admin .max-w-7xl,
@@ -194,6 +194,8 @@ html {
 .mobile-admin .max-w-md,
 .mobile-admin .max-w-4xl {
   max-width: 100% !important;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .mobile-admin .sm\:flex-row {
@@ -288,4 +290,36 @@ html {
 
 .mobile-admin .overflow-x-auto {
   -webkit-overflow-scrolling: touch;
+}
+
+/* On wider screens, scale the mobile layout up so it still fits nicely */
+@media (min-width: 640px) {
+  .admin-fluid .max-w-7xl {
+    max-width: 640px !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .admin-fluid .max-w-7xl {
+    max-width: 720px !important;
+  }
+  .admin-fluid .lg\:grid-cols-2,
+  .admin-fluid .md\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .admin-fluid .max-w-7xl {
+    max-width: 960px !important;
+  }
+  .admin-fluid .lg\:grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+  .admin-fluid .lg\:grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+  .admin-fluid .sm\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
 }
