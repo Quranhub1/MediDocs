@@ -18,7 +18,7 @@ const canAccessDocument = (doc, userProfile, userEmail) => {
   return false;
 };
 
-const LatestDocuments = ({ documents, user, userProfile, onViewChange, onPaymentClick }) => {
+const LatestDocuments = ({ documents, user, userProfile, onViewChange, onPaymentClick, onLockedAccess }) => {
   const getFileTypeIcon = (filePath) => {
     if (!filePath) return '📄';
     const extension = filePath.split('.').pop().toLowerCase();
@@ -35,6 +35,18 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange, onPayment
   };
 
   const handleReadOnline = (doc) => {
+    if (!canAccessDocument(doc, userProfile, user?.email)) {
+      if (onPaymentClick) onPaymentClick();
+      return;
+    }
+    if (onLockedAccess) {
+      onLockedAccess(doc, () => {
+        const url = doc.filePath;
+        if (url) window.location.href = url;
+        else alert('No read online link available for this document');
+      });
+      return;
+    }
     const url = doc.filePath;
     if (url) {
       window.location.href = url;
@@ -44,6 +56,18 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange, onPayment
   };
 
   const handleDownload = (doc) => {
+    if (!canAccessDocument(doc, userProfile, user?.email)) {
+      if (onPaymentClick) onPaymentClick();
+      return;
+    }
+    if (onLockedAccess) {
+      onLockedAccess(doc, () => {
+        const url = doc.filePath;
+        if (url) window.location.href = url;
+        else alert('No link available for this document');
+      });
+      return;
+    }
     const url = doc.filePath;
     if (url) {
       window.location.href = url;

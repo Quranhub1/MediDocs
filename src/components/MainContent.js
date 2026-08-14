@@ -20,6 +20,9 @@ import { useStudy } from '../context/StudyContext';
 import { useBookmarks } from '../context/BookmarkContext';
 import { useToast } from '../context/ToastContext';
 import { fetchCourses, fetchSemesters, fetchCourseUnits, fetchDocuments, fetchAllDocuments } from '../services/FirestoreService';
+import { useViewLimit } from '../hooks/useViewLimit';
+import PaymentModal from './PaymentModal';
+import LimitReachedModal from './LimitReachedModal';
 
 const ADMIN_EMAIL = 'kaigwaakram123@gmail.com';
 
@@ -43,6 +46,10 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   const { theme } = useTheme();
   const { recordStudySession } = useStudy();
   const { addToast } = useToast();
+  const { viewedCount, limitReached, recordView, isSubscriber } = useViewLimit(userProfile);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [pendingPlan, setPendingPlan] = useState(null);
   const [courses, setCourses] = useState([]);
   const [latestDocuments, setLatestDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -140,43 +147,55 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
     setSubLoading(false);
   };
 
-  const handleReadOnline = (doc) => {
-    if (!canAccessDocument(doc, userProfile, user?.email)) {
-      onPaymentClick();
+  // Gate document access:
+  // - Premium docs -> always require subscription (payment modal)
+  // - Free docs -> free users may open up to FREE_VIEW_LIMIT distinct docs,
+  //   then the limit modal appears.
+  const attemptAccess = (doc, onGranted) => {
+    if (!doc) return;
+    if (doc.status === 'premium' || !canAccessDocument(doc, userProfile, user?.email)) {
+      setShowPayment(true);
       return;
     }
-    setSelectedDocument(doc);
-    setShowReader(true);
+    if (!isSubscriber && limitReached && !recordView(doc.id)) {
+      setShowLimitModal(true);
+      return;
+    }
+    recordView(doc.id);
+    onGranted();
+  };
+
+  const handleReadOnline = (doc) => {
+    attemptAccess(doc, () => {
+      setSelectedDocument(doc);
+      setShowReader(true);
+    });
   };
 
   const handleDownload = async (doc) => {
-    if (!canAccessDocument(doc, userProfile, user?.email)) {
-      onPaymentClick();
-      return;
-    }
-    try {
-      const response = await fetch(doc.filePath);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${doc.title || 'document'}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      addToast('Download started!', 'success');
-    } catch (error) {
-      window.open(doc.filePath, '_blank');
-    }
+    attemptAccess(doc, async () => {
+      try {
+        const response = await fetch(doc.filePath);
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${doc.title || 'document'}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        addToast('Download started!', 'success');
+      } catch (error) {
+        window.open(doc.filePath, '_blank');
+      }
+    });
   };
 
   const handleListen = (doc) => {
-    if (!canAccessDocument(doc, userProfile, user?.email)) {
-      onPaymentClick();
-      return;
-    }
-    setAudioText(doc.description || doc.title || 'Document content');
+    attemptAccess(doc, () => {
+      setAudioText(doc.description || doc.title || 'Document content');
+    });
   };
 
   const goBack = () => {
@@ -279,7 +298,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
             )}
           </div>
         )}
-        <DocumentCarousel documents={latestDocuments} user={user} userProfile={userProfile} onPaymentClick={onPaymentClick} />
+        <DocumentCarousel documents={latestDocuments} user={user} userProfile={userProfile} onPaymentClick={onPaymentClick} onLockedAccess={attemptAccess} />
         {!user && (
           <div className="max-w-2xl mx-auto px-4 py-8 text-center">
             <p className="text-gray-600 mb-4">Login to access all documents</p>
@@ -292,13 +311,16 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
           <>
             <StatsSection />
             <div className="space-y-0">
-              <LatestDocuments 
-                documents={latestDocuments} 
-                user={user}
-                userProfile={userProfile}
-                onViewChange={setView}
-                onPaymentClick={onPaymentClick}
-              />
+            <LatestDocuments 
+              documents={latestDocuments} 
+              user={user}
+              userProfile={userProfile}
+              onViewChange={setView}
+              onPaymentClick={onPaymentClick}
+              onLockedAccess={attemptAccess}
+              onDocumentClick={(doc) => console.log('Document clicked:', doc)}
+              onDownloadClick={(doc) => console.log('Download clicked:', doc)}
+            />
               <CourseGrid courses={courses} onBrowseClick={handleCourseClick} />
             </div>
           </>
@@ -358,6 +380,26 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
           {audioText && <AudioPlayer text={audioText} onClose={() => setAudioText('')} />}
           {showAnalytics && <AnalyticsDashboard onClose={() => setShowAnalytics(false)} />}
           {showAdvancedSearch && <AdvancedSearch onClose={() => setShowAdvancedSearch(false)} onViewChange={setView} />}
+          {showLimitModal && (
+            <LimitReachedModal
+              show={showLimitModal}
+              viewedCount={viewedCount}
+              onClose={() => setShowLimitModal(false)}
+              onChoosePlan={(plan) => {
+                setPendingPlan(plan);
+                setShowLimitModal(false);
+                setShowPayment(true);
+              }}
+            />
+          )}
+          {showPayment && (
+            <PaymentModal
+              show={showPayment}
+              selectedPlan={pendingPlan}
+              onClose={() => { setShowPayment(false); setPendingPlan(null); }}
+              onPaymentSuccess={() => { setShowPayment(false); setPendingPlan(null); }}
+            />
+          )}
         </>
       );
     case 'courses':
@@ -406,7 +448,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
         <div className="relative min-h-screen">
           <BackgroundImages />
           <div className="relative z-10 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-900 dark:to-gray-800 min-h-screen py-8">
-            <DocumentCarousel documents={documents} user={user} userProfile={userProfile} onPaymentClick={onPaymentClick} />
+            <DocumentCarousel documents={documents} user={user} userProfile={userProfile} onPaymentClick={onPaymentClick} onLockedAccess={attemptAccess} />
             <div className="max-w-7xl mx-auto px-4">
               <button onClick={goBack} className="mb-6 flex items-center text-emerald-600 hover:text-emerald-700">
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -507,6 +549,8 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
               user={user}
               userProfile={userProfile}
               onViewChange={setView}
+              onPaymentClick={onPaymentClick}
+              onLockedAccess={attemptAccess}
               onDocumentClick={(doc) => console.log('Document clicked:', doc)}
               onDownloadClick={(doc) => console.log('Download clicked:', doc)}
             />

@@ -18,7 +18,7 @@ const canAccessDocument = (doc, userProfile, userEmail) => {
   return false;
 };
 
-const DocumentCarousel = ({ documents, user, userProfile, onPaymentClick }) => {
+const DocumentCarousel = ({ documents, user, userProfile, onPaymentClick, onLockedAccess }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   
   const convertToDate = (timestamp) => {
@@ -91,6 +91,13 @@ const DocumentCarousel = ({ documents, user, userProfile, onPaymentClick }) => {
       }
       return;
     }
+    if (onLockedAccess) {
+      onLockedAccess(currentDoc, () => {
+        const url = currentDoc.filePath;
+        if (url) window.location.href = url;
+      });
+      return;
+    }
     const url = currentDoc.filePath;
     if (url) {
       window.location.href = url;
@@ -104,6 +111,13 @@ const DocumentCarousel = ({ documents, user, userProfile, onPaymentClick }) => {
       } else {
         alert('Please subscribe to access premium documents');
       }
+      return;
+    }
+    if (onLockedAccess) {
+      onLockedAccess(currentDoc, () => {
+        const url = currentDoc.filePath;
+        if (url) window.location.href = url;
+      });
       return;
     }
     const url = currentDoc.filePath;
