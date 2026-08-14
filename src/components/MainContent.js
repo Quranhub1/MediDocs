@@ -341,9 +341,10 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
     );
   }
 
+  let content;
   switch (view) {
     case 'home':
-      return (
+      content = (
         <>
           <HeroSection user={user} onLoginClick={onLoginClick} onRegisterClick={onRegisterClick} />
           <StatsSection />
@@ -365,36 +366,16 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
             />
             <CourseGrid courses={courses} onBrowseClick={handleCourseClick} />
           </div>
-          {showReader && selectedDocument && <DocumentReader document={selectedDocument} onClose={() => setShowReader(false)} />}
           {showFlashcards && <FlashcardStudy courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowFlashcards(false)} />}
           {showQuiz && <QuizMode courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowQuiz(false)} />}
           {showNotes && <CollaborativeNotes courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowNotes(false)} />}
           {showAnalytics && <AnalyticsDashboard onClose={() => setShowAnalytics(false)} />}
           {showAdvancedSearch && <AdvancedSearch onClose={() => setShowAdvancedSearch(false)} onViewChange={setView} />}
-          {showLimitModal && (
-            <LimitReachedModal
-              show={showLimitModal}
-              viewedCount={viewedCount}
-              onClose={() => setShowLimitModal(false)}
-              onChoosePlan={(plan) => {
-                setPendingPlan(plan);
-                setShowLimitModal(false);
-                setShowPayment(true);
-              }}
-            />
-          )}
-          {showPayment && (
-            <PaymentModal
-              show={showPayment}
-              selectedPlan={pendingPlan}
-              onClose={() => { setShowPayment(false); setPendingPlan(null); }}
-              onPaymentSuccess={() => { setShowPayment(false); setPendingPlan(null); }}
-            />
-          )}
         </>
       );
+      break;
     case 'courses':
-      return (
+      content = (
         <div className="relative min-h-screen">
           <BackgroundImages />
           <div className="relative z-10 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-900 dark:to-gray-800 min-h-screen py-8">
@@ -402,8 +383,9 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
           </div>
         </div>
       );
+      break;
     case 'semesters':
-      return (
+      content = (
         <div className="relative min-h-screen">
           <BackgroundImages />
           <div className="relative z-10 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-900 dark:to-gray-800 min-h-screen py-8">
@@ -434,8 +416,9 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
           </div>
         </div>
       );
+      break;
     case 'courseunits':
-      return (
+      content = (
         <div className="relative min-h-screen">
           <BackgroundImages />
           <div className="relative z-10 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-900 dark:to-gray-800 min-h-screen py-8">
@@ -467,8 +450,9 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
           </div>
         </div>
       );
+      break;
     case 'documents':
-      return (
+      content = (
         <div className="relative min-h-screen">
           <BackgroundImages />
           <div className="relative z-10 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-900 dark:to-gray-800 min-h-screen py-8">
@@ -511,23 +495,27 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
           </div>
         </div>
       );
+      break;
     case 'about':
-      return <AboutSection />;
+      content = <AboutSection />;
+      break;
     case 'contact':
-      return <ContactSection onContactClick={onContactClick} />;
+      content = <ContactSection onContactClick={onContactClick} />;
+      break;
     case 'privacy':
-      return <PrivacySection />;
+      content = <PrivacySection />;
+      break;
     default:
-      return (
+      content = (
         <div className="space-y-0">
           <HeroSection user={user} onLoginClick={onLoginClick} onRegisterClick={onRegisterClick} />
           <StatsSection />
           <div className="flex justify-center gap-4 py-4">
-            <button onClick={() => setShowFlashcards(true)} className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700">Flashcards</button>
-            <button onClick={() => setShowQuiz(true)} className="px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700">Quiz</button>
-            <button onClick={() => setShowNotes(true)} className="px-4 py-2 bg-teal-600 text-white rounded-xl hover:bg-teal-700">Notes</button>
-            <button onClick={() => setShowAnalytics(true)} className="px-4 py-2 bg-amber-600 text-white rounded-xl hover:bg-amber-700">Analytics</button>
-            <button onClick={() => setShowAdvancedSearch(true)} className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700">Search</button>
+            <button onClick={() => setShowFlashcards(true)} className="px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700">Flashcards</button>
+            <button onClick={() => setShowQuiz(true)} className="px-4 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700">Quiz</button>
+            <button onClick={() => setShowNotes(true)} className="px-4 py-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700">Notes</button>
+            <button onClick={() => setShowAnalytics(true)} className="px-4 py-3 bg-amber-600 text-white rounded-xl hover:bg-amber-700">Analytics</button>
+            <button onClick={() => setShowAdvancedSearch(true)} className="px-4 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700">Search</button>
           </div>
           <div className="space-y-0">
             <LatestDocuments 
@@ -544,7 +532,35 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
           </div>
         </div>
       );
+      break;
   }
+
+  return (
+    <>
+      {content}
+      {showReader && selectedDocument && <DocumentReader document={selectedDocument} onClose={() => setShowReader(false)} />}
+      {showLimitModal && (
+        <LimitReachedModal
+          show={showLimitModal}
+          viewedCount={viewedCount}
+          onClose={() => setShowLimitModal(false)}
+          onChoosePlan={(plan) => {
+            setPendingPlan(plan);
+            setShowLimitModal(false);
+            setShowPayment(true);
+          }}
+        />
+      )}
+      {showPayment && (
+        <PaymentModal
+          show={showPayment}
+          selectedPlan={pendingPlan}
+          onClose={() => { setShowPayment(false); setPendingPlan(null); }}
+          onPaymentSuccess={() => { setShowPayment(false); setPendingPlan(null); }}
+        />
+      )}
+    </>
+  );
 };
 
 export default MainContent;
