@@ -19,12 +19,16 @@ export const RESOURCES_COLLECTION = 'RESOURCES_STUDYPEDIA';
 // Enhanced caching system with localStorage persistence
 const CACHE_KEYS = {
   COURSES: 'medidocs_courses_cache',
-  DOCUMENTS: 'medidocs_documents_cache'
+  DOCUMENTS: 'medidocs_documents_cache',
+  USERS: 'medidocs_users_cache',
+  PAYMENTS: 'medidocs_payments_cache'
 };
 
 const CACHE_DURATION = {
   COURSES: 30 * 60 * 1000,
-  DOCUMENTS: 15 * 60 * 1000
+  DOCUMENTS: 15 * 60 * 1000,
+  USERS: 5 * 60 * 1000,
+  PAYMENTS: 5 * 60 * 1000
 };
 
 const MAX_CACHE_SIZE = 50;
@@ -350,7 +354,13 @@ export const approveUserSubscription = async (userId, plan, expiryDate) => {
 };
 
 // Get all payments
-export const getAllPayments = async () => {
+export const getAllPayments = async (forceRefresh = false) => {
+  if (!forceRefresh) {
+    const cached = getCache(CACHE_KEYS.PAYMENTS);
+    if (cached && cached.data && cached.data.length > 0) {
+      return { success: true, data: cached.data };
+    }
+  }
   try {
     const paymentsRef = collection(db, 'payments');
     const snapshot = await getDocs(paymentsRef);
@@ -359,6 +369,7 @@ export const getAllPayments = async () => {
       ...doc.data(),
       createdAtDate: convertTimestamp(doc.data().createdAt)
     }));
+    setCache(CACHE_KEYS.PAYMENTS, payments);
     return { success: true, data: payments };
   } catch (error) {
     console.error('Error fetching payments:', error);
@@ -367,7 +378,13 @@ export const getAllPayments = async () => {
 };
 
 // Get all users
-export const getAllUsers = async () => {
+export const getAllUsers = async (forceRefresh = false) => {
+  if (!forceRefresh) {
+    const cached = getCache(CACHE_KEYS.USERS);
+    if (cached && cached.data && cached.data.length > 0) {
+      return { success: true, data: cached.data };
+    }
+  }
   try {
     const usersRef = collection(db, 'users');
     const snapshot = await getDocs(usersRef);
@@ -375,6 +392,7 @@ export const getAllUsers = async () => {
       id: doc.id,
       ...doc.data()
     }));
+    setCache(CACHE_KEYS.USERS, users);
     return { success: true, data: users };
   } catch (error) {
     console.error('Error fetching users:', error);

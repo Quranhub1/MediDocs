@@ -123,15 +123,15 @@ const AdminDashboard = ({ user, onViewChange }) => {
   const isAdmin = user?.phone === ADMIN_PHONE ||
     (user?.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (forceRefresh = false) => {
     setLoading(true);
     try {
-      const [docsResult, usersResult, paymentsResult] = await Promise.all([
-        loadDocuments(),
-        loadUsers(),
-        loadPayments()
+      const [docsResult, usersResult, paymentsResult, coursesList] = await Promise.all([
+        loadDocuments(forceRefresh),
+        loadUsers(forceRefresh),
+        loadPayments(forceRefresh),
+        loadCourses(forceRefresh)
       ]);
-      await loadCourses();
 
       const latestDocs = (docsResult || []).filter(d => d.time === 'latest').length;
       const premiumDocs = (docsResult || []).filter(d => d.status === 'premium').length;
@@ -142,7 +142,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
         totalPayments: (paymentsResult || []).length,
         latestDocuments: latestDocs,
         premiumDocuments: premiumDocs,
-        totalCourses: courses.length,
+        totalCourses: coursesList.length,
         totalSemesters: semesters.length,
         totalUnits: units.length
       });
@@ -150,7 +150,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
       console.error('Error loading admin data:', error);
     }
     setLoading(false);
-  }, [courses.length, semesters.length, units.length]);
+  }, [semesters.length, units.length]);
 
   useEffect(() => {
     if (isAdmin) {
@@ -159,9 +159,9 @@ const AdminDashboard = ({ user, onViewChange }) => {
     }
   }, [isAdmin, loadData]);
 
-  const loadDocuments = async () => {
+  const loadDocuments = async (forceRefresh = false) => {
     try {
-      const result = await fetchAllDocuments(100, true);
+      const result = await fetchAllDocuments(100, forceRefresh);
       if (result.success && result.data) {
         const allDocs = result.data.map(doc => ({
           ...doc,
@@ -177,9 +177,9 @@ const AdminDashboard = ({ user, onViewChange }) => {
     }
   };
 
-  const loadUsers = async () => {
+  const loadUsers = async (forceRefresh = false) => {
     try {
-      const result = await getAllUsers();
+      const result = await getAllUsers(forceRefresh);
       if (result.success) {
         setUsers(result.data || []);
         return result.data;
@@ -191,9 +191,9 @@ const AdminDashboard = ({ user, onViewChange }) => {
     }
   };
 
-  const loadPayments = async () => {
+  const loadPayments = async (forceRefresh = false) => {
     try {
-      const result = await getAllPayments();
+      const result = await getAllPayments(forceRefresh);
       if (result.success) {
         setPayments(result.data || []);
         return result.data;
@@ -301,7 +301,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
     setSavingConfig(false);
   };
 
-  const loadCourses = async () => {
+  const loadCourses = async (forceRefresh = false) => {
     try {
       const coursesRef = collection(db, 'RESOURCES_STUDYPEDIA');
       const coursesSnapshot = await getDocs(coursesRef);
@@ -310,8 +310,10 @@ const AdminDashboard = ({ user, onViewChange }) => {
         name: d.data().name || d.id
       }));
       setCourses(coursesList);
+      return coursesList;
     } catch (error) {
       console.error('Error loading courses:', error);
+      return [];
     }
   };
 
@@ -734,17 +736,19 @@ const AdminDashboard = ({ user, onViewChange }) => {
 
   const loadSubscriptionCountdowns = async () => {
     try {
-      const result = await getExpiringSubscriptions();
-      if (result.success) {
-        const countdowns = {};
-        result.data.forEach(user => {
-          const countdown = getSubscriptionCountdown(user);
-          if (countdown) {
-            countdowns[user.id] = countdown;
-          }
-        });
-        setSubscriptionCountdowns(countdowns);
+      let usersToCheck = users;
+      if (!usersToCheck || usersToCheck.length === 0) {
+        const result = await getAllUsers();
+        usersToCheck = result.success ? (result.data || []) : [];
       }
+      const countdowns = {};
+      usersToCheck.forEach(user => {
+        const countdown = getSubscriptionCountdown(user);
+        if (countdown) {
+          countdowns[user.id] = countdown;
+        }
+      });
+      setSubscriptionCountdowns(countdowns);
     } catch (error) {
       console.error('Error loading subscription countdowns:', error);
     }
@@ -869,7 +873,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
               <p className="text-gray-500 mt-1">Manage your MediDocs platform and monitor activity</p>
             </div>
             <button
-              onClick={loadData}
+              onClick={() => loadData(true)}
               disabled={loading}
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-sm"
             >
