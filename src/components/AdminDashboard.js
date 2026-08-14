@@ -31,7 +31,20 @@ import { useAuth } from '../context/AuthContext';
 
 const AdminDashboard = ({ user, onViewChange }) => {
   const { createUser, banUser } = useAuth();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      return localStorage.getItem('medidocs_admin_tab') || 'overview';
+    } catch {
+      return 'overview';
+    }
+  });
+
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    try {
+      localStorage.setItem('medidocs_admin_tab', tabId);
+    } catch {}
+  };
   const [documents, setDocuments] = useState([]);
   const [users, setUsers] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -617,7 +630,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
         unitId: ''
       });
       setThumbnailPreview('');
-      setActiveTab('documents');
+      handleTabChange('documents');
       loadData();
     } catch (error) {
       console.error('Error adding document:', error);
@@ -949,7 +962,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
               ].map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabChange(tab.id)}
                   className={`group inline-flex items-center gap-2 px-6 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                     activeTab === tab.id
                       ? 'border-emerald-500 text-emerald-600'
@@ -1042,7 +1055,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
                     <div className="space-y-3">
                       <button
-                        onClick={() => setActiveTab('add')}
+                        onClick={() => handleTabChange('add')}
                         className="w-full flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 hover:border-emerald-300 hover:shadow-sm transition-all text-left"
                       >
                         <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
@@ -1056,7 +1069,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
                         </div>
                       </button>
                       <button
-                        onClick={() => setActiveTab('users')}
+                        onClick={() => handleTabChange('users')}
                         className="w-full flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 hover:border-emerald-300 hover:shadow-sm transition-all text-left"
                       >
                         <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -1070,7 +1083,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
                         </div>
                       </button>
                       <button
-                        onClick={() => setActiveTab('payments')}
+                        onClick={() => handleTabChange('payments')}
                         className="w-full flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 hover:border-emerald-300 hover:shadow-sm transition-all text-left"
                       >
                         <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">

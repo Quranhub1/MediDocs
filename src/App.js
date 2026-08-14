@@ -23,7 +23,13 @@ function AppContent() {
   const { theme, toggleTheme } = useTheme();
   const { checkLoginAnomaly } = useAnomaly();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [currentView, setCurrentView] = useState('home');
+  const [currentView, setCurrentView] = useState(() => {
+    try {
+      return localStorage.getItem('medidocs_current_view') || 'home';
+    } catch {
+      return 'home';
+    }
+  });
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -69,6 +75,9 @@ function AppContent() {
 
   const handleViewChange = (viewId) => {
     setCurrentView(viewId);
+    try {
+      localStorage.setItem('medidocs_current_view', viewId);
+    } catch {}
     window.scrollTo({ top: 0, behavior: 'smooth' });
     closeSidebar();
   };
