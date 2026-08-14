@@ -490,14 +490,14 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
                     <div key={doc.id} className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all border border-emerald-400">
                       <h3 className="text-lg font-bold text-white mb-2">{doc.title || doc.id}</h3>
                       <p className="text-emerald-100 text-sm mb-4">{doc.description || 'No description'}</p>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-col gap-3">
                         {doc.filePath && (
-                          <button onClick={() => handleReadOnline(doc)} className="px-4 py-2 bg-white text-emerald-600 rounded-lg text-sm font-medium hover:bg-emerald-50">
+                          <button onClick={() => handleReadOnline(doc)} className="w-full px-4 py-3.5 bg-white text-emerald-600 rounded-xl text-base font-semibold hover:bg-emerald-50 shadow-md">
                             Read Online
                           </button>
                         )}
                         {doc.filePath && (
-                          <button onClick={() => handleDownload(doc)} className="px-4 py-2 bg-emerald-800 text-white rounded-lg text-sm font-medium hover:bg-emerald-900">
+                          <button onClick={() => handleDownload(doc)} className="w-full px-4 py-3.5 bg-emerald-800 text-white rounded-xl text-base font-semibold hover:bg-emerald-900 shadow-md">
                             Download
                           </button>
                         )}
