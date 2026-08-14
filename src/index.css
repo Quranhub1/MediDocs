@@ -133,6 +133,15 @@ html {
   background: linear-gradient(to bottom, #10b981, #0d9488);
 }
 
+/* Hide scrollbar for carousel rows */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* Card hover effects */
 .card-hover {
   transition: all 0.3s ease;
