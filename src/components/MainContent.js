@@ -12,7 +12,6 @@ import DocumentReader from './DocumentReader';
 import FlashcardStudy from './FlashcardStudy';
 import QuizMode from './QuizMode';
 import CollaborativeNotes from './CollaborativeNotes';
-import AudioPlayer from './AudioPlayer';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import AdvancedSearch from './AdvancedSearch';
 import { useTheme } from '../context/ThemeContext';
@@ -60,7 +59,6 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   const [showNotes, setShowNotes] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
-  const [audioText, setAudioText] = useState('');
   const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
@@ -169,14 +167,6 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
     } catch (error) {
       window.open(doc.filePath, '_blank');
     }
-  };
-
-  const handleListen = (doc) => {
-    if (!canAccessDocument(doc, userProfile, user?.email)) {
-      onPaymentClick();
-      return;
-    }
-    setAudioText(doc.description || doc.title || 'Document content');
   };
 
   const goBack = () => {
@@ -355,7 +345,6 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
           {showFlashcards && <FlashcardStudy courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowFlashcards(false)} />}
           {showQuiz && <QuizMode courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowQuiz(false)} />}
           {showNotes && <CollaborativeNotes courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowNotes(false)} />}
-          {audioText && <AudioPlayer text={audioText} onClose={() => setAudioText('')} />}
           {showAnalytics && <AnalyticsDashboard onClose={() => setShowAnalytics(false)} />}
           {showAdvancedSearch && <AdvancedSearch onClose={() => setShowAdvancedSearch(false)} onViewChange={setView} />}
         </>
@@ -466,11 +455,6 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
                         {doc.filePath && (
                           <button onClick={() => handleDownload(doc)} className="px-4 py-2 bg-emerald-800 text-white rounded-lg text-sm font-medium hover:bg-emerald-900">
                             Download
-                          </button>
-                        )}
-                        {doc.description && (
-                          <button onClick={() => { setAudioText(doc.description); }} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
-                            Listen
                           </button>
                         )}
                       </div>
