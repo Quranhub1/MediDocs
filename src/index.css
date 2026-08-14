@@ -182,3 +182,110 @@ html {
 .pwa-banner {
   animation: slideInUp 0.3s ease-out;
 }
+
+/* Force mobile styling for the admin screen at all screen sizes */
+.mobile-admin {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.mobile-admin .max-w-7xl,
+.mobile-admin .max-w-2xl,
+.mobile-admin .max-w-md,
+.mobile-admin .max-w-4xl {
+  max-width: 100% !important;
+}
+
+.mobile-admin .sm\:flex-row {
+  flex-direction: column !important;
+}
+
+.mobile-admin .sm\:items-center {
+  align-items: stretch !important;
+}
+
+.mobile-admin .sm\:justify-between {
+  justify-content: flex-start !important;
+}
+
+.mobile-admin .sm\:px-6,
+.mobile-admin .lg\:px-8 {
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+}
+
+.mobile-admin .grid {
+  grid-template-columns: 1fr !important;
+}
+
+.mobile-admin .lg\:grid-cols-2,
+.mobile-admin .lg\:grid-cols-3,
+.mobile-admin .lg\:grid-cols-4,
+.mobile-admin .sm\:grid-cols-2 {
+  grid-template-columns: 1fr !important;
+}
+
+.mobile-admin .md\:col-span-2 {
+  grid-column: span 1 !important;
+}
+
+.mobile-admin .md\:grid-cols-2 {
+  grid-template-columns: 1fr !important;
+}
+
+.mobile-admin .lg\:pb-0 {
+  padding-bottom: 4rem !important;
+}
+
+.mobile-admin .p-6 {
+  padding: 0.75rem !important;
+}
+
+.mobile-admin .p-8 {
+  padding: 1rem !important;
+}
+
+.mobile-admin .py-8 {
+  padding-top: 1rem !important;
+  padding-bottom: 1rem !important;
+}
+
+.mobile-admin .mb-8 {
+  margin-bottom: 1rem !important;
+}
+
+.mobile-admin .mb-6 {
+  margin-bottom: 0.75rem !important;
+}
+
+.mobile-admin .gap-6 {
+  gap: 0.75rem !important;
+}
+
+.mobile-admin h1 {
+  font-size: 1.5rem !important;
+}
+
+.mobile-admin h2 {
+  font-size: 1.25rem !important;
+}
+
+.mobile-admin h3 {
+  font-size: 1.125rem !important;
+}
+
+.mobile-admin .text-3xl {
+  font-size: 1.5rem !important;
+}
+
+.mobile-admin .text-2xl {
+  font-size: 1.25rem !important;
+}
+
+.mobile-admin .text-lg {
+  font-size: 1rem !important;
+}
+
+.mobile-admin .overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+}
