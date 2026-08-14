@@ -407,7 +407,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
         <div className="relative min-h-screen">
           <BackgroundImages />
           <div className="relative z-10 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-900 dark:to-gray-800 min-h-screen py-8">
-            <div className="max-w-7xl mx-auto px-4">
+            <div className="w-full px-4 md:px-8 lg:px-12">
               <button onClick={() => { setSelectedCourse(null); setView && setView('courses'); }} className="mb-6 flex items-center text-emerald-600 hover:text-emerald-700">
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path>
@@ -420,11 +420,11 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-6">
                   {semesters.map((semester) => (
-                    <div key={semester.id} onClick={() => handleSemesterClick(semester)} className="bg-gradient-to-br from-emerald-400 to-teal-500 p-6 rounded-xl shadow-lg hover:shadow-2xl hover:scale-105 cursor-pointer transition-all duration-300 border border-emerald-300">
-                      <h3 className="text-lg font-bold text-white">{semester.name || semester.id}</h3>
-                      <p className="text-emerald-100 text-sm mt-2">Click to view course units</p>
+                    <div key={semester.id} onClick={() => handleSemesterClick(semester)} className="bg-gradient-to-br from-emerald-400 to-teal-500 p-8 md:p-10 rounded-2xl shadow-lg hover:shadow-2xl hover:scale-105 cursor-pointer transition-all duration-300 border border-emerald-300">
+                      <h3 className="text-2xl font-bold text-white">{semester.name || semester.id}</h3>
+                      <p className="text-emerald-100 text-base mt-2">Click to view course units</p>
                     </div>
                   ))}
                   {semesters.length === 0 && <p className="text-gray-500">No semesters found for this course.</p>}
