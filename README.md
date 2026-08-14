@@ -8,7 +8,7 @@ MediDocs Uganda is a medical education platform built with React, Firebase, and 
 - **AI Study Assistant**: Real Groq-powered chat with document-aware recommendations, page guidance, summarization, and text-to-speech
 - **Course Browser**: Browse courses, semesters, and course units with hierarchical navigation
 - **Document Library**: Read online or download study materials with thumbnail previews
-- **Paystack Payments**: Subscription billing with weekly, monthly, and yearly plans in UGX
+- **Manual Mobile Money Payments**: Subscription billing with weekly, monthly, and yearly plans in UGX
 - **Admin Dashboard**: Manage documents, users, payments, and subscriptions
 - **Responsive Design**: Mobile-first UI with Tailwind CSS, works on all screen sizes
 - **Performance Optimized**: Local caching, lazy loading, and memoized rendering
@@ -113,15 +113,15 @@ Build artifacts will be in the `build/` directory. Serve with the Express backen
 
 ## Payment Integration
 
-MediDocs uses Paystack for subscription payments in UGX:
+MediDocs uses manual Mobile Money payments in UGX:
 
 - Weekly: UGX 5,000
 - Monthly: UGX 15,000
 - Yearly: UGX 60,000
 
-Payments are sent to **KABALI MADINA** at **+256 749 846 848**.
+Users are prompted to send the amount to **KABALI MARINA** at **256749846848** via Mobile Money, then submit the payment for verification.
 
-After successful payment, the admin reviews and approves subscriptions from the Admin Dashboard.
+After submission, the admin reviews and approves subscriptions from the Admin Dashboard.
 
 ## Admin Dashboard
 

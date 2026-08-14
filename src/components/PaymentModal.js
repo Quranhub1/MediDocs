@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { submitPayment, verifyPayment, SUBSCRIPTION_PLANS } from '../services/FirestoreService';
+import { submitPayment, SUBSCRIPTION_PLANS } from '../services/FirestoreService';
 import { useAuth } from '../context/AuthContext';
 import { serverTimestamp } from 'firebase/firestore';
 
+const PAYMENT_RECIPIENT_NAME = 'Kabali Marina';
+const PAYMENT_RECIPIENT_NUMBER = '256749846848';
+
 const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) => {
-  const { userProfile, currentUser, updateUserSubscription } = useAuth();
+  const { userProfile, currentUser } = useAuth();
   const [selectedPlanKey, setSelectedPlanKey] = useState(selectedPlan || 'monthly');
-  const [phoneNumber, setPhoneNumber] = useState(userProfile?.phone || '256749846848');
+  const [phoneNumber, setPhoneNumber] = useState(userProfile?.phone || '');
   const [email, setEmail] = useState(userProfile?.email || currentUser?.email || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
-  const [paystackLoaded, setPaystackLoaded] = useState(false);
-  const [publicKey, setPublicKey] = useState('');
 
   useEffect(() => {
     if (show) {
@@ -23,130 +24,58 @@ const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) 
     }
   }, [show, selectedPlan]);
 
-  useEffect(() => {
-    const fetchPublicKey = async () => {
-      try {
-        const response = await fetch('/api/config/paystack');
-        if (response.ok) {
-          const data = await response.json();
-          setPublicKey(data.publicKey || '');
-        }
-      } catch (error) {
-        console.error('Error fetching Paystack config:', error);
-      }
-    };
-    fetchPublicKey();
-  }, []);
-
-  useEffect(() => {
-    if (show && !paystackLoaded) {
-      const script = document.createElement('script');
-      script.src = 'https://js.paystack.co/v1/inline.js';
-      script.async = true;
-      script.onload = () => setPaystackLoaded(true);
-      document.body.appendChild(script);
-      return () => {
-        if (script.parentNode) {
-          script.parentNode.removeChild(script);
-        }
-      };
-    }
-  }, [show, paystackLoaded]);
-
   const getPlanDetails = () => {
     return SUBSCRIPTION_PLANS[selectedPlanKey] || SUBSCRIPTION_PLANS.monthly;
   };
 
-  const handlePaystackPayment = async () => {
-    if (!paystackLoaded || !window.PaystackPop) {
-      alert('Payment system is loading. Please try again in a moment.');
+  const handleManualPayment = async () => {
+    if (!phoneNumber.trim() || !email.trim()) {
+      alert('Please enter your Mobile Money number and email before submitting.');
       return;
     }
 
     setIsSubmitting(true);
     const plan = getPlanDetails();
-    
-    if (!publicKey || publicKey.includes('your_paystack')) {
-      alert('Paystack is not configured. Please contact support.');
+
+    const promptMessage =
+      `Send UGX ${plan.amount.toLocaleString()} to ${PAYMENT_RECIPIENT_NUMBER} ` +
+      `(${PAYMENT_RECIPIENT_NAME}) via Mobile Money, then submit for verification.`;
+
+    if (!window.confirm(promptMessage)) {
       setIsSubmitting(false);
       return;
     }
 
-    const handler = window.PaystackPop.setup({
-      key: publicKey,
-      email: email,
-      amount: plan.amount * 100,
-      currency: 'UGX',
-      ref: 'MEDIDOCS-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
-      phone: phoneNumber,
-      label: 'KABALI MADINA',
-      metadata: {
-        custom_fields: [
-          {
-            display_name: 'Plan',
-            variable_name: 'plan',
-            value: plan.label
-          },
-          {
-            display_name: 'Phone',
-            variable_name: 'phone',
-            value: phoneNumber
-          }
-        ]
-      },
-      onClose: () => {
-        setIsSubmitting(false);
-      },
-      callback: async (response) => {
-        const reference = response.reference;
-        setIsSubmitting(true);
-        
-        try {
-          const verifyResult = await verifyPayment(reference);
-          
-          if (verifyResult.success) {
-            const paymentData = {
-              reference: reference,
-              amount: plan.amount.toString(),
-              phoneNumber: phoneNumber,
-              email: email,
-              plan: selectedPlanKey,
-              planLabel: plan.label,
-              status: 'success',
-              paidAt: serverTimestamp()
-            };
-            
-            await submitPayment(paymentData);
-            
-            if (currentUser) {
-              const expiryDate = new Date();
-              expiryDate.setDate(expiryDate.getDate() + plan.duration);
-              
-              await updateUserSubscription(currentUser.uid, {
-                subscriptionApproved: true,
-                subscriptionStatus: 'active',
-                subscriptionPlan: selectedPlanKey,
-                subscriptionExpiry: expiryDate
-              });
-            }
-            
-            setSubmitStatus('success');
-            if (onPaymentSuccess) {
-              onPaymentSuccess();
-            }
-          } else {
-            setSubmitStatus('error');
-          }
-        } catch (error) {
-          console.error('Payment processing error:', error);
-          setSubmitStatus('error');
-        } finally {
-          setIsSubmitting(false);
-        }
-      }
-    });
+    try {
+      const paymentData = {
+        reference: 'MEDIDOCS-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+        amount: plan.amount.toString(),
+        phoneNumber: phoneNumber,
+        email: email,
+        plan: selectedPlanKey,
+        planLabel: plan.label,
+        recipientName: PAYMENT_RECIPIENT_NAME,
+        recipientNumber: PAYMENT_RECIPIENT_NUMBER,
+        status: 'pending_verification',
+        submittedAt: serverTimestamp()
+      };
 
-    handler.openIframe();
+      const result = await submitPayment(paymentData);
+
+      if (result.success) {
+        setSubmitStatus('pending');
+        if (onPaymentSuccess) {
+          onPaymentSuccess();
+        }
+      } else {
+        setSubmitStatus('error');
+      }
+    } catch (error) {
+      console.error('Payment submission error:', error);
+      setSubmitStatus('error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!show) return null;
@@ -173,15 +102,15 @@ const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) 
         </div>
         
         <div className="p-6">
-          {submitStatus === 'success' && (
-            <div className="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded-lg">
+          {submitStatus === 'pending' && (
+            <div className="bg-amber-50 border-l-4 border-amber-500 text-amber-700 p-4 mb-6 rounded-lg">
               <div className="flex items-center space-x-3">
-                <svg className="h-5 w-5 text-green-500 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                <svg className="h-5 w-5 text-amber-500 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
                 </svg>
                 <div>
-                  <p className="font-medium">Payment successful!</p>
-                  <p className="text-sm text-gray-500">Your premium access has been activated.</p>
+                  <p className="font-medium">Payment submitted for verification</p>
+                  <p className="text-sm text-gray-500">Send UGX to {PAYMENT_RECIPIENT_NUMBER} ({PAYMENT_RECIPIENT_NAME}). Your access will be activated once the payment is confirmed.</p>
                 </div>
               </div>
             </div>
@@ -189,7 +118,7 @@ const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) 
           
           {submitStatus === 'error' && (
             <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-lg">
-              <p className="font-medium">Payment failed</p>
+              <p className="font-medium">Submission failed</p>
               <p className="text-sm text-gray-500">Please try again or contact support.</p>
             </div>
           )}
@@ -229,7 +158,7 @@ const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) 
             </div>
             
             <div>
-              <label htmlFor="payment-phone" className="block text-sm font-medium text-gray-700 mb-2">Mobile Money Number</label>
+              <label htmlFor="payment-phone" className="block text-sm font-medium text-gray-700 mb-2">Your Mobile Money Number</label>
               <input
                 type="tel"
                 id="payment-phone"
@@ -237,37 +166,39 @@ const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) 
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 required
                 className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                placeholder="256749846848"
+                placeholder="2567XXXXXX"
               />
             </div>
           </div>
 
           <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6">
-            <p className="font-medium text-emerald-800 mb-2">Payment Details:</p>
+            <p className="font-medium text-emerald-800 mb-2">Payment Instructions:</p>
             <ol className="list-decimal list-inside text-sm text-emerald-700 space-y-1">
               <li>Plan: <span className="font-bold">{plan.label}</span></li>
               <li>Amount: <span className="font-bold">UGX {plan.amount.toLocaleString()}</span></li>
-              <li>Pay to: <span className="font-bold">KABALI MADINA (+256 749 846 848)</span></li>
-              <li>You will be redirected to Paystack to complete payment securely</li>
+              <li>
+                Send the amount to{' '}
+                <span className="font-bold">{PAYMENT_RECIPIENT_NUMBER}</span>{' '}
+                (<span className="font-bold">{PAYMENT_RECIPIENT_NAME}</span>) via Mobile Money.
+              </li>
+              <li>After sending, submit below. Access is activated once the payment is verified.</li>
             </ol>
           </div>
           
           <button
-            onClick={handlePaystackPayment}
-            disabled={isSubmitting || !paystackLoaded}
+            onClick={handleManualPayment}
+            disabled={isSubmitting}
             className={`w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold rounded-xl transition-all duration-200 ${
-              isSubmitting || !paystackLoaded ? 'opacity-70 cursor-not-allowed' : ''
+              isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
             }`}
           >
             {isSubmitting ? (
               <div className="flex items-center justify-center space-x-2">
                 <div className="animate-spin h-4 w-4 border-b-2 border-white rounded-full"></div>
-                <span>Processing...</span>
+                <span>Submitting...</span>
               </div>
-            ) : !paystackLoaded ? (
-              'Loading Payment...'
             ) : (
-              `Pay UGX ${plan.amount.toLocaleString()}`
+              `Send UGX ${plan.amount.toLocaleString()} to ${PAYMENT_RECIPIENT_NUMBER}`
             )}
           </button>
           
