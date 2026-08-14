@@ -472,7 +472,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
         <div className="relative min-h-screen">
           <BackgroundImages />
           <div className="relative z-10 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-900 dark:to-gray-800 min-h-screen py-8">
-            <div className="max-w-7xl mx-auto px-4">
+            <div className="w-full px-4 md:px-8 lg:px-12">
               <button onClick={goBack} className="mb-6 flex items-center text-emerald-600 hover:text-emerald-700">
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path>
@@ -485,19 +485,19 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-6">
+                <div className="grid grid-cols-1 gap-8">
                   {documents.map((doc) => (
-                    <div key={doc.id} className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-all border border-emerald-400">
-                      <h3 className="text-lg font-bold text-white mb-2">{doc.title || doc.id}</h3>
-                      <p className="text-emerald-100 text-sm mb-4">{doc.description || 'No description'}</p>
-                      <div className="flex flex-wrap gap-2">
+                    <div key={doc.id} className="bg-gradient-to-br from-emerald-500 to-teal-600 p-8 md:p-10 rounded-2xl shadow-lg hover:shadow-2xl transition-all border border-emerald-400">
+                      <h3 className="text-2xl font-bold text-white mb-3">{doc.title || doc.id}</h3>
+                      <p className="text-emerald-100 text-base mb-6">{doc.description || 'No description'}</p>
+                      <div className="flex flex-wrap gap-3">
                         {doc.filePath && (
-                          <button onClick={() => handleReadOnline(doc)} className="px-4 py-2 bg-white text-emerald-600 rounded-lg text-sm font-medium hover:bg-emerald-50">
+                          <button onClick={() => handleReadOnline(doc)} className="px-6 py-3 bg-white text-emerald-600 rounded-xl text-base font-medium hover:bg-emerald-50">
                             Read Online
                           </button>
                         )}
                         {doc.filePath && (
-                          <button onClick={() => handleDownload(doc)} className="px-4 py-2 bg-emerald-800 text-white rounded-lg text-sm font-medium hover:bg-emerald-900">
+                          <button onClick={() => handleDownload(doc)} className="px-6 py-3 bg-emerald-800 text-white rounded-xl text-base font-medium hover:bg-emerald-900">
                             Download
                           </button>
                         )}
