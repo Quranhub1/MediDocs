@@ -126,12 +126,12 @@ const AdminDashboard = ({ user, onViewChange }) => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [docsResult, usersResult, paymentsResult, coursesList] = await Promise.all([
+      const [docsResult, usersResult, paymentsResult] = await Promise.all([
         loadDocuments(),
         loadUsers(),
-        loadPayments(),
-        loadCourses()
+        loadPayments()
       ]);
+      await loadCourses();
 
       const latestDocs = (docsResult || []).filter(d => d.time === 'latest').length;
       const premiumDocs = (docsResult || []).filter(d => d.status === 'premium').length;
@@ -142,7 +142,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
         totalPayments: (paymentsResult || []).length,
         latestDocuments: latestDocs,
         premiumDocuments: premiumDocs,
-        totalCourses: coursesList.length,
+        totalCourses: courses.length,
         totalSemesters: semesters.length,
         totalUnits: units.length
       });
@@ -150,7 +150,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
       console.error('Error loading admin data:', error);
     }
     setLoading(false);
-  }, [semesters.length, units.length]);
+  }, [courses.length, semesters.length, units.length]);
 
   useEffect(() => {
     if (isAdmin) {
@@ -310,10 +310,8 @@ const AdminDashboard = ({ user, onViewChange }) => {
         name: d.data().name || d.id
       }));
       setCourses(coursesList);
-      return coursesList;
     } catch (error) {
       console.error('Error loading courses:', error);
-      return [];
     }
   };
 
@@ -1124,7 +1122,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
                           </td>
                           <td className="px-6 py-4">
                             <div className="font-medium text-gray-900">{doc.title || doc.id}</div>
-                            <div className="text-sm text-gray-500 truncate">{doc.description?.substring(0, 50)}...</div>
+                            <div className="text-sm text-gray-500 line-clamp-1">{doc.description?.substring(0, 50)}...</div>
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-600">
                             {doc.courseId?.toUpperCase()}
@@ -1435,7 +1433,6 @@ const AdminDashboard = ({ user, onViewChange }) => {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subscription</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plan</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subscription Countdown</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                       </tr>
                     </thead>
