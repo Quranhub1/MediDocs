@@ -22,6 +22,7 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange, onPayment
   const scrollRef = useRef(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const dragState = useRef({ startX: 0, scrollLeft: 0, isDown: false, moved: false });
+  const suppressClick = useRef(false);
   const getFileTypeIcon = (filePath) => {
     if (!filePath) return '📄';
     const extension = filePath.split('.').pop().toLowerCase();
@@ -155,6 +156,7 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange, onPayment
   const onDragEnd = () => {
     if (!dragState.current.isDown) return;
     dragState.current.isDown = false;
+    if (!dragState.current.moved) return;
     const el = scrollRef.current;
     if (!el) return;
     let nearest = 0;
@@ -167,6 +169,8 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange, onPayment
       }
     }
     scrollToIndex(nearest);
+    suppressClick.current = true;
+    setTimeout(() => { suppressClick.current = false; }, 0);
   };
 
   useEffect(() => {
@@ -287,22 +291,22 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange, onPayment
                       </span>
                     </div>
 
-                    <div className="flex space-x-2">
+                    <div className="flex flex-col gap-3">
                       {hasAccess ? (
                         <>
-                          <button onClick={() => handleReadOnline(doc)} className="flex-1 px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-sm font-medium rounded-xl transition-all duration-200">
+                          <button onClick={(e) => { if (suppressClick.current) return; handleReadOnline(doc); }} className="w-full px-4 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-base font-semibold rounded-xl transition-all duration-200 shadow-md">
                             Read Online
                           </button>
-                          <button onClick={() => handleDownload(doc)} className="flex-1 px-4 py-2.5 bg-white border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 text-sm font-medium rounded-xl transition-all duration-200">
+                          <button onClick={(e) => { if (suppressClick.current) return; handleDownload(doc); }} className="w-full px-4 py-3.5 bg-white border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 text-base font-semibold rounded-xl transition-all duration-200">
                             Download
                           </button>
                         </>
                       ) : (
                         <>
-                          <button onClick={onPaymentClick} className="flex-1 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-sm font-medium rounded-xl transition-all duration-200">
+                          <button onClick={(e) => { if (suppressClick.current) return; onPaymentClick(); }} className="w-full px-4 py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-base font-semibold rounded-xl transition-all duration-200 shadow-md">
                             Read Online
                           </button>
-                          <button onClick={onPaymentClick} className="flex-1 px-4 py-2.5 bg-white border-2 border-amber-500 text-amber-600 hover:bg-amber-50 text-sm font-medium rounded-xl transition-all duration-200">
+                          <button onClick={(e) => { if (suppressClick.current) return; onPaymentClick(); }} className="w-full px-4 py-3.5 bg-white border-2 border-amber-500 text-amber-600 hover:bg-amber-50 text-base font-semibold rounded-xl transition-all duration-200">
                             Download
                           </button>
                         </>
