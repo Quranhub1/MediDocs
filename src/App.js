@@ -85,7 +85,7 @@ function AppContent() {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50 dark:bg-dark-bg pb-16 lg:pb-0 transition-colors duration-300">
+      <div className="min-h-screen bg-gray-50 dark:bg-dark-bg pb-16 lg:pb-0 transition-colors duration-300 overflow-x-hidden">
         {isBanned && (
           <div className="fixed inset-0 z-50 bg-red-50 dark:bg-red-900/20 flex items-center justify-center p-4">
             <div className="bg-white dark:bg-dark-card rounded-2xl shadow-2xl p-8 max-w-md text-center">

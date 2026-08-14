@@ -59,7 +59,7 @@ const Header = ({
         }`}
       >
         <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-1 px-4">
-          <div className="max-w-7xl mx-auto flex justify-between items-center text-xs">
+          <div className="max-w-7xl mx-auto flex flex-wrap justify-center gap-x-4 gap-y-1 items-center text-xs">
             <span className="flex items-center gap-1">📞 +256 749 846 848</span>
             <span className="flex items-center gap-1">📧 kaigwaakram123@gmail.com</span>
           </div>
@@ -172,7 +172,7 @@ const Header = ({
   return (
     <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white dark:bg-dark-card shadow-lg' : 'bg-white dark:bg-dark-card'}`}>
       <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-1 px-4">
-        <div className="max-w-7xl mx-auto flex justify-between items-center text-xs">
+        <div className="max-w-7xl mx-auto flex flex-wrap justify-center gap-x-4 gap-y-1 items-center text-xs">
           <span className="flex items-center gap-1">📞 +256 749 846 848</span>
           <span className="flex items-center gap-1">📧 kaigwaakram123@gmail.com</span>
         </div>
