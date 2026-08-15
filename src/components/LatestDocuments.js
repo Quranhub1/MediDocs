@@ -1,24 +1,6 @@
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 
-const ADMIN_EMAIL = 'kaigwaakram123@gmail.com';
-
-const canAccessDocument = (doc, userProfile, userEmail) => {
-  if (!doc) return true;
-  if (doc.status === 'free') return true;
-  if (userEmail === ADMIN_EMAIL) return true;
-  if (!userProfile) return false;
-  if (userProfile.banned) return false;
-  if (userProfile.subscriptionApproved && userProfile.subscriptionStatus === 'active') {
-    if (userProfile.subscriptionExpiry) {
-      const expiry = new Date(userProfile.subscriptionExpiry);
-      return expiry > new Date();
-    }
-    return true;
-  }
-  return false;
-};
-
-const LatestDocuments = ({ documents, user, userProfile, onViewChange, onPaymentClick, onLockedAccess }) => {
+const LatestDocuments = ({ documents, user, userProfile, onViewChange }) => {
   const scrollRef = useRef(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const dragState = useRef({ startX: 0, scrollLeft: 0, isDown: false, moved: false });
@@ -39,18 +21,6 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange, onPayment
   };
 
   const handleReadOnline = (doc) => {
-    if (onLockedAccess) {
-      onLockedAccess(doc, () => {
-        const url = doc.filePath;
-        if (url) window.location.href = url;
-        else alert('No read online link available for this document');
-      });
-      return;
-    }
-    if (!canAccessDocument(doc, userProfile, user?.email)) {
-      if (onPaymentClick) onPaymentClick();
-      return;
-    }
     const url = doc.filePath;
     if (url) {
       window.location.href = url;
@@ -60,18 +30,6 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange, onPayment
   };
 
   const handleDownload = (doc) => {
-    if (onLockedAccess) {
-      onLockedAccess(doc, () => {
-        const url = doc.filePath;
-        if (url) window.location.href = url;
-        else alert('No link available for this document');
-      });
-      return;
-    }
-    if (!canAccessDocument(doc, userProfile, user?.email)) {
-      if (onPaymentClick) onPaymentClick();
-      return;
-    }
     const url = doc.filePath;
     if (url) {
       window.location.href = url;
@@ -250,7 +208,6 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange, onPayment
             style={{ scrollBehavior: 'smooth' }}
           >
             {displayDocuments.map((doc, index) => {
-              const hasAccess = canAccessDocument(doc, userProfile, user?.email);
               return (
                 <div
                   key={doc.id}
@@ -301,25 +258,12 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange, onPayment
                     </div>
 
                     <div className="flex flex-col gap-3">
-                      {hasAccess ? (
-                        <>
-                          <button onClick={(e) => { if (suppressClick.current) return; handleReadOnline(doc); }} className="w-full px-4 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-base font-semibold rounded-xl transition-all duration-200 shadow-md">
-                            Read Online
-                          </button>
-                          <button onClick={(e) => { if (suppressClick.current) return; handleDownload(doc); }} className="w-full px-4 py-3.5 bg-white border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 text-base font-semibold rounded-xl transition-all duration-200">
-                            Download
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button onClick={(e) => { if (suppressClick.current) return; onPaymentClick(); }} className="w-full px-4 py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-base font-semibold rounded-xl transition-all duration-200 shadow-md">
-                            Read Online
-                          </button>
-                          <button onClick={(e) => { if (suppressClick.current) return; onPaymentClick(); }} className="w-full px-4 py-3.5 bg-white border-2 border-amber-500 text-amber-600 hover:bg-amber-50 text-base font-semibold rounded-xl transition-all duration-200">
-                            Download
-                          </button>
-                        </>
-                      )}
+                      <button onClick={(e) => { if (suppressClick.current) return; handleReadOnline(doc); }} className="w-full px-4 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-base font-semibold rounded-xl transition-all duration-200 shadow-md">
+                        Read Online
+                      </button>
+                      <button onClick={(e) => { if (suppressClick.current) return; handleDownload(doc); }} className="w-full px-4 py-3.5 bg-white border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 text-base font-semibold rounded-xl transition-all duration-200">
+                        Download
+                      </button>
                     </div>
                   </div>
                 </div>

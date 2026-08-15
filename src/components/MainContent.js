@@ -18,39 +18,12 @@ import { useTheme } from '../context/ThemeContext';
 import { useStudy } from '../context/StudyContext';
 import { useBookmarks } from '../context/BookmarkContext';
 import { useToast } from '../context/ToastContext';
-import { useAuth } from '../context/AuthContext';
 import { fetchCourses, fetchSemesters, fetchCourseUnits, fetchDocuments, fetchAllDocuments } from '../services/FirestoreService';
-import { useViewLimit } from '../hooks/useViewLimit';
-import PaymentModal from './PaymentModal';
-import LimitReachedModal from './LimitReachedModal';
 
-const ADMIN_EMAIL = 'kaigwaakram123@gmail.com';
-
-const canAccessDocument = (doc, userProfile, userEmail) => {
-  if (!doc) return true;
-  if (doc.status === 'free') return true;
-  if (userEmail === ADMIN_EMAIL) return true;
-  if (!userProfile) return false;
-  if (userProfile.banned) return false;
-  if (userProfile.subscriptionApproved && userProfile.subscriptionStatus === 'active') {
-    if (userProfile.subscriptionExpiry) {
-      const expiry = new Date(userProfile.subscriptionExpiry);
-      return expiry > new Date();
-    }
-    return true;
-  }
-  return false;
-};
-
-const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, onPaymentClick, onContactClick, onAIChatClick, setView }) => {
+const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, onContactClick, onAIChatClick, setView }) => {
   const { theme } = useTheme();
   const { recordStudySession } = useStudy();
   const { addToast } = useToast();
-  const { refreshUserProfile } = useAuth();
-  const { viewedCount, limitReached, recordView, isSubscriber } = useViewLimit(userProfile);
-  const [showLimitModal, setShowLimitModal] = useState(false);
-  const [showPayment, setShowPayment] = useState(false);
-  const [pendingPlan, setPendingPlan] = useState(null);
   const [courses, setCourses] = useState([]);
   const [latestDocuments, setLatestDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -69,10 +42,6 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
   const [loadError, setLoadError] = useState(null);
-
-  useEffect(() => {
-    if (refreshUserProfile) refreshUserProfile();
-  }, [refreshUserProfile]);
 
   useEffect(() => {
     const initData = async () => {
@@ -151,61 +120,31 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
     setSubLoading(false);
   };
 
-  // Gate document access:
-  // - Premium docs -> require an active subscription
-  // - Free docs -> free users may open up to FREE_VIEW_LIMIT distinct docs,
-  //   then the limit modal appears.
-  // We refresh the profile first so a recently-approved subscription takes
-  // effect immediately without the user having to log out and back in.
-  const isProfileSubscriber = (profile) =>
-    !!(profile && !profile.banned && profile.subscriptionApproved &&
-      profile.subscriptionStatus === 'active' &&
-      (!profile.subscriptionExpiry || new Date(profile.subscriptionExpiry) > new Date()));
-
-  const attemptAccess = async (doc, onGranted) => {
-    if (!doc) return;
-    const freshProfile = (await refreshUserProfile()) || userProfile;
-    if (!canAccessDocument(doc, freshProfile, user?.email)) {
-      setShowPayment(true);
-      return;
-    }
-    if (!isProfileSubscriber(freshProfile) && limitReached && !recordView(doc.id)) {
-      setShowLimitModal(true);
-      return;
-    }
-    recordView(doc.id);
-    onGranted();
-  };
-
   const handleReadOnline = (doc) => {
-    attemptAccess(doc, () => {
-      setSelectedDocument(doc);
-      setShowReader(true);
-    });
+    setSelectedDocument(doc);
+    setShowReader(true);
   };
 
   const handleDownload = async (doc) => {
-    attemptAccess(doc, async () => {
-      if (!doc.filePath) {
-        addToast('No download link available for this document', 'error');
-        return;
-      }
-      try {
-        const response = await fetch(doc.filePath);
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${doc.title || 'document'}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        addToast('Download started!', 'success');
-      } catch (error) {
-        window.open(doc.filePath, '_blank');
-      }
-    });
+    if (!doc.filePath) {
+      addToast('No download link available for this document', 'error');
+      return;
+    }
+    try {
+      const response = await fetch(doc.filePath);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${doc.title || 'document'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      addToast('Download started!', 'success');
+    } catch (error) {
+      window.open(doc.filePath, '_blank');
+    }
   };
 
   const goBack = () => {
@@ -256,59 +195,10 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   }
 
   if (view === 'home') {
-    const getSubscriptionCountdown = () => {
-      if (!userProfile || !userProfile.subscriptionExpiry || !userProfile.subscriptionApproved) return null;
-      
-      const expiry = userProfile.subscriptionExpiry.toDate ? userProfile.subscriptionExpiry.toDate() : new Date(userProfile.subscriptionExpiry);
-      const now = new Date();
-      const diff = expiry - now;
-      
-      if (diff <= 0) {
-        return { text: 'Subscription Expired', days: 0, expired: true };
-      }
-      
-      const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.ceil((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      
-      if (days > 0) {
-        return { text: `${days} day${days > 1 ? 's' : ''} remaining`, days, expired: false };
-      } else if (hours > 0) {
-        return { text: `${hours} hour${hours > 1 ? 's' : ''} remaining`, days: 0, expired: false };
-      } else {
-        const minutes = Math.ceil((diff % (1000 * 60)) / (1000 * 60));
-        return { text: `${minutes} min remaining`, days: 0, expired: false };
-      }
-    };
-
-    const subscriptionCountdown = getSubscriptionCountdown();
-
     return (
       <div>
         <HeroSection user={user} onLoginClick={onLoginClick} onRegisterClick={onRegisterClick} />
-        {user && subscriptionCountdown && (
-          <div className={`max-w-2xl mx-auto px-4 py-3 rounded-xl mb-4 text-center ${
-            subscriptionCountdown.expired 
-              ? 'bg-red-100 border border-red-400 text-red-700' 
-              : subscriptionCountdown.days <= 5 
-                ? 'bg-amber-100 border border-amber-400 text-amber-700'
-                : 'bg-emerald-100 border border-emerald-400 text-emerald-700'
-          }`}>
-            <p className="font-medium">
-              {subscriptionCountdown.expired 
-                ? 'Your subscription has expired. Please renew to access premium content.' 
-                : `Subscription expires in ${subscriptionCountdown.text}`}
-            </p>
-            {subscriptionCountdown.days <= 5 && !subscriptionCountdown.expired && (
-              <button 
-                onClick={onPaymentClick}
-                className="mt-2 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors"
-              >
-                Renew Now
-              </button>
-            )}
-          </div>
-        )}
-        <DocumentCarousel documents={latestDocuments} user={user} userProfile={userProfile} onPaymentClick={onPaymentClick} onLockedAccess={attemptAccess} />
+        <DocumentCarousel documents={latestDocuments} user={user} userProfile={userProfile} />
         {!user && (
           <div className="max-w-2xl mx-auto px-4 py-8 text-center">
             <p className="text-gray-600 mb-4">Login to access all documents</p>
@@ -321,16 +211,14 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
           <>
             <StatsSection />
             <div className="space-y-0">
-            <LatestDocuments 
-              documents={latestDocuments} 
-              user={user}
-              userProfile={userProfile}
-              onViewChange={setView}
-              onPaymentClick={onPaymentClick}
-              onLockedAccess={attemptAccess}
-              onDocumentClick={(doc) => console.log('Document clicked:', doc)}
-              onDownloadClick={(doc) => console.log('Download clicked:', doc)}
-            />
+              <LatestDocuments 
+                documents={latestDocuments} 
+                user={user}
+                userProfile={userProfile}
+                onViewChange={setView}
+                onDocumentClick={(doc) => console.log('Document clicked:', doc)}
+                onDownloadClick={(doc) => console.log('Download clicked:', doc)}
+              />
               <CourseGrid courses={courses} onBrowseClick={handleCourseClick} />
             </div>
           </>
@@ -440,7 +328,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
         <div className="relative min-h-screen">
           <BackgroundImages />
           <div className="relative z-10 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-900 dark:to-gray-800 min-h-screen py-8">
-            <DocumentCarousel documents={documents} user={user} userProfile={userProfile} onPaymentClick={onPaymentClick} onLockedAccess={attemptAccess} />
+            <DocumentCarousel documents={documents} user={user} userProfile={userProfile} />
             <div className="mx-auto max-w-6xl px-4 md:px-6 lg:px-8">
               <button onClick={goBack} className="mb-6 flex items-center text-emerald-600 hover:text-emerald-700">
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -537,8 +425,6 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
               user={user}
               userProfile={userProfile}
               onViewChange={setView}
-              onPaymentClick={onPaymentClick}
-              onLockedAccess={attemptAccess}
               onDocumentClick={(doc) => console.log('Document clicked:', doc)}
               onDownloadClick={(doc) => console.log('Download clicked:', doc)}
             />
@@ -553,26 +439,11 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
     <>
       {content}
       {showReader && selectedDocument && <DocumentReader document={selectedDocument} onClose={() => setShowReader(false)} />}
-      {showLimitModal && (
-        <LimitReachedModal
-          show={showLimitModal}
-          viewedCount={viewedCount}
-          onClose={() => setShowLimitModal(false)}
-          onChoosePlan={(plan) => {
-            setPendingPlan(plan);
-            setShowLimitModal(false);
-            setShowPayment(true);
-          }}
-        />
-      )}
-      {showPayment && (
-        <PaymentModal
-          show={showPayment}
-          selectedPlan={pendingPlan}
-          onClose={() => { setShowPayment(false); setPendingPlan(null); }}
-          onPaymentSuccess={() => { setShowPayment(false); setPendingPlan(null); }}
-        />
-      )}
+      {showFlashcards && <FlashcardStudy courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowFlashcards(false)} />}
+      {showQuiz && <QuizMode courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowQuiz(false)} />}
+      {showNotes && <CollaborativeNotes courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowNotes(false)} />}
+      {showAnalytics && <AnalyticsDashboard onClose={() => setShowAnalytics(false)} />}
+      {showAdvancedSearch && <AdvancedSearch onClose={() => setShowAdvancedSearch(false)} onViewChange={setView} />}
     </>
   );
 };

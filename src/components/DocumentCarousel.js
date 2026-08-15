@@ -1,24 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 
-const ADMIN_EMAIL = 'kaigwaakram123@gmail.com';
-
-const canAccessDocument = (doc, userProfile, userEmail) => {
-  if (!doc) return true;
-  if (doc.status === 'free') return true;
-  if (userEmail === ADMIN_EMAIL) return true;
-  if (!userProfile) return false;
-  if (userProfile.banned) return false;
-  if (userProfile.subscriptionApproved && userProfile.subscriptionStatus === 'active') {
-    if (userProfile.subscriptionExpiry) {
-      const expiry = new Date(userProfile.subscriptionExpiry);
-      return expiry > new Date();
-    }
-    return true;
-  }
-  return false;
-};
-
-const DocumentCarousel = ({ documents, user, userProfile, onPaymentClick, onLockedAccess }) => {
+const DocumentCarousel = ({ documents, user, userProfile }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   
   const convertToDate = (timestamp) => {
@@ -80,24 +62,8 @@ const DocumentCarousel = ({ documents, user, userProfile, onPaymentClick, onLock
   }
 
   const currentDoc = displayDocs[currentIndex];
-  const hasAccess = canAccessDocument(currentDoc, userProfile, user?.email);
 
   const handleReadOnline = () => {
-    if (onLockedAccess) {
-      onLockedAccess(currentDoc, () => {
-        const url = currentDoc.filePath;
-        if (url) window.location.href = url;
-      });
-      return;
-    }
-    if (!hasAccess) {
-      if (onPaymentClick) {
-        onPaymentClick();
-      } else {
-        alert('Please subscribe to access premium documents');
-      }
-      return;
-    }
     const url = currentDoc.filePath;
     if (url) {
       window.location.href = url;
@@ -105,21 +71,6 @@ const DocumentCarousel = ({ documents, user, userProfile, onPaymentClick, onLock
   };
 
   const handleDownload = () => {
-    if (onLockedAccess) {
-      onLockedAccess(currentDoc, () => {
-        const url = currentDoc.filePath;
-        if (url) window.location.href = url;
-      });
-      return;
-    }
-    if (!hasAccess) {
-      if (onPaymentClick) {
-        onPaymentClick();
-      } else {
-        alert('Please subscribe to access premium documents');
-      }
-      return;
-    }
     const url = currentDoc.filePath;
     if (url) {
       window.location.href = url;

@@ -144,7 +144,6 @@ function AppContent() {
                   setView={handleViewChange}
                   onLoginClick={() => setShowLoginModal(true)}
                   onRegisterClick={() => setShowRegisterModal(true)}
-                  onPaymentClick={() => setShowPaymentModal(true)}
                   onContactClick={() => setShowContactModal(true)}
                   onAIChatClick={() => setShowAIChatModal(true)}
                 />
