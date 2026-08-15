@@ -157,6 +157,11 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   //   then the limit modal appears.
   // We refresh the profile first so a recently-approved subscription takes
   // effect immediately without the user having to log out and back in.
+  const isProfileSubscriber = (profile) =>
+    !!(profile && !profile.banned && profile.subscriptionApproved &&
+      profile.subscriptionStatus === 'active' &&
+      (!profile.subscriptionExpiry || new Date(profile.subscriptionExpiry) > new Date()));
+
   const attemptAccess = async (doc, onGranted) => {
     if (!doc) return;
     const freshProfile = (await refreshUserProfile()) || userProfile;
@@ -164,8 +169,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
       setShowPayment(true);
       return;
     }
-    const { isSubscriber: sub } = useViewLimit(freshProfile);
-    if (!sub && limitReached && !recordView(doc.id)) {
+    if (!isProfileSubscriber(freshProfile) && limitReached && !recordView(doc.id)) {
       setShowLimitModal(true);
       return;
     }
