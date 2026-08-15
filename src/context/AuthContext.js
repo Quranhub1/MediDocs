@@ -205,10 +205,27 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const refreshUserProfile = async () => {
+    if (!auth || !db || !currentUser) return null;
+    try {
+      const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+      if (userDoc.exists()) {
+        const profile = userDoc.data();
+        setUserProfile(profile);
+        setIsBanned(!!profile.banned);
+        return profile;
+      }
+    } catch (error) {
+      console.error('Error refreshing user profile:', error);
+    }
+    return null;
+  };
+
   const value = {
     currentUser,
     userProfile,
     isBanned,
+    refreshUserProfile,
     register,
     login,
     logout,

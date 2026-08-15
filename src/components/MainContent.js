@@ -18,6 +18,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useStudy } from '../context/StudyContext';
 import { useBookmarks } from '../context/BookmarkContext';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
 import { fetchCourses, fetchSemesters, fetchCourseUnits, fetchDocuments, fetchAllDocuments } from '../services/FirestoreService';
 import { useViewLimit } from '../hooks/useViewLimit';
 import PaymentModal from './PaymentModal';
@@ -45,6 +46,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   const { theme } = useTheme();
   const { recordStudySession } = useStudy();
   const { addToast } = useToast();
+  const { refreshUserProfile } = useAuth();
   const { viewedCount, limitReached, recordView, isSubscriber } = useViewLimit(userProfile);
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
@@ -67,6 +69,10 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
   const [loadError, setLoadError] = useState(null);
+
+  useEffect(() => {
+    if (refreshUserProfile) refreshUserProfile();
+  }, [refreshUserProfile]);
 
   useEffect(() => {
     const initData = async () => {
@@ -146,16 +152,20 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   };
 
   // Gate document access:
-  // - Premium docs -> always require subscription (payment modal)
+  // - Premium docs -> require an active subscription
   // - Free docs -> free users may open up to FREE_VIEW_LIMIT distinct docs,
   //   then the limit modal appears.
-  const attemptAccess = (doc, onGranted) => {
+  // We refresh the profile first so a recently-approved subscription takes
+  // effect immediately without the user having to log out and back in.
+  const attemptAccess = async (doc, onGranted) => {
     if (!doc) return;
-    if (!canAccessDocument(doc, userProfile, user?.email)) {
+    const freshProfile = (await refreshUserProfile()) || userProfile;
+    if (!canAccessDocument(doc, freshProfile, user?.email)) {
       setShowPayment(true);
       return;
     }
-    if (!isSubscriber && limitReached && !recordView(doc.id)) {
+    const { isSubscriber: sub } = useViewLimit(freshProfile);
+    if (!sub && limitReached && !recordView(doc.id)) {
       setShowLimitModal(true);
       return;
     }
