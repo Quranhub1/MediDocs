@@ -182,6 +182,10 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
 
   const handleDownload = async (doc) => {
     attemptAccess(doc, async () => {
+      if (!doc.filePath) {
+        addToast('No download link available for this document', 'error');
+        return;
+      }
       try {
         const response = await fetch(doc.filePath);
         const blob = await response.blob();
@@ -485,16 +489,12 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
                       <h3 className="text-2xl font-bold text-white mb-3">{doc.title || doc.id}</h3>
                       <p className="text-emerald-100 text-base mb-6">{doc.description || 'No description'}</p>
                       <div className="flex flex-wrap gap-3">
-                        {doc.filePath && (
-                          <button onClick={() => handleReadOnline(doc)} className="px-6 py-3 bg-white text-emerald-600 rounded-xl text-base font-medium hover:bg-emerald-50">
-                            Read Online
-                          </button>
-                        )}
-                        {doc.filePath && (
-                          <button onClick={() => handleDownload(doc)} className="px-6 py-3 bg-emerald-800 text-white rounded-xl text-base font-medium hover:bg-emerald-900">
-                            Download
-                          </button>
-                        )}
+                        <button onClick={() => handleReadOnline(doc)} className="px-6 py-3 bg-white text-emerald-600 rounded-xl text-base font-medium hover:bg-emerald-50">
+                          Read Online
+                        </button>
+                        <button onClick={() => handleDownload(doc)} className="px-6 py-3 bg-emerald-800 text-white rounded-xl text-base font-medium hover:bg-emerald-900">
+                          Download
+                        </button>
                       </div>
                     </div>
                   ))}
