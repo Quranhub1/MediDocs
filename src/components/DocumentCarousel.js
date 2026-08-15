@@ -83,19 +83,19 @@ const DocumentCarousel = ({ documents, user, userProfile, onPaymentClick, onLock
   const hasAccess = canAccessDocument(currentDoc, userProfile, user?.email);
 
   const handleReadOnline = () => {
+    if (onLockedAccess) {
+      onLockedAccess(currentDoc, () => {
+        const url = currentDoc.filePath;
+        if (url) window.location.href = url;
+      });
+      return;
+    }
     if (!hasAccess) {
       if (onPaymentClick) {
         onPaymentClick();
       } else {
         alert('Please subscribe to access premium documents');
       }
-      return;
-    }
-    if (onLockedAccess) {
-      onLockedAccess(currentDoc, () => {
-        const url = currentDoc.filePath;
-        if (url) window.location.href = url;
-      });
       return;
     }
     const url = currentDoc.filePath;
@@ -105,19 +105,19 @@ const DocumentCarousel = ({ documents, user, userProfile, onPaymentClick, onLock
   };
 
   const handleDownload = () => {
+    if (onLockedAccess) {
+      onLockedAccess(currentDoc, () => {
+        const url = currentDoc.filePath;
+        if (url) window.location.href = url;
+      });
+      return;
+    }
     if (!hasAccess) {
       if (onPaymentClick) {
         onPaymentClick();
       } else {
         alert('Please subscribe to access premium documents');
       }
-      return;
-    }
-    if (onLockedAccess) {
-      onLockedAccess(currentDoc, () => {
-        const url = currentDoc.filePath;
-        if (url) window.location.href = url;
-      });
       return;
     }
     const url = currentDoc.filePath;
