@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { serverTimestamp } from 'firebase/firestore';
 
 const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) => {
-  const { userProfile, currentUser, updateUserSubscription } = useAuth();
+  const { userProfile, currentUser, updateUserSubscription, refreshUserProfile } = useAuth();
   const [selectedPlanKey, setSelectedPlanKey] = useState(selectedPlan || 'monthly');
   const [phoneNumber, setPhoneNumber] = useState(userProfile?.phone || '256749846848');
   const [email, setEmail] = useState(userProfile?.email || currentUser?.email || '');
@@ -131,6 +131,7 @@ const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) 
             }
             
             setSubmitStatus('success');
+            if (refreshUserProfile) refreshUserProfile();
             if (onPaymentSuccess) {
               onPaymentSuccess();
             }
