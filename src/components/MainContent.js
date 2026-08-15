@@ -389,7 +389,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
         <div className="relative min-h-screen">
           <BackgroundImages />
           <div className="relative z-10 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-900 dark:to-gray-800 min-h-screen py-8">
-            <div className="w-full px-4 md:px-8 lg:px-12">
+            <div className="mx-auto max-w-6xl px-4 md:px-6 lg:px-8">
               <button onClick={() => { setSelectedCourse(null); setView && setView('courses'); }} className="mb-6 flex items-center text-emerald-600 hover:text-emerald-700">
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path>
@@ -423,7 +423,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
           <BackgroundImages />
           <div className="relative z-10 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-900 dark:to-gray-800 min-h-screen py-8">
             <DocumentCarousel documents={documents} user={user} userProfile={userProfile} onPaymentClick={onPaymentClick} onLockedAccess={attemptAccess} />
-            <div className="w-full px-4 md:px-8 lg:px-12">
+            <div className="mx-auto max-w-6xl px-4 md:px-6 lg:px-8">
               <button onClick={goBack} className="mb-6 flex items-center text-emerald-600 hover:text-emerald-700">
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path>
@@ -456,7 +456,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
         <div className="relative min-h-screen">
           <BackgroundImages />
           <div className="relative z-10 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-900 dark:to-gray-800 min-h-screen py-8">
-            <div className="w-full px-4 md:px-8 lg:px-12">
+            <div className="mx-auto max-w-6xl px-4 md:px-6 lg:px-8">
               <button onClick={goBack} className="mb-6 flex items-center text-emerald-600 hover:text-emerald-700">
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path>
