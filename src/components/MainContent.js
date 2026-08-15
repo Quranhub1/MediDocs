@@ -151,7 +151,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   //   then the limit modal appears.
   const attemptAccess = (doc, onGranted) => {
     if (!doc) return;
-    if (doc.status === 'premium' || !canAccessDocument(doc, userProfile, user?.email)) {
+    if (!canAccessDocument(doc, userProfile, user?.email)) {
       setShowPayment(true);
       return;
     }
