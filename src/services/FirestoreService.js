@@ -136,17 +136,20 @@ export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => 
   }
 };
 
-// Get document count for a user (used to enforce 3-document limit for free users)
-export const getDocumentCount = async (userId) => {
-  const userRef = docRef(db, 'users', userId);
-  const userDoc = await getDoc(userRef);
-  if (!userDoc.exists()) return 0;
-
-  // Count documents the user has viewed (excluding their own premium documents)
-  const docsRef = collection(db, 'documents');
-  const query = query.whereNotWhere('owner', userId);
-  const snapshot = await getDocs(docsRef, query);
-  return snapshot.docs.length;
+// Get all users
+export const getAllUsers = async (forceRefresh = false) => {
+  try {
+    const usersRef = collection(db, 'users');
+    const snapshot = await getDocs(usersRef);
+    const users = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    return { success: true, data: users };
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    return { success: false, error: error.message, data: [] };
+  }
 };
 
 // Subscribe payment to Firestore
