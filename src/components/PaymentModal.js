@@ -57,64 +57,49 @@ const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) 
     return SUBSCRIPTION_PLANS[selectedPlanKey] || SUBSCRIPTION_PLANS.monthly;
   };
 
-  const handlePaystackPayment = async () => {
-    if (!paystackLoaded || !window.PaystackPop) {
-      alert('Payment system is loading. Please try again in a moment.');
+  const handleConfirmPayment = async () => {
+    if (!submitted) {
       return;
     }
 
-    setIsSubmitting(true);
-    const plan = getPlanDetails();
-    
-    if (!publicKey || publicKey.includes('your_paystack')) {
-      alert('Paystack is not configured. Please contact support.');
-      setIsSubmitting(false);
-      return;
-    }
-
-    const handler = window.PaystackPop.setup({
-      key: publicKey,
-      email: email,
+    // Record the payment in Firestore
+    const paymentData = {
+      reference: 'INITIALIZED',
       amount: plan.amount * 100,
-      currency: 'UGX',
-      ref: 'MEDIDOCS-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
-      phone: phoneNumber,
-      label: 'KABALI MADINA',
-      metadata: {
-        custom_fields: [
-          {
-            display_name: 'Plan',
-            variable_name: 'plan',
-            value: plan.label
-          },
-          {
-            display_name: 'Phone',
-            variable_name: 'phone',
-            value: phoneNumber
-          }
-        ]
-      },
-      onClose: () => {
-        setIsSubmitting(false);
-      },
-      callback: async (response) => {
-        const reference = response.reference;
-        setIsSubmitting(true);
-        
-        try {
-          const verifyResult = await verifyPayment(reference);
-          
-          if (verifyResult.success) {
-            const paymentData = {
-              reference: reference,
-              amount: plan.amount.toString(),
-              phoneNumber: phoneNumber,
-              email: email,
-              plan: selectedPlanKey,
-              planLabel: plan.label,
-              status: 'success',
-              paidAt: serverTimestamp()
-            };
+      phoneNumber: phoneNumber,
+      email: email,
+      plan: selectedPlanKey,
+      planLabel: plan.label,
+      status: 'pending_review',
+      createdAt: serverTimestamp()
+    };
+
+    await submitPayment(paymentData);
+    
+    // Show confirmation that payment has been initiated
+    setSubmitStatus('payment_initiated');
+
+    // Option to send to admin
+    const adminButton = (
+      <button
+        onClick={() => {
+          // Send payment details to admin for review
+          // This would typically create a record in an admin dashboard
+          // For now, we just confirm the payment was initiated
+          setSubmitStatus('sent_to_admin');
+
+          // In a real implementation, this would:
+          // 1. Create an admin task/record
+          // 2. Notify the admin team
+          // 3. Log the payment initiation
+        }}
+        className="w-full py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+      />
+    );
+
+    // Clear the form after sending to admin
+    setSubmitStatus(null);
+  };
             
             await submitPayment(paymentData);
             
