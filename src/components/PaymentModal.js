@@ -8,6 +8,7 @@ const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) 
   const [selectedPlanKey, setSelectedPlanKey] = useState(selectedPlan || 'monthly');
   const [phoneNumber, setPhoneNumber] = useState(userProfile?.phone || '256749846848');
   const [email, setEmail] = useState(userProfile?.email || currentUser?.email || '');
+  const [transactionId, setTransactionId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
 
@@ -15,6 +16,7 @@ const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) 
     if (show) {
       setSubmitStatus(null);
       setIsSubmitting(false);
+      setTransactionId('');
       if (selectedPlan) {
         setSelectedPlanKey(selectedPlan);
       }
@@ -25,7 +27,7 @@ const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) 
     return SUBSCRIPTION_PLANS[selectedPlanKey] || SUBSCRIPTION_PLANS.monthly;
   };
 
-  const handleConfirmPayment = async () => {
+  const handleSubmit = async () => {
     const plan = getPlanDetails();
 
     if (!phoneNumber || !email) {
@@ -33,10 +35,15 @@ const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) 
       return;
     }
 
+    if (!transactionId.trim()) {
+      setSubmitStatus('error');
+      return;
+    }
+
     setIsSubmitting(true);
 
     const paymentData = {
-      reference: 'INITIALIZED-' + Date.now(),
+      reference: transactionId.trim(),
       amount: plan.amount.toString(),
       phoneNumber: phoneNumber,
       email: email,
@@ -48,35 +55,12 @@ const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) 
 
     try {
       await submitPayment(paymentData);
-      setSubmitStatus('payment_initiated');
+      setSubmitStatus('submitted');
+      if (onPaymentSuccess) {
+        onPaymentSuccess();
+      }
     } catch (error) {
       console.error('Payment submission error:', error);
-      setSubmitStatus('error');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleSendToAdmin = async () => {
-    const plan = getPlanDetails();
-
-    const paymentData = {
-      reference: 'ADMIN-REVIEW-' + Date.now(),
-      amount: plan.amount.toString(),
-      phoneNumber: phoneNumber,
-      email: email,
-      plan: selectedPlanKey,
-      planLabel: plan.label,
-      status: 'pending_review',
-      createdAt: serverTimestamp()
-    };
-
-    setIsSubmitting(true);
-    try {
-      await submitPayment(paymentData);
-      setSubmitStatus('sent_to_admin');
-    } catch (error) {
-      console.error('Error sending to admin:', error);
       setSubmitStatus('error');
     } finally {
       setIsSubmitting(false);
@@ -107,22 +91,15 @@ const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) 
         </div>
 
         <div className="p-6">
-          {submitStatus === 'payment_initiated' && (
-            <div className="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 mb-6 rounded-lg">
-              <p className="font-medium">Payment initiated</p>
-              <p className="text-sm text-gray-500">Your payment request has been recorded. Please complete payment to {plan.label} access.</p>
-            </div>
-          )}
-
-          {submitStatus === 'sent_to_admin' && (
+          {submitStatus === 'submitted' && (
             <div className="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded-lg">
               <div className="flex items-center space-x-3">
                 <svg className="h-5 w-5 text-green-500 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
                 <div>
-                  <p className="font-medium">Sent to admin</p>
-                  <p className="text-sm text-gray-500">Your payment request has been sent to the admin team for review.</p>
+                  <p className="font-medium">Payment submitted</p>
+                  <p className="text-sm text-gray-500">Your transaction ID has been recorded. Admin will confirm your payment.</p>
                 </div>
               </div>
             </div>
@@ -181,6 +158,19 @@ const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) 
                 placeholder="256749846848"
               />
             </div>
+
+            <div>
+              <label htmlFor="transaction-id" className="block text-sm font-medium text-gray-700 mb-2">Transaction ID</label>
+              <input
+                type="text"
+                id="transaction-id"
+                value={transactionId}
+                onChange={(e) => setTransactionId(e.target.value)}
+                required
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                placeholder="Enter transaction ID from your payment"
+              />
+            </div>
           </div>
 
           <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6">
@@ -189,30 +179,20 @@ const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) 
               <li>Plan: <span className="font-bold">{plan.label}</span></li>
               <li>Amount: <span className="font-bold">UGX {plan.amount.toLocaleString()}</span></li>
               <li>Pay to: <span className="font-bold">KABALI MADINA (+256 749 846 848)</span></li>
-              <li>Payment will be recorded and sent to admin for review</li>
+              <li>After paying, enter your transaction ID above</li>
+              <li>Admin will confirm your payment in the dashboard</li>
             </ol>
           </div>
 
-          <div className="flex gap-3">
-            <button
-              onClick={handleConfirmPayment}
-              disabled={isSubmitting}
-              className={`flex-1 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold rounded-xl transition-all duration-200 ${
-                isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
-              }`}
-            >
-              {isSubmitting ? 'Processing...' : `Pay UGX ${plan.amount.toLocaleString()}`}
-            </button>
-            <button
-              onClick={handleSendToAdmin}
-              disabled={isSubmitting}
-              className={`flex-1 py-3 bg-white border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 font-semibold rounded-xl transition-all duration-200 ${
-                isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
-              }`}
-            >
-              {isSubmitting ? 'Sending...' : 'Send to Admin'}
-            </button>
-          </div>
+          <button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className={`w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold rounded-xl transition-all duration-200 ${
+              isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
+            }`}
+          >
+            {isSubmitting ? 'Submitting...' : `Submit Payment - UGX ${plan.amount.toLocaleString()}`}
+          </button>
 
           <div className="mt-4 pt-4 border-t text-center text-sm text-gray-500">
             <p>Need help? Contact: <a href="tel:+256749846848" className="text-emerald-600 font-medium">+256 749 846 848</a></p>

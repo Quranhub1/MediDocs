@@ -8,6 +8,13 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 
+// Subscription plans configuration
+export const SUBSCRIPTION_PLANS = {
+  weekly: { amount: 5000, label: 'Weekly', duration: 7 },
+  monthly: { amount: 10000, label: 'Monthly', duration: 30 },
+  yearly: { amount: 50000, label: 'Yearly', duration: 365 }
+};
+
 // Helper to convert Firestore Timestamp to Date
 const convertTimestamp = (timestamp) => {
   if (!timestamp) return null;
