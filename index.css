@@ -1,0 +1,488 @@
+/* ============================================
+   KSHS Study Resources - Mobile-First Styles
+   Ensures perfect fit on all phone screens
+   No horizontal scrollbars
+   ============================================ */
+
+/* Base Reset & Typography */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  line-height: 1.6;
+  color: #333;
+  background-color: #f8fafc;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Header - Sticky Top Bar */
+header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+header.scrolled {
+  background-color: white;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Gradient Header Background */
+header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, #059669, #10b981);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+header.scrolled::before {
+  opacity: 1;
+}
+
+/* Navigation Links */
+.nav-links {
+  display: none;
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.nav-links.active {
+  display: flex;
+}
+
+.nav-links button {
+  flex: 1;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: transparent;
+  color: #666;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.nav-links button:hover {
+  background: #f1f5f9;
+  color: #333;
+}
+
+.nav-links.active button {
+  background: #059669;
+  color: white;
+  font-weight: 600;
+}
+
+/* Hero Section */
+.hero-section {
+  padding: 3rem 1.5rem 2rem;
+  text-align: center;
+}
+
+.hero-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 0.5rem;
+}
+
+.hero-subtitle {
+  font-size: 1.1rem;
+  color: #64748b;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* Contact Section */
+.contact-section {
+  padding: 2rem 1.5rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  max-width: 480px;
+}
+
+.contact-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #1e293b;
+}
+
+.contact-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.contact-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+}
+
+.contact-icon.blue { background: #eff6ff; color: #2563eb; }
+.contact-icon.teal { background: #dbeafe; color: #06b6d4; }
+
+.contact-info h4 {
+  font-size: 1.1rem;
+  color: #1e293b;
+  margin-bottom: 0.25rem;
+}
+
+.contact-info p {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.contact-btn {
+  width: 100%;
+  padding: 0.875rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 1rem;
+}
+
+.contact-btn.primary {
+  background: #059669;
+  color: white;
+}
+
+.contact-btn.primary:hover {
+  background: #047857;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 141, 105, 0.3);
+}
+
+.contact-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Main Content Area */
+.main-content {
+  padding: 2rem 1.5rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* Latest Documents Carousel */
+.carousel-container {
+  position: relative;
+  width: 100%;
+  margin-bottom: 2rem;
+}
+
+.carousel-track {
+  display: flex;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+}
+
+.carousel-slide {
+  min-width: 100%;
+  padding: 1.5rem;
+  text-align: center;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  animation: fadeIn 0.4s ease;
+}
+
+.carousel-slide:nth-child(1) { transform: translateX(0); }
+.carousel-slide:nth-child(2) { transform: translateX(-5%); }
+.carousel-slide:nth-child(3) { transform: translateX(-10%); }
+.carousel-slide:nth-child(4) { transform: translateX(-15%); }
+
+.carousel-thumb {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.carousel-info h3 {
+  font-size: 1.2rem;
+  color: #1e293b;
+  margin-bottom: 0.5rem;
+}
+
+.carousel-info p {
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+/* Previous/Next Buttons */
+.carousel-controls {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.carousel-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: white;
+  color: #1e293b;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.carousel-btn:hover {
+  background: #f1f5f9;
+  transform: scale(1.05);
+}
+
+.carousel-btn:active {
+  transform: scale(0.95);
+}
+
+/* AI Chat Modal */
+.ai-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.ai-modal-overlay.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.ai-modal {
+  background: white;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  transform: translateY(20px);
+  transition: transform 0.3s ease;
+}
+
+.ai-modal.open {
+  transform: translateY(0);
+}
+
+.ai-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.ai-modal-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.ai-modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.ai-modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.ai-modal-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.ai-modal-actions button {
+  padding: 0.625rem 1.25rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ai-modal-actions .btn-primary {
+  background: #059669;
+  color: white;
+}
+
+.ai-modal-actions .btn-primary:hover {
+  background: #047857;
+}
+
+.ai-modal-actions .btn-secondary {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.ai-modal-actions .btn-secondary:hover {
+  background: #e2e8f0;
+}
+
+/* Responsive Breakpoints */
+@media (max-width: 768px) {
+  /* Adjust header for mobile */
+  header {
+    padding: 1rem;
+  }
+  
+  /* Hide nav links on mobile */
+  .nav-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  /* Contact section - stack columns */
+  .contact-details {
+    grid-template-columns: 1fr;
+  }
+  
+  /* Carousel - adjust slide count for smaller screens */
+  .carousel-slide {
+    min-width: 100%;
+  }
+  
+  /* Increase touch targets */
+  .contact-btn,
+  .carousel-btn {
+    width: 56px;
+    height: 56px;
+    font-size: 1.3rem;
+  }
+  
+  /* Make hero bigger */
+  .hero-title {
+    font-size: 2.2rem;
+  }
+  
+  /* Main content padding */
+  .main-content {
+    padding: 1.5rem 1rem;
+  }
+  
+  /* Carousel controls spacing */
+  .carousel-controls {
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Extra compact for phones */
+  header {
+    padding: 0.75rem;
+  }
+  
+  .hero-title {
+    font-size: 1.8rem;
+  }
+  
+  .contact-section {
+    max-width: 100%;
+  }
+  
+  .carousel-slide {
+    padding: 1rem;
+  }
+  
+  .carousel-info h3 {
+    font-size: 1rem;
+  }
+  
+  .carousel-info p {
+    font-size: 0.85rem;
+  }
+  
+  .ai-modal {
+    max-width: 100%;
+  }
+  
+  .ai-modal-header {
+    padding: 1rem;
+  }
+  
+  .ai-modal-body {
+    padding: 1rem;
+  }
+}
+
+/* Utility Classes */
+.text-center {
+  text-align: center;
+}
+
+.mt-6 { margin-top: 1rem; }
+.mb-6 { margin-bottom: 1rem; }
+
+/* Focus states for accessibility */
+*:focus-visible {
+  outline: 2px solid #059669;
+  outline-offset: 2px;
+}
+
+/* Scrollbar styling for any remaining scrolls */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
