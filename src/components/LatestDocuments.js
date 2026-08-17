@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
+import { readOnline, downloadDocument, getDocumentUrl } from '../utils/documentActions';
 
 const LatestDocuments = ({ documents, user, userProfile, onViewChange }) => {
   const scrollRef = useRef(null);
@@ -21,21 +22,11 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange }) => {
   };
 
   const handleReadOnline = (doc) => {
-    const url = doc.filePath;
-    if (url) {
-      window.location.href = url;
-    } else {
-      alert('No read online link available for this document');
-    }
+    readOnline(doc);
   };
 
   const handleDownload = (doc) => {
-    const url = doc.filePath;
-    if (url) {
-      window.location.href = url;
-    } else {
-      alert('No link available for this document');
-    }
+    downloadDocument(doc);
   };
 
   const convertToDate = (timestamp) => {
@@ -89,7 +80,9 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange }) => {
         closest = i;
       }
     }
-    setActiveIndex(closest);
+    if (closest !== activeIndex) {
+      setActiveIndex(closest);
+    }
   };
 
   const onDragStart = (e) => {
@@ -205,7 +198,6 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange }) => {
             onTouchEnd={onDragEnd}
             onClickCapture={onClickCapture}
             className="flex gap-8 overflow-x-auto snap-x snap-mandatory px-12 py-2 scrollbar-hide cursor-grab active:cursor-grabbing"
-            style={{ scrollBehavior: 'smooth' }}
           >
             {displayDocuments.map((doc, index) => {
               return (
@@ -258,10 +250,10 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange }) => {
                     </div>
 
                     <div className="flex flex-col gap-3">
-                      <button onClick={(e) => { if (suppressClick.current) return; handleReadOnline(doc); }} className="w-full px-4 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-base font-semibold rounded-xl transition-all duration-200 shadow-md">
+                      <button onClick={(e) => { if (suppressClick.current) return; handleReadOnline(doc); }} disabled={!getDocumentUrl(doc)} className="w-full px-4 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-base font-semibold rounded-xl transition-all duration-200 shadow-md disabled:opacity-40 disabled:cursor-not-allowed">
                         Read Online
                       </button>
-                      <button onClick={(e) => { if (suppressClick.current) return; handleDownload(doc); }} className="w-full px-4 py-3.5 bg-white border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 text-base font-semibold rounded-xl transition-all duration-200">
+                      <button onClick={(e) => { if (suppressClick.current) return; handleDownload(doc); }} disabled={!getDocumentUrl(doc)} className="w-full px-4 py-3.5 bg-white border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 text-base font-semibold rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed">
                         Download
                       </button>
                     </div>
