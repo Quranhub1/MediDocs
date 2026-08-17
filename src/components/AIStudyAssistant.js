@@ -406,7 +406,7 @@ const AIStudyAssistant = ({ show, onClose, user, userProfile }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
       <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/90 via-teal-900/90 to-cyan-900/90" onClick={onClose}></div>
 
-      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl mx-2 overflow-hidden flex flex-col" style={{ height: '85vh', maxHeight: '700px' }}>
+      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-xl mx-2 overflow-hidden flex flex-col" style={{ height: '80vh', maxHeight: '640px' }}>
 
         <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 p-4 sm:p-5 flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-3">
