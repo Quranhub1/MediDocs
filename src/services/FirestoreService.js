@@ -152,6 +152,23 @@ export const getAllUsers = async (forceRefresh = false) => {
   }
 };
 
+// Get all payments
+export const getAllPayments = async (forceRefresh = false) => {
+  try {
+    const paymentsRef = collection(db, 'payments');
+    const snapshot = await getDocs(paymentsRef);
+    const payments = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAtDate: convertTimestamp(doc.data().createdAt)
+    }));
+    return { success: true, data: payments };
+  } catch (error) {
+    console.error('Error fetching payments:', error);
+    return { success: false, error: error.message, data: [] };
+  }
+};
+
 // Subscribe payment to Firestore
 export const submitPayment = async (paymentData) => {
   try {
@@ -185,50 +202,215 @@ export const verifyPayment = async (reference) => {
   }
 };
 
-// Get subscription countdown for a user
-// Returns remaining time in days/hours/minutes or null if expired
-
-export const getSubscriptionCountdown = (user) => {
-  if (!user || !user.subscriptionExpiry) return null;
-
-  // Safely get the expiry date
-  let expiry;
-  if (user.subscriptionExpiry.toDate) {
-    expiry = user.subscriptionExpiry.toDate();
-  } else if (user.subscriptionExpiry instanceof Date) {
-    expiry = user.subscriptionExpiry;
-  } else {
-    return null;
+// Get all payments
+export const getAllPayments = async (forceRefresh = false) => {
+  try {
+    const paymentsRef = collection(db, 'payments');
+    const snapshot = await getDocs(paymentsRef);
+    const payments = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAtDate: convertTimestamp(doc.data().createdAt)
+    }));
+    return { success: true, data: payments };
+  } catch (error) {
+    console.error('Error fetching payments:', error);
+    return { success: false, error: error.message, data: [] };
   }
+};
 
-  // Ensure expiry is a valid date
-  if (!(expiry instanceof Date) || isNaN(expiry.getTime())) {
-    return null;
+// Approve subscription for user
+export const approveUserSubscription = async (userId, plan, expiryDate) => {
+  try {
+    const userDocRef = docRef(db, 'users', userId);
+    await updateDoc(userDocRef, {
+      subscriptionApproved: true,
+      subscriptionStatus: 'active',
+      subscriptionPlan: plan,
+      subscriptionExpiry: expiryDate
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Error approving subscription:', error);
+    return { success: false, error: error.message };
   }
+};
 
-  const now = new Date();
-  const diff = expiry - now;
-
-  // If expiry is in the past or exactly now, treat as expired
-  if (diff <= 0) {
-    return { text: 'Expired', days: 0, expired: true };
+// Upload thumbnail to Firebase Storage
+export const uploadThumbnail = async (file, path = 'thumbnails') => {
+  try {
+    const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+    const { storage } = await import('../firebase');
+    
+    const fileName = `${path}/${Date.now()}_${file.name}`;
+    const storageRef = ref(storage, fileName);
+    await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(storageRef);
+    return { success: true, url: downloadURL };
+  } catch (error) {
+    console.error('Error uploading thumbnail:', error);
+    return { success: false, error: error.message };
   }
+};
 
-  // Calculate days and hours with safeguards against NaN
-  const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-  const hours = Math.ceil((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-
-  // Ensure we don't return NaN
-  if (Number.isNaN(days) || Number.isNaN(hours)) {
-    return { text: 'Unknown', days: 0, expired: false };
+// Upload document to Firebase Storage
+export const uploadDocument = async (file, path = 'documents') => {
+  try {
+    const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+    const { storage } = await import('../firebase');
+    
+    const fileName = `${path}/${Date.now()}_${file.name}`;
+    const storageRef = ref(storage, fileName);
+    await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(storageRef);
+    return { success: true, url: downloadURL };
+  } catch (error) {
+    console.error('Error uploading document:', error);
+    return { success: false, error: error.message };
   }
+};
 
-  if (days > 0) {
-    return { text: `${days} day${days > 1 ? 's' : ''} remaining`, days, expired: false };
-  } else if (hours > 0) {
-    return { text: `${hours} hour${hours > 1 ? 's' : ''} remaining`, days: 0, expired: false };
-  } else {
-    const minutes = Math.ceil((diff % (1000 * 60)) / (1000 * 60));
-    return { text: `${minutes} min remaining`, days: 0, expired: false };
+// List files from Firebase Storage
+export const listStorageFiles = async (folder = '') => {
+  try {
+    const { ref, listAll, getDownloadURL } = await import('firebase/storage');
+    const { storage } = await import('../firebase');
+    
+    const storageRef = ref(storage, folder);
+    const result = await listAll(storageRef);
+    
+    const files = await Promise.all(
+      result.items.map(async (item) => {
+        const url = await getDownloadURL(item);
+        return {
+          name: item.name,
+          fullPath: item.fullPath,
+          url: url,
+          size: item.size,
+          contentType: item.contentType,
+          updated: item.updated
+        };
+      })
+    );
+    
+    return { success: true, files };
+  } catch (error) {
+    console.error('Error listing storage files:', error);
+    return { success: false, error: error.message, files: [] };
+  }
+};
+
+// Delete file from Firebase Storage
+export const deleteStorageFile = async (filePath) => {
+  try {
+    const { ref, deleteObject } = await import('firebase/storage');
+    const { storage } = await import('../firebase');
+    
+    const fileRef = ref(storage, filePath);
+    await deleteObject(fileRef);
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting storage file:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Create folder in Firebase Storage
+export const createStorageFolder = async (folderName) => {
+  try {
+    const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+    const { storage } = await import('../firebase');
+    
+    const folderRef = ref(storage, `${folderName}/.keep`);
+    const blob = new Blob([''], { type: 'text/plain' });
+    await uploadBytes(folderRef, blob);
+    return { success: true, message: 'Folder created successfully' };
+  } catch (error) {
+    console.error('Error creating folder:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Decline payment
+export const declinePayment = async (paymentId) => {
+  try {
+    const paymentRef = docRef(db, 'payments', paymentId);
+    await updateDoc(paymentRef, {
+      status: 'declined',
+      updatedAt: serverTimestamp()
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Error declining payment:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Update subscription expiry
+export const updateSubscriptionExpiry = async (userId, expiryDate) => {
+  try {
+    const userDocRef = docRef(db, 'users', userId);
+    await updateDoc(userDocRef, {
+      subscriptionExpiry: expiryDate,
+      subscriptionStatus: 'active',
+      updatedAt: serverTimestamp()
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating subscription expiry:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Get users with expiring subscriptions (within 5 days)
+export const getExpiringSubscriptions = async () => {
+  try {
+    const usersRef = collection(db, 'users');
+    const snapshot = await getDocs(usersRef);
+    const fiveDaysFromNow = new Date();
+    fiveDaysFromNow.setDate(fiveDaysFromNow.getDate() + 5);
+    
+    const expiringUsers = snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(user => {
+        if (!user.subscriptionExpiry || !user.subscriptionApproved) return false;
+        const expiry = user.subscriptionExpiry.toDate ? user.subscriptionExpiry.toDate() : new Date(user.subscriptionExpiry);
+        return expiry <= fiveDaysFromNow && expiry > new Date();
+      });
+    
+    return { success: true, data: expiringUsers };
+  } catch (error) {
+    console.error('Error fetching expiring subscriptions:', error);
+    return { success: false, error: error.message, data: [] };
+  }
+};
+
+// Lock expired subscriptions
+export const lockExpiredSubscriptions = async () => {
+  try {
+    const usersRef = collection(db, 'users');
+    const snapshot = await getDocs(usersRef);
+    const now = new Date();
+    
+    const expiredUsers = snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(user => {
+        if (!user.subscriptionExpiry || !user.subscriptionApproved) return false;
+        const expiry = user.subscriptionExpiry.toDate ? user.subscriptionExpiry.toDate() : new Date(user.subscriptionExpiry);
+        return expiry < now;
+      });
+    
+    for (const user of expiredUsers) {
+      await updateDoc(docRef(db, 'users', user.id), {
+        subscriptionStatus: 'expired',
+        banned: true,
+        updatedAt: serverTimestamp()
+      });
+    }
+    
+    return { success: true, lockedCount: expiredUsers.length };
+  } catch (error) {
+    console.error('Error locking expired subscriptions:', error);
+    return { success: false, error: error.message };
   }
 };
