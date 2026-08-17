@@ -287,7 +287,7 @@ export const fetchResources = async (maxItems = 20) => fetchAllDocuments(maxItem
 
 export { clearCache };
 
-// Submit contact form to Firestore
+// Submit contact form to Firestore and notify the admin via email
 export const submitContactForm = async (formData) => {
   try {
     const contactRef = collection(db, 'contact_submissions');
@@ -296,6 +296,28 @@ export const submitContactForm = async (formData) => {
       createdAt: serverTimestamp(),
       status: 'pending'
     });
+
+    try {
+      const response = await fetch('/api/notify/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: 'kaigwaakram123@gmail.com',
+          subject: `MediDocs Contact: ${formData.subject || 'New message'}`,
+          message: `You have a new contact form submission.\n\nName: ${formData.name || 'N/A'}\nEmail: ${formData.email || 'N/A'}\nSubject: ${formData.subject || 'N/A'}\n\nMessage:\n${formData.message || ''}`,
+          eventType: 'Contact Form',
+          userEmail: formData.email,
+          userName: formData.name
+        })
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        console.warn('Contact email notification failed:', data.error || response.statusText);
+      }
+    } catch (emailError) {
+      console.error('Contact email notification failed:', emailError);
+    }
+
     return { success: true };
   } catch (error) {
     console.error('Error submitting contact form:', error);
