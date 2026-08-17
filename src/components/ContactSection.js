@@ -44,8 +44,8 @@ const ContactSection = ({ onContactClick }) => {
   return (
     <section className="relative min-h-screen mb-8">
       <BackgroundImages />
-      <div className="relative z-10 bg-white/50 min-h-screen py-12">
-        <div className="max-w-2xl mx-auto px-4">
+      <div className="relative z-10 bg-white/50 min-h-screen py-12 px-4 sm:px-8 md:px-12">
+        <div className="w-full">
           <h2 className="text-2xl font-bold text-gray-800 mb-4">
             Contact Us
           </h2>
@@ -63,92 +63,124 @@ const ContactSection = ({ onContactClick }) => {
               <p className="text-sm">Please try again later.</p>
             </div>
           )}
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid-cols-1 sm:grid-cols-2 gap-4">
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="space-y-6">
+              <p className="text-gray-600">
+                Have a question, feedback, or need help with your study materials? Reach out and our team will respond as soon as possible.
+              </p>
+
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <span className="mt-1 text-blue-500">📧</span>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Email</p>
+                    <p className="text-gray-600">kaigwaakram123@gmail.com</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="mt-1 text-blue-500">📞</span>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Phone / WhatsApp</p>
+                    <p className="text-gray-600">+256 749 846 848</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="mt-1 text-blue-500">📍</span>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Location</p>
+                    <p className="text-gray-600">Kampala, Uganda</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 text-left">
+                <button
+                  onClick={onContactClick}
+                  className="text-sm text-blue-500 hover:underline"
+                >
+                  Need immediate help? Chat with us live
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="contact-name" className="block text-sm font-medium text-gray-700 mb-2">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    id="contact-name"
+                    name="name"
+                    value={formState.name}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter your full name"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="contact-email" className="block text-sm font-medium text-gray-700 mb-2">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    id="contact-email"
+                    name="email"
+                    value={formState.email}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter your email address"
+                  />
+                </div>
+              </div>
+              
               <div>
-                <label htmlFor="contact-name" className="block text-sm font-medium text-gray-700 mb-2">
-                  Full Name
+                <label htmlFor="contact-subject" className="block text-sm font-medium text-gray-700 mb-2">
+                  Subject
                 </label>
                 <input
                   type="text"
-                  id="contact-name"
-                  name="name"
-                  value={formState.name}
+                  id="contact-subject"
+                  name="subject"
+                  value={formState.subject}
                   onChange={handleChange}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter your full name"
+                  placeholder="Enter subject"
                 />
               </div>
               
               <div>
-                <label htmlFor="contact-email" className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Address
+                <label htmlFor="contact-message" className="block text-sm font-medium text-gray-700 mb-2">
+                  Message
                 </label>
-                <input
-                  type="email"
-                  id="contact-email"
-                  name="email"
-                  value={formState.email}
+                <textarea
+                  id="contact-message"
+                  name="message"
+                  value={formState.message}
                   onChange={handleChange}
                   required
+                  rows="5"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter your email address"
+                  placeholder="Enter your message"
                 />
               </div>
-            </div>
-            
-            <div>
-              <label htmlFor="contact-subject" className="block text-sm font-medium text-gray-700 mb-2">
-                Subject
-              </label>
-              <input
-                type="text"
-                id="contact-subject"
-                name="subject"
-                value={formState.subject}
-                onChange={handleChange}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter subject"
-              />
-            </div>
-            
-            <div>
-              <label htmlFor="contact-message" className="block text-sm font-medium text-gray-700 mb-2">
-                Message
-              </label>
-              <textarea
-                id="contact-message"
-                name="message"
-                value={formState.message}
-                onChange={handleChange}
-                required
-                rows="5"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter your message"
-              />
-            </div>
-            
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className={`w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2 rounded-full text-sm transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg hover:shadow-xl ${
-                isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
-              }`}
-            >
-              {isSubmitting ? 'Sending...' : 'Send Message'}
-            </button>
-          </form>
-          
-          <div className="mt-6 text-center">
-            <button 
-              onClick={onContactClick}
-              className="text-sm text-blue-500 hover:underline"
-            >
-              Need immediate help? Chat with us live
-            </button>
+              
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className={`w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2 rounded-full text-sm transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg hover:shadow-xl ${
+                  isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
+                }`}
+              >
+                {isSubmitting ? 'Sending...' : 'Send Message'}
+              </button>
+            </form>
           </div>
         </div>
       </div>
