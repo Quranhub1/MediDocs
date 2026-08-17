@@ -170,56 +170,6 @@ export const getAllPayments = async (forceRefresh = false) => {
 };
 
 // Subscribe payment to Firestore
-export const submitPayment = async (paymentData) => {
-  try {
-    const paymentsRef = collection(db, 'payments');
-    await addDoc(paymentsRef, {
-      ...paymentData,
-      createdAt: serverTimestamp(),
-      status: 'pending_verification'
-    });
-    return { success: true };
-  } catch (error) {
-    console.error('Error submitting payment:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-// Verify payment with direct Firebase (replaces Paystack)
-export const verifyPayment = async (reference) => {
-  try {
-    const response = await fetch('/api/payments/verify', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ reference })
-    });
-    return await response.json();
-  } catch (error) {
-    console.error('Error verifying payment:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-// Get all payments
-export const getAllPayments = async (forceRefresh = false) => {
-  try {
-    const paymentsRef = collection(db, 'payments');
-    const snapshot = await getDocs(paymentsRef);
-    const payments = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAtDate: convertTimestamp(doc.data().createdAt)
-    }));
-    return { success: true, data: payments };
-  } catch (error) {
-    console.error('Error fetching payments:', error);
-    return { success: false, error: error.message, data: [] };
-  }
-};
-
-// Approve subscription for user
 export const approveUserSubscription = async (userId, plan, expiryDate) => {
   try {
     const userDocRef = docRef(db, 'users', userId);
