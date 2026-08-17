@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { submitPayment, verifyPayment, SUBSCRIPTION_PLANS } from '../services/FirestoreService';
+import { submitPayment, SUBSCRIPTION_PLANS } from '../services/FirestoreService';
 import { useAuth } from '../context/AuthContext';
 import { serverTimestamp } from 'firebase/firestore';
 
 const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) => {
-  const { userProfile, currentUser, updateUserSubscription, refreshUserProfile } = useAuth();
+  const { userProfile, currentUser, refreshUserProfile } = useAuth();
   const [selectedPlanKey, setSelectedPlanKey] = useState(selectedPlan || 'monthly');
   const [phoneNumber, setPhoneNumber] = useState(userProfile?.phone || '256749846848');
   const [email, setEmail] = useState(userProfile?.email || currentUser?.email || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
-  const [paystackLoaded, setPaystackLoaded] = useState(false);
-  const [publicKey, setPublicKey] = useState('');
 
   useEffect(() => {
     if (show) {
@@ -23,49 +21,23 @@ const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) 
     }
   }, [show, selectedPlan]);
 
-  useEffect(() => {
-    const fetchPublicKey = async () => {
-      try {
-        const response = await fetch('/api/config/paystack');
-        if (response.ok) {
-          const data = await response.json();
-          setPublicKey(data.publicKey || '');
-        }
-      } catch (error) {
-        console.error('Error fetching Paystack config:', error);
-      }
-    };
-    fetchPublicKey();
-  }, []);
-
-  useEffect(() => {
-    if (show && !paystackLoaded) {
-      const script = document.createElement('script');
-      script.src = 'https://js.paystack.co/v1/inline.js';
-      script.async = true;
-      script.onload = () => setPaystackLoaded(true);
-      document.body.appendChild(script);
-      return () => {
-        if (script.parentNode) {
-          script.parentNode.removeChild(script);
-        }
-      };
-    }
-  }, [show, paystackLoaded]);
-
   const getPlanDetails = () => {
     return SUBSCRIPTION_PLANS[selectedPlanKey] || SUBSCRIPTION_PLANS.monthly;
   };
 
   const handleConfirmPayment = async () => {
-    if (!submitted) {
+    const plan = getPlanDetails();
+
+    if (!phoneNumber || !email) {
+      setSubmitStatus('error');
       return;
     }
 
-    // Record the payment in Firestore
+    setIsSubmitting(true);
+
     const paymentData = {
-      reference: 'INITIALIZED',
-      amount: plan.amount * 100,
+      reference: 'INITIALIZED-' + Date.now(),
+      amount: plan.amount.toString(),
       phoneNumber: phoneNumber,
       email: email,
       plan: selectedPlanKey,
@@ -74,65 +46,41 @@ const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) 
       createdAt: serverTimestamp()
     };
 
-    await submitPayment(paymentData);
-    
-    // Show confirmation that payment has been initiated
-    setSubmitStatus('payment_initiated');
-
-    // Option to send to admin
-    const adminButton = (
-      <button
-        onClick={() => {
-          // Send payment details to admin for review
-          // This would typically create a record in an admin dashboard
-          // For now, we just confirm the payment was initiated
-          setSubmitStatus('sent_to_admin');
-
-          // In a real implementation, this would:
-          // 1. Create an admin task/record
-          // 2. Notify the admin team
-          // 3. Log the payment initiation
-        }}
-        className="w-full py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
-      />
-    );
-
-    // Clear the form after sending to admin
-    setSubmitStatus(null);
+    try {
+      await submitPayment(paymentData);
+      setSubmitStatus('payment_initiated');
+    } catch (error) {
+      console.error('Payment submission error:', error);
+      setSubmitStatus('error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
-            
-            await submitPayment(paymentData);
-            
-            if (currentUser) {
-              const expiryDate = new Date();
-              expiryDate.setDate(expiryDate.getDate() + plan.duration);
-              
-              await updateUserSubscription(currentUser.uid, {
-                subscriptionApproved: true,
-                subscriptionStatus: 'active',
-                subscriptionPlan: selectedPlanKey,
-                subscriptionExpiry: expiryDate
-              });
-            }
-            
-            setSubmitStatus('success');
-            if (refreshUserProfile) refreshUserProfile();
-            if (onPaymentSuccess) {
-              onPaymentSuccess();
-            }
-          } else {
-            setSubmitStatus('error');
-          }
-        } catch (error) {
-          console.error('Payment processing error:', error);
-          setSubmitStatus('error');
-        } finally {
-          setIsSubmitting(false);
-        }
-      }
-    });
 
-    handler.openIframe();
+  const handleSendToAdmin = async () => {
+    const plan = getPlanDetails();
+
+    const paymentData = {
+      reference: 'ADMIN-REVIEW-' + Date.now(),
+      amount: plan.amount.toString(),
+      phoneNumber: phoneNumber,
+      email: email,
+      plan: selectedPlanKey,
+      planLabel: plan.label,
+      status: 'pending_review',
+      createdAt: serverTimestamp()
+    };
+
+    setIsSubmitting(true);
+    try {
+      await submitPayment(paymentData);
+      setSubmitStatus('sent_to_admin');
+    } catch (error) {
+      console.error('Error sending to admin:', error);
+      setSubmitStatus('error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!show) return null;
@@ -142,7 +90,7 @@ const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose}></div>
-      
+
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden max-h-[90vh] overflow-y-auto">
         <div className="bg-gradient-to-r from-emerald-500 to-teal-600 p-6">
           <div className="flex items-center justify-between">
@@ -157,29 +105,36 @@ const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) 
             </button>
           </div>
         </div>
-        
+
         <div className="p-6">
-          {submitStatus === 'success' && (
+          {submitStatus === 'payment_initiated' && (
+            <div className="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 mb-6 rounded-lg">
+              <p className="font-medium">Payment initiated</p>
+              <p className="text-sm text-gray-500">Your payment request has been recorded. Please complete payment to {plan.label} access.</p>
+            </div>
+          )}
+
+          {submitStatus === 'sent_to_admin' && (
             <div className="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded-lg">
               <div className="flex items-center space-x-3">
                 <svg className="h-5 w-5 text-green-500 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
                 <div>
-                  <p className="font-medium">Payment successful!</p>
-                  <p className="text-sm text-gray-500">Your premium access has been activated.</p>
+                  <p className="font-medium">Sent to admin</p>
+                  <p className="text-sm text-gray-500">Your payment request has been sent to the admin team for review.</p>
                 </div>
               </div>
             </div>
           )}
-          
+
           {submitStatus === 'error' && (
             <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-lg">
-              <p className="font-medium">Payment failed</p>
-              <p className="text-sm text-gray-500">Please try again or contact support.</p>
+              <p className="font-medium">Error</p>
+              <p className="text-sm text-gray-500">Something went wrong. Please try again.</p>
             </div>
           )}
-          
+
           <div className="space-y-4 mb-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Select Plan</label>
@@ -213,7 +168,7 @@ const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) 
                 placeholder="your@email.com"
               />
             </div>
-            
+
             <div>
               <label htmlFor="payment-phone" className="block text-sm font-medium text-gray-700 mb-2">Mobile Money Number</label>
               <input
@@ -234,29 +189,31 @@ const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) 
               <li>Plan: <span className="font-bold">{plan.label}</span></li>
               <li>Amount: <span className="font-bold">UGX {plan.amount.toLocaleString()}</span></li>
               <li>Pay to: <span className="font-bold">KABALI MADINA (+256 749 846 848)</span></li>
-              <li>You will be redirected to Paystack to complete payment securely</li>
+              <li>Payment will be recorded and sent to admin for review</li>
             </ol>
           </div>
-          
-          <button
-            onClick={handlePaystackPayment}
-            disabled={isSubmitting || !paystackLoaded}
-            className={`w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold rounded-xl transition-all duration-200 ${
-              isSubmitting || !paystackLoaded ? 'opacity-70 cursor-not-allowed' : ''
-            }`}
-          >
-            {isSubmitting ? (
-              <div className="flex items-center justify-center space-x-2">
-                <div className="animate-spin h-4 w-4 border-b-2 border-white rounded-full"></div>
-                <span>Processing...</span>
-              </div>
-            ) : !paystackLoaded ? (
-              'Loading Payment...'
-            ) : (
-              `Pay UGX ${plan.amount.toLocaleString()}`
-            )}
-          </button>
-          
+
+          <div className="flex gap-3">
+            <button
+              onClick={handleConfirmPayment}
+              disabled={isSubmitting}
+              className={`flex-1 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold rounded-xl transition-all duration-200 ${
+                isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
+              }`}
+            >
+              {isSubmitting ? 'Processing...' : `Pay UGX ${plan.amount.toLocaleString()}`}
+            </button>
+            <button
+              onClick={handleSendToAdmin}
+              disabled={isSubmitting}
+              className={`flex-1 py-3 bg-white border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 font-semibold rounded-xl transition-all duration-200 ${
+                isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
+              }`}
+            >
+              {isSubmitting ? 'Sending...' : 'Send to Admin'}
+            </button>
+          </div>
+
           <div className="mt-4 pt-4 border-t text-center text-sm text-gray-500">
             <p>Need help? Contact: <a href="tel:+256749846848" className="text-emerald-600 font-medium">+256 749 846 848</a></p>
           </div>

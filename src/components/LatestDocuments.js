@@ -1,9 +1,17 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { readOnline, downloadDocument, getDocumentUrl } from '../utils/documentActions';
+import { useViewLimit } from '../hooks/useViewLimit';
+import LimitReachedModal from './LimitReachedModal';
+import PaymentModal from './PaymentModal';
 
 const LatestDocuments = ({ documents, user, userProfile, onViewChange }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState(null);
+
+  const { viewedCount, limitReached, hasViewed, recordView, isSubscriber, FREE_VIEW_LIMIT } = useViewLimit(userProfile);
 
   const getFileTypeIcon = (filePath) => {
     if (!filePath) return '📄';
@@ -61,6 +69,71 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange }) => {
     const interval = setInterval(goToNext, 5000);
     return () => clearInterval(interval);
   }, [displayDocuments.length, isPaused, goToNext]);
+
+  const handleReadOnline = (doc) => {
+    // Check if user is subscribed
+    if (!isSubscriber) {
+      // Check if document is premium
+      const isPremium = doc.status === 'premium';
+      
+      if (isPremium) {
+        // Premium document - show payment prompt
+        setShowPaymentModal(true);
+        return;
+      }
+      
+      // Free document - check view limit
+      if (limitReached) {
+        setShowLimitModal(true);
+        return;
+      }
+      
+      // Record the view
+      recordView(doc.id);
+    }
+    
+    readOnline(doc);
+  };
+
+  const handleDownload = (doc) => {
+    // Check if user is subscribed
+    if (!isSubscriber) {
+      // Check if document is premium
+      const isPremium = doc.status === 'premium';
+      
+      if (isPremium) {
+        // Premium document - show payment prompt
+        setShowPaymentModal(true);
+        return;
+      }
+      
+      // Free document - check view limit
+      if (limitReached) {
+        setShowLimitModal(true);
+        return;
+      }
+      
+      // Record the view
+      recordView(doc.id);
+    }
+    
+    downloadDocument(doc);
+  };
+
+  const handleChoosePlan = (planKey) => {
+    setSelectedPlan(planKey);
+    setShowLimitModal(false);
+    setShowPaymentModal(true);
+  };
+
+  const handlePaymentSuccess = () => {
+    setShowPaymentModal(false);
+    // Refresh user profile to update subscription status
+    if (onViewChange) {
+      // Trigger a refresh of the user profile
+      window.location.reload();
+    }
+  };
 
   if (displayDocuments.length === 0) {
     return (
@@ -141,14 +214,14 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange }) => {
 
                       <div className="flex flex-col gap-3">
                         <button
-                          onClick={() => readOnline(doc)}
+                          onClick={() => handleReadOnline(doc)}
                           disabled={!getDocumentUrl(doc)}
                           className="w-full px-4 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-base font-semibold rounded-xl transition-all duration-200 shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           Read Online
                         </button>
                         <button
-                          onClick={() => downloadDocument(doc)}
+                          onClick={() => handleDownload(doc)}
                           disabled={!getDocumentUrl(doc)}
                           className="w-full px-4 py-3.5 bg-white border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 text-base font-semibold rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
                         >
@@ -199,6 +272,22 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange }) => {
           </div>
         </div>
       </div>
+
+      {/* Limit Reached Modal - shown after 3 free document views */}
+      <LimitReachedModal
+        show={showLimitModal}
+        onClose={() => setShowLimitModal(false)}
+        onChoosePlan={handleChoosePlan}
+        viewedCount={viewedCount}
+      />
+
+      {/* Payment Modal - shown when premium document is clicked or user chooses a plan */}
+      <PaymentModal
+        show={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        selectedPlan={selectedPlan}
+        onPaymentSuccess={handlePaymentSuccess}
+      />
     </section>
   );
 };
