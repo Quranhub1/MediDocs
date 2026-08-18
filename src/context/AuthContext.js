@@ -6,7 +6,20 @@ import {
   onAuthStateChanged,
   sendPasswordResetEmail
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { 
+  calculateProration,
+  recordDocumentView,
+  getUserSubscriptionAnalytics,
+  recordReferral,
+  completeReferral,
+  createGiftSubscription,
+  acceptGiftSubscription,
+  recordPaymentFailure,
+  checkGracePeriod,
+  extendSubscriptionGracePeriod,
+  recordSubscriptionEvent
+} from '../services/FirestoreService';
 import { auth, db } from '../firebase';
 
 const AuthContext = createContext();
@@ -195,17 +208,242 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const updateUserSubscription = async (userId, subscriptionData) => {
-    try {
-      const userDocRef = doc(db, 'users', userId);
-      await updateDoc(userDocRef, subscriptionData);
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  };
+const updateUserSubscription = async (userId, subscriptionData) => {
+      try {
+        const userDocRef = doc(db, 'users', userId);
+        await updateDoc(userDocRef, subscriptionData);
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    };
 
-  const refreshUserProfile = async () => {
+    const changeSubscriptionPlan = async (newPlan) => {
+      if (!currentUser) return { success: false, error: 'No user logged in' };
+      
+      try {
+        // Get current user data
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (!userDoc.exists()) {
+          return { success: false, error: 'User not found' };
+        }
+        
+        const userData = userDoc.data();
+        const currentPlan = userData.subscriptionPlan || 'monthly';
+        
+        // If same plan, nothing to do
+        if (currentPlan === newPlan) {
+          return { success: true, message: 'Already on this plan' };
+        }
+        
+        // Calculate proration
+        const prorationResult = await calculateProration(
+          currentUser.uid, 
+          currentPlan, 
+          newPlan, 
+          userData.subscriptionExpiry ? 
+            (userData.subscriptionExpiry.toDate ? userData.subscriptionExpiry.toDate() : new Date(userData.subscriptionExpiry)) : 
+            undefined
+        );
+        
+        if (!prorationResult.success) {
+          return prorationResult;
+        }
+        
+        // Prepare subscription data
+        const subscriptionData = {
+          subscriptionPlan: newPlan,
+          subscriptionApproved: true,
+          subscriptionStatus: 'active'
+        };
+        
+        // If there's a proration amount owed, we might need to handle payment
+        // For now, we'll just update the expiry date and let the frontend handle payment
+        if (prorationResult.newExpiryDate) {
+          subscriptionData.subscriptionExpiry = prorationResult.newExpiryDate;
+        }
+        
+        // Update user's subscription
+        await updateDoc(doc(db, 'users', currentUser.uid), subscriptionData);
+        
+        // Record the event
+        await recordSubscriptionEvent(currentUser.uid, 'plan_change', {
+          oldPlan: currentPlan,
+          newPlan: newPlan,
+          prorationAmount: prorationResult.prorationAmount
+        });
+        
+        // Refresh user profile
+        await refreshUserProfile();
+        
+        return { 
+          success: true, 
+          ...prorationResult,
+          message: prorationResult.message
+        };
+      } catch (error) {
+        console.error('Error changing subscription plan:', error);
+        return { success: false, error: error.message };
+      }
+    };
+
+    const cancelSubscription = async (reason = '') => {
+      if (!currentUser) return { success: false, error: 'No user logged in' };
+      
+      try {
+        // Get current user data
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (!userDoc.exists()) {
+          return { success: false, error: 'User not found' };
+        }
+        
+        const userData = userDoc.data();
+        
+        // Update subscription to cancelled
+        await updateDoc(doc(db, 'users', currentUser.uid), {
+          subscriptionStatus: 'cancelled',
+          subscriptionApproved: false,
+          cancellationReason: reason,
+          cancelledAt: serverTimestamp()
+          // Keep subscriptionExpiry so they can access until period ends
+        });
+        
+        // Record the event
+        await recordSubscriptionEvent(currentUser.uid, 'subscription_cancelled', {
+          reason: reason,
+          plan: userData.subscriptionPlan
+        });
+        
+        // Refresh user profile
+        await refreshUserProfile();
+        
+        return { 
+          success: true, 
+          message: 'Subscription cancelled successfully. You will continue to have access until your current period ends.' 
+        };
+      } catch (error) {
+        console.error('Error cancelling subscription:', error);
+        return { success: false, error: error.message };
+      }
+    };
+
+    const recordDocumentViewAnalytics = async (documentId, courseId, semesterId, unitId) => {
+      if (!currentUser) return { success: false, error: 'No user logged in' };
+      
+      try {
+        await recordDocumentView(
+          currentUser.uid,
+          documentId,
+          courseId,
+          semesterId,
+          unitId
+        );
+        return { success: true };
+      } catch (error) {
+        console.error('Error recording document view:', error);
+        return { success: false, error: error.message };
+      }
+    };
+
+    const getSubscriptionUsageAnalytics = async (days = 30) => {
+      if (!currentUser) return { success: false, error: 'No user logged in' };
+      
+      try {
+        return await getUserSubscriptionAnalytics(currentUser.uid, days);
+      } catch (error) {
+        console.error('Error getting subscription usage analytics:', error);
+        return { success: false, error: error.message };
+      }
+    };
+
+    const referFriend = async (refereeId, referralType = 'signup') => {
+      if (!currentUser) return { success: false, error: 'No user logged in' };
+      
+      try {
+        await recordReferral(currentUser.uid, refereeId, referralType);
+        return { success: true };
+      } catch (error) {
+        console.error('Error recording referral:', error);
+        return { success: false, error: error.message };
+      }
+    };
+
+    const completeReferralReward = async (referralId, rewardAmount = 5000) => {
+      if (!currentUser) return { success: false, error: 'No user logged in' };
+      
+      try {
+        await completeReferral(referralId, rewardAmount);
+        return { success: true };
+      } catch (error) {
+        console.error('Error completing referral:', error);
+        return { success: false, error: error.message };
+      }
+    };
+
+    const createGiftSubscriptionForFriend = async (recipientEmail, plan, message) => {
+      if (!currentUser) return { success: false, error: 'No user logged in' };
+      
+      try {
+        const result = await createGiftSubscription({
+          senderId: currentUser.uid,
+          recipientEmail: recipientEmail,
+          plan: plan,
+          message: message
+        });
+        return result;
+      } catch (error) {
+        console.error('Error creating gift subscription:', error);
+        return { success: false, error: error.message };
+      }
+    };
+
+    const acceptGiftSubscriptionOffer = async (giftId) => {
+      if (!currentUser) return { success: false, error: 'No user logged in' };
+      
+      try {
+        const result = await acceptGiftSubscription(giftId, currentUser.uid);
+        return result;
+      } catch (error) {
+        console.error('Error accepting gift subscription:', error);
+        return { success: false, error: error.message };
+      }
+    };
+
+    const recordPaymentFailureEvent = async (paymentData, failureReason) => {
+      if (!currentUser) return { success: false, error: 'No user logged in' };
+      
+      try {
+        await recordPaymentFailure(currentUser.uid, paymentData, failureReason);
+        return { success: true };
+      } catch (error) {
+        console.error('Error recording payment failure:', error);
+        return { success: false, error: error.message };
+      }
+    };
+
+    const checkSubscriptionGracePeriod = async () => {
+      if (!currentUser) return { success: false, error: 'No user logged in' };
+      
+      try {
+        return await checkGracePeriod(currentUser.uid);
+      } catch (error) {
+        console.error('Error checking grace period:', error);
+        return { success: false, error: error.message };
+      }
+    };
+
+    const extendSubscriptionGracePeriod = async (extensionDays = 3) => {
+      if (!currentUser) return { success: false, error: 'No user logged in' };
+      
+      try {
+        return await extendSubscriptionGracePeriod(currentUser.uid, extensionDays);
+      } catch (error) {
+        console.error('Error extending subscription grace period:', error);
+        return { success: false, error: error.message };
+      }
+    };
+
+    const refreshUserProfile = async () => {
     if (!auth || !db || !currentUser) return null;
     try {
       const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
@@ -221,20 +459,31 @@ export const AuthProvider = ({ children }) => {
     return null;
   };
 
-  const value = {
-    currentUser,
-    userProfile,
-    isBanned,
-    refreshUserProfile,
-    register,
-    login,
-    logout,
-    resetPassword,
-    createUser,
-    banUser,
-    updateUserSubscription,
-    loading
-  };
+const value = {
+      currentUser,
+      userProfile,
+      isBanned,
+      refreshUserProfile,
+      register,
+      login,
+      logout,
+      resetPassword,
+      createUser,
+      banUser,
+      updateUserSubscription,
+      changeSubscriptionPlan,
+      cancelSubscription,
+      recordDocumentViewAnalytics,
+      getSubscriptionUsageAnalytics,
+      referFriend,
+      completeReferralReward,
+      createGiftSubscriptionForFriend,
+      acceptGiftSubscriptionOffer,
+      recordPaymentFailureEvent,
+      checkSubscriptionGracePeriod,
+      extendSubscriptionGracePeriod,
+      loading
+    };
 
   return (
     <AuthContext.Provider value={value}>
