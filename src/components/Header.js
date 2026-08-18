@@ -9,9 +9,27 @@ const Header = ({
   onLogoutClick, 
   onMenuClick, 
   onAISearch,
+  onInstallClick,
   currentView,
   onViewChange 
 }) => {
+
+  const renderInstallButton = () => {
+    if (!onInstallClick) return null;
+    return (
+      <button
+        id="install-button"
+        onClick={onInstallClick}
+        title="Install App"
+        className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-emerald-600 dark:text-emerald-400 font-medium hover:bg-emerald-50 dark:hover:bg-gray-700 rounded-lg transition-all duration-200"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"></path>
+        </svg>
+        <span>Install</span>
+      </button>
+    );
+  };
   const { theme, toggleTheme } = useTheme();
   const [aiSearchQuery, setAiSearchQuery] = useState('');
   const [scrolled, setScrolled] = useState(false);
@@ -112,7 +130,9 @@ const Header = ({
 
             <div className="flex items-center space-x-3">
               <ThemeToggle />
-              
+
+              {renderInstallButton()}
+
               <div className="hidden md:block relative">
                 <form onSubmit={handleAiSearch} className="relative">
                   <input
@@ -225,7 +245,9 @@ const Header = ({
 
           <div className="flex items-center space-x-4">
             <ThemeToggle />
-            
+
+            {renderInstallButton()}
+
             <div className="hidden md:flex items-center space-x-2 bg-emerald-50 dark:bg-gray-700 px-3 py-1.5 rounded-full">
               <img 
                 src="https://i.imgur.com/kkopgnq.png" 

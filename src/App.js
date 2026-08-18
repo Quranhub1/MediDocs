@@ -36,6 +36,9 @@ function AppContent() {
   const [showContactModal, setShowContactModal] = useState(false);
   const [showAIChatModal, setShowAIChatModal] = useState(false);
   const [pwaInstallPrompt, setPwaInstallPrompt] = useState(null);
+  const [showIosInstall, setShowIosInstall] = useState(false);
+  const [showInstallHint, setShowInstallHint] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
     const handler = (e) => {
@@ -44,6 +47,18 @@ function AppContent() {
     };
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  useEffect(() => {
+    const checkInstalled = () => {
+      const standalone = window.matchMedia('(display-mode: standalone)').matches
+        || window.matchMedia('(display-mode: fullscreen)').matches
+        || window.navigator.standalone === true;
+      setIsInstalled(standalone);
+    };
+    checkInstalled();
+    window.matchMedia('(display-mode: standalone)').addEventListener('change', checkInstalled);
+    return () => window.matchMedia('(display-mode: standalone)').removeEventListener('change', checkInstalled);
   }, []);
 
   useEffect(() => {
@@ -82,14 +97,21 @@ function AppContent() {
     closeSidebar();
   };
 
-  const installPWA = async () => {
+  const handleInstall = async () => {
     if (pwaInstallPrompt) {
       pwaInstallPrompt.prompt();
       const { outcome } = await pwaInstallPrompt.userChoice;
       if (outcome === 'accepted') {
         setPwaInstallPrompt(null);
       }
+      return;
     }
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    if (isIOS) {
+      setShowIosInstall(true);
+      return;
+    }
+    setShowInstallHint(true);
   };
 
   return (
@@ -116,6 +138,7 @@ function AppContent() {
             onLogoutClick={handleLogout}
             onMenuClick={toggleSidebar}
             onAISearch={handleAISearch}
+            onInstallClick={isInstalled ? undefined : handleInstall}
           />
           
           <main className="flex-grow">
@@ -238,11 +261,44 @@ function AppContent() {
           <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:w-80 bg-white dark:bg-dark-card rounded-xl shadow-2xl p-4 z-50 border border-gray-200 dark:border-dark-border">
             <p className="text-sm font-medium text-gray-900 dark:text-dark-text mb-3">Install MediDocs App</p>
             <div className="flex gap-2">
-              <button onClick={installPWA} className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">
+              <button onClick={handleInstall} className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">
                 Install
               </button>
               <button onClick={() => setPwaInstallPrompt(null)} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-dark-text rounded-lg text-sm">
                 Later
+              </button>
+            </div>
+          </div>
+        )}
+
+        {showIosInstall && (
+          <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4" onClick={() => setShowIosInstall(false)}>
+            <div className="bg-white dark:bg-dark-card rounded-2xl shadow-2xl p-6 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-dark-text mb-3">Install MediDocs App</h2>
+              <p className="text-sm text-gray-600 dark:text-dark-muted mb-4">
+                iOS doesn't support automatic install. To add this app to your home screen:
+              </p>
+              <ol className="text-sm text-gray-700 dark:text-dark-text space-y-2 list-decimal pl-5 mb-4">
+                <li>Tap the <span className="font-semibold">Share</span> button in Safari.</li>
+                <li>Scroll down and tap <span className="font-semibold">Add to Home Screen</span>.</li>
+                <li>Tap <span className="font-semibold">Add</span> in the top-right corner.</li>
+              </ol>
+              <button onClick={() => setShowIosInstall(false)} className="w-full px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">
+                Got it
+              </button>
+            </div>
+          </div>
+        )}
+
+        {showInstallHint && (
+          <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4" onClick={() => setShowInstallHint(false)}>
+            <div className="bg-white dark:bg-dark-card rounded-2xl shadow-2xl p-6 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-dark-text mb-3">Install MediDocs App</h2>
+              <p className="text-sm text-gray-600 dark:text-dark-muted mb-4">
+                Your browser supports installation. Open your browser's menu (usually ⋮ or ⋯) and select <span className="font-semibold">"Install app"</span> or <span className="font-semibold">"Add to Home Screen"</span>.
+              </p>
+              <button onClick={() => setShowInstallHint(false)} className="w-full px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">
+                Close
               </button>
             </div>
           </div>
