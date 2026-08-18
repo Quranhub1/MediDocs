@@ -74,7 +74,7 @@ export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => 
     const flatUnits = unitsList.flat();
 
     const docsPromises = flatUnits.map(async (unit) => {
-      const docsRef = collection(db, `RESOURCES_STUDYPEDIA/${unit.courseId}/semesters/${sem.semesterId}/courseunits/${unit.unitId}/documents`);
+      const docsRef = collection(db, `RESOURCES_STUDYPEDIA/${unit.courseId}/semesters/${unit.semesterId}/courseunits/${unit.unitId}/documents`);
       const docsSnapshot = await getDocs(docsRef);
       return docsSnapshot.docs.map(doc => {
         const docData = doc.data();
@@ -133,6 +133,78 @@ export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => 
     return result;
   } catch (error) {
     console.error('Error fetching all documents:', error);
+    return { success: false, error: error.message, data: [] };
+  }
+};
+
+// Get all courses
+export const fetchCourses = async (forceRefresh = false) => {
+  try {
+    const coursesRef = collection(db, 'RESOURCES_STUDYPEDIA');
+    const snapshot = await getDocs(coursesRef);
+    const courses = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAtDate: convertTimestamp(doc.data().createdAt)
+    }));
+    return { success: true, data: courses };
+  } catch (error) {
+    console.error('Error fetching courses:', error);
+    return { success: false, error: error.message, data: [] };
+  }
+};
+
+// Get semesters for a course
+export const fetchSemesters = async (courseId, forceRefresh = false) => {
+  try {
+    if (!courseId) return { success: false, error: 'Course ID required', data: [] };
+    const semestersRef = collection(db, `RESOURCES_STUDYPEDIA/${courseId}/semesters`);
+    const snapshot = await getDocs(semestersRef);
+    const semesters = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAtDate: convertTimestamp(doc.data().createdAt)
+    }));
+    return { success: true, data: semesters };
+  } catch (error) {
+    console.error('Error fetching semesters:', error);
+    return { success: false, error: error.message, data: [] };
+  }
+};
+
+// Get course units for a semester
+export const fetchCourseUnits = async (courseId, semesterId, forceRefresh = false) => {
+  try {
+    if (!courseId || !semesterId) return { success: false, error: 'Course ID and Semester ID required', data: [] };
+    const unitsRef = collection(db, `RESOURCES_STUDYPEDIA/${courseId}/semesters/${semesterId}/courseunits`);
+    const snapshot = await getDocs(unitsRef);
+    const units = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAtDate: convertTimestamp(doc.data().createdAt)
+    }));
+    return { success: true, data: units };
+  } catch (error) {
+    console.error('Error fetching course units:', error);
+    return { success: false, error: error.message, data: [] };
+  }
+};
+
+// Get documents for a course unit
+export const fetchDocuments = async (courseId, semesterId, unitId, forceRefresh = false) => {
+  try {
+    if (!courseId || !semesterId || !unitId) return { success: false, error: 'Course ID, Semester ID, and Unit ID required', data: [] };
+    const docsRef = collection(db, `RESOURCES_STUDYPEDIA/${courseId}/semesters/${semesterId}/courseunits/${unitId}/documents`);
+    const snapshot = await getDocs(docsRef);
+    const documents = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...docData,
+      createdAtDate: convertTimestamp(docData.createdAt),
+      status: docData.status || 'free'
+    }));
+    return { success: true, data: documents };
+  } catch (error) {
+    console.error('Error fetching documents:', error);
     return { success: false, error: error.message, data: [] };
   }
 };
