@@ -3,7 +3,7 @@ import {
   getDocs,
   addDoc,
   updateDoc,
-  docRef,
+  doc as docRef,
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../firebase';
