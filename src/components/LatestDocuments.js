@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { readOnline, downloadDocument, getDocumentUrl } from '../utils/documentActions';
 import { useViewLimit } from '../hooks/useViewLimit';
+import { useAuth } from '../context/AuthContext';
 import LimitReachedModal from './LimitReachedModal';
 import PaymentModal from './PaymentModal';
 
@@ -12,6 +13,7 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange }) => {
   const [selectedPlan, setSelectedPlan] = useState(null);
 
   const { viewedCount, limitReached, hasViewed, recordView, isSubscriber, FREE_VIEW_LIMIT } = useViewLimit(userProfile);
+  const { refreshUserProfile } = useAuth();
 
   const getFileTypeIcon = (filePath) => {
     if (!filePath) return '📄';
