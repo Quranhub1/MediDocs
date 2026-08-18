@@ -344,6 +344,7 @@ export const submitPayment = async (paymentData) => {
 // Verify payment with Paystack
 export const verifyPayment = async (reference) => {
   try {
+<<<<<<< ours
     const response = await fetch('/api/paystack/verify', {
       method: 'POST',
       headers: {
@@ -352,6 +353,21 @@ export const verifyPayment = async (reference) => {
       body: JSON.stringify({ reference })
     });
     return await response.json();
+=======
+    if (!courseId || !semesterId || !unitId) return { success: false, error: 'Course ID, Semester ID, and Unit ID required', data: [] };
+    const docsRef = collection(db, `RESOURCES_STUDYPEDIA/${courseId}/semesters/${semesterId}/courseunits/${unitId}/documents`);
+    const snapshot = await getDocs(docsRef);
+    const documents = snapshot.docs.map(doc => {
+      const docData = doc.data();
+      return {
+        id: doc.id,
+        ...docData,
+        createdAtDate: convertTimestamp(docData.createdAt),
+        status: docData.status || 'free'
+      };
+    });
+    return { success: true, data: documents };
+>>>>>>> theirs
   } catch (error) {
     console.error('Error verifying payment:', error);
     return { success: false, error: error.message };
