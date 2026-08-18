@@ -10,6 +10,7 @@ import {
   deleteStorageFile,
   createStorageFolder,
   declinePayment,
+  updatePaymentStatus,
   updateSubscriptionExpiry,
   getExpiringSubscriptions,
   lockExpiredSubscriptions,
@@ -721,7 +722,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
       expiryDate.setDate(expiryDate.getDate() + (SUBSCRIPTION_PLANS[plan]?.duration || 30));
 
       await approveUserSubscription(userId, plan, expiryDate);
-      await declinePayment(paymentId);
+      await updatePaymentStatus(paymentId, 'success');
       alert('Payment approved and subscription activated!');
       loadData();
     } catch (error) {

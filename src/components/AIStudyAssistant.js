@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { db } from '../firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { fetchAllDocuments } from '../services/FirestoreService';
+import { escapeHtml } from '../utils/documentActions';
 
 const AI_CACHE_DB_NAME = 'medidocs_ai_cache';
 const AI_CACHE_STORE = 'responses';
@@ -80,25 +81,22 @@ const formatAIResponse = (text) => {
   let html = text;
 
   html = html.replace(/```[\w]*\n?([\s\S]*?)```/g, (match, code) => {
-    const escaped = code
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+    const escaped = escapeHtml(code);
     return `<pre class="ai-code-block"><code>${escaped.trim()}</code></pre>`;
   });
 
-  html = html.replace(/`([^`]+)`/g, '<code class="ai-inline-code">$1</code>');
+  html = html.replace(/`([^`]+)`/g, (match, code) => `<code class="ai-inline-code">${escapeHtml(code)}</code>`);
 
-  html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong class="ai-bold">$1</strong>');
-  html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="ai-bold">$1</strong>');
-  html = html.replace(/\*(.+?)\*/g, '<em class="ai-italic">$1</em>');
+  html = html.replace(/\*\*\*(.+?)\*\*\*/g, (match, content) => `<strong class="ai-bold">${escapeHtml(content)}</strong>`);
+  html = html.replace(/\*\*(.+?)\*\*/g, (match, content) => `<strong class="ai-bold">${escapeHtml(content)}</strong>`);
+  html = html.replace(/\*(.+?)\*/g, (match, content) => `<em class="ai-italic">${escapeHtml(content)}</em>`);
 
-  html = html.replace(/^#{6}\s*(.+)$/gim, '<h6 class="ai-heading">$1</h6>');
-  html = html.replace(/^#{5}\s*(.+)$/gim, '<h5 class="ai-heading">$1</h5>');
-  html = html.replace(/^#{4}\s*(.+)$/gim, '<h4 class="ai-heading">$1</h4>');
-  html = html.replace(/^#{3}\s*(.+)$/gim, '<h3 class="ai-heading">$1</h3>');
-  html = html.replace(/^#{2}\s*(.+)$/gim, '<h2 class="ai-heading">$1</h2>');
-  html = html.replace(/^#{1}\s*(.+)$/gim, '<h1 class="ai-heading">$1</h1>');
+  html = html.replace(/^#{6}\s*(.+)$/gim, (match, content) => `<h6 class="ai-heading">${escapeHtml(content)}</h6>`);
+  html = html.replace(/^#{5}\s*(.+)$/gim, (match, content) => `<h5 class="ai-heading">${escapeHtml(content)}</h5>`);
+  html = html.replace(/^#{4}\s*(.+)$/gim, (match, content) => `<h4 class="ai-heading">${escapeHtml(content)}</h4>`);
+  html = html.replace(/^#{3}\s*(.+)$/gim, (match, content) => `<h3 class="ai-heading">${escapeHtml(content)}</h3>`);
+  html = html.replace(/^#{2}\s*(.+)$/gim, (match, content) => `<h2 class="ai-heading">${escapeHtml(content)}</h2>`);
+  html = html.replace(/^#{1}\s*(.+)$/gim, (match, content) => `<h1 class="ai-heading">${escapeHtml(content)}</h1>`);
 
   html = html.replace(/^---$/gim, '<hr class="ai-divider" />');
 
@@ -112,7 +110,7 @@ const formatAIResponse = (text) => {
       const header = tableRows[0];
       const body = tableRows.slice(1);
       result.push(
-        `<div class="ai-table-wrapper"><table class="ai-table"><thead><tr>${header.map(cell => `<th>${cell}</th>`).join('')}</tr></thead><tbody>${body.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`
+        `<div class="ai-table-wrapper"><table class="ai-table"><thead><tr>${header.map(cell => `<th>${escapeHtml(cell)}</th>`).join('')}</tr></thead><tbody>${body.map(row => `<tr>${row.map(cell => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`
       );
       tableRows = [];
       inTable = false;
@@ -142,26 +140,22 @@ const formatAIResponse = (text) => {
     if (/^(\d+\.|-|\*)\s/.test(trimmed)) {
       const isOrdered = /^\d+\.\s/.test(trimmed);
       const content = trimmed.replace(/^(\d+\.|-|\*)\s/, '');
-      result.push(`<li class="ai-list-item ${isOrdered ? 'ai-ordered' : 'ai-unordered'}">${content}</li>`);
+      result.push(`<li class="ai-list-item ${isOrdered ? 'ai-ordered' : 'ai-unordered'}">${escapeHtml(content)}</li>`);
       return;
     }
 
     if (/^>/.test(trimmed)) {
       const content = trimmed.replace(/^>\s?/, '');
-      result.push(`<blockquote class="ai-blockquote">${content}</blockquote>`);
+      result.push(`<blockquote class="ai-blockquote">${escapeHtml(content)}</blockquote>`);
       return;
     }
 
-    result.push(`<span class="ai-text">${trimmed}</span> `);
+    result.push(`<span class="ai-text">${escapeHtml(trimmed)}</span> `);
   });
 
   flushTable();
 
   let finalHtml = result.join('\n');
-
-  finalHtml = finalHtml.replace(/(<li class="ai-list-item[^"]*">.*?<\/li>)/gs, (match) => {
-    return match;
-  });
 
   finalHtml = finalHtml.replace(/<span class="ai-text">(.*?)<\/span>/gs, (match, p1) => {
     if (p1.trim() === '') return '';

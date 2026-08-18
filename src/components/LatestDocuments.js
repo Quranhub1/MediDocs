@@ -11,7 +11,7 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange }) => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
 
-  const { viewedCount, limitReached, hasViewed, recordView, isSubscriber, FREE_VIEW_LIMIT } = useViewLimit(userProfile);
+  const { viewedCount, limitReached, recordView, isSubscriber } = useViewLimit(userProfile);
 
   const getFileTypeIcon = (filePath) => {
     if (!filePath) return '📄';
@@ -28,17 +28,6 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange }) => {
     return doc.thumbnailUrl || doc.thumbnail || null;
   };
 
-<<<<<<< ours
-  const handleReadOnline = (doc) => {
-    readOnline(doc);
-  };
-
-  const handleDownload = (doc) => {
-    downloadDocument(doc);
-  };
-
-=======
->>>>>>> theirs
   const convertToDate = (timestamp) => {
     if (!timestamp) return new Date(0);
     if (timestamp instanceof Date) return timestamp;
@@ -71,29 +60,9 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange }) => {
     setCurrentIndex((prev) => (prev + 1) % displayDocuments.length);
   }, [displayDocuments.length]);
 
-<<<<<<< ours
-  const handleScroll = () => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const children = el.children;
-    let closest = 0;
-    let minDist = Infinity;
-    for (let i = 0; i < children.length; i++) {
-      const dist = Math.abs(children[i].offsetLeft - el.scrollLeft - (el.clientWidth - children[i].clientWidth) / 2);
-      if (dist < minDist) {
-        minDist = dist;
-        closest = i;
-      }
-    }
-    if (closest !== activeIndex) {
-      setActiveIndex(closest);
-    }
-  };
-=======
   useEffect(() => {
     setCurrentIndex(0);
   }, [documents]);
->>>>>>> theirs
 
   useEffect(() => {
     if (isPaused || displayDocuments.length <= 1) return;
@@ -126,7 +95,7 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange }) => {
     readOnline(doc);
   };
 
-const handleDownload = (doc) => {
+  const handleDownload = (doc) => {
       // Check if user is subscribed
       if (!isSubscriber) {
         // Check if document is premium
@@ -192,54 +161,6 @@ const handleDownload = (doc) => {
           <p className="text-gray-600 max-w-xl mx-auto">Stay updated with the newest study materials added to our platform</p>
         </div>
 
-<<<<<<< ours
-        <div className="relative">
-          <button
-            onClick={goToPrevious}
-            disabled={activeIndex === 0}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-lg border border-gray-200 text-emerald-600 hover:bg-emerald-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-            aria-label="Previous document"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-
-          <button
-            onClick={goToNext}
-            disabled={activeIndex === displayDocuments.length - 1}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-lg border border-gray-200 text-emerald-600 hover:bg-emerald-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-            aria-label="Next document"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-
-          <div
-            ref={scrollRef}
-            onScroll={handleScroll}
-            onMouseDown={onDragStart}
-            onMouseMove={onDragMove}
-            onMouseUp={onDragEnd}
-            onMouseLeave={onDragEnd}
-            onTouchStart={onDragStart}
-            onTouchMove={onDragMove}
-            onTouchEnd={onDragEnd}
-            onClickCapture={onClickCapture}
-            className="flex gap-8 overflow-x-auto snap-x snap-mandatory px-12 py-2 scrollbar-hide cursor-grab active:cursor-grabbing"
-          >
-            {displayDocuments.map((doc, index) => {
-              return (
-                <div
-                  key={doc.id}
-                  className="snap-center shrink-0 w-[300px] sm:w-[340px] bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 border border-gray-100 overflow-hidden group card-hover"
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                >
-                  <div className="relative h-48 bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 overflow-hidden">
-                    {getThumbnailUrl(doc) ? (
-                      <>
-=======
         <div
           className="relative"
           onMouseEnter={() => setIsPaused(true)}
@@ -255,7 +176,6 @@ const handleDownload = (doc) => {
                   <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 border border-gray-100 overflow-hidden mx-auto max-w-3xl">
                     <div className="relative h-48 bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 overflow-hidden">
                       {getThumbnailUrl(doc) ? (
->>>>>>> theirs
                         <img
                           src={getThumbnailUrl(doc)}
                           alt={doc.title}
@@ -293,15 +213,6 @@ const handleDownload = (doc) => {
                         </span>
                       </div>
 
-<<<<<<< ours
-                    <div className="flex flex-col gap-3">
-                      <button onClick={(e) => { if (suppressClick.current) return; handleReadOnline(doc); }} disabled={!getDocumentUrl(doc)} className="w-full px-4 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-base font-semibold rounded-xl transition-all duration-200 shadow-md disabled:opacity-40 disabled:cursor-not-allowed">
-                        Read Online
-                      </button>
-                      <button onClick={(e) => { if (suppressClick.current) return; handleDownload(doc); }} disabled={!getDocumentUrl(doc)} className="w-full px-4 py-3.5 bg-white border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 text-base font-semibold rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed">
-                        Download
-                      </button>
-=======
                       <div className="flex flex-col gap-3">
                         <button
                           onClick={() => handleReadOnline(doc)}
@@ -318,7 +229,6 @@ const handleDownload = (doc) => {
                           Download
                         </button>
                       </div>
->>>>>>> theirs
                     </div>
                   </div>
                 </div>

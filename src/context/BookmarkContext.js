@@ -15,7 +15,7 @@ export const useBookmarks = () => {
 };
 
 export const BookmarkProvider = ({ children }) => {
-  const { user } = useAuth();
+  const { currentUser: user } = useAuth();
   const { addToast } = useToast();
   const [bookmarks, setBookmarks] = useState([]);
   const [recentSearches, setRecentSearches] = useState([]);

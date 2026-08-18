@@ -17,7 +17,7 @@ import {
   acceptGiftSubscription,
   recordPaymentFailure,
   checkGracePeriod,
-  extendSubscriptionGracePeriod,
+  extendSubscriptionGracePeriod as extendSubscriptionGracePeriodService,
   recordSubscriptionEvent
 } from '../services/FirestoreService';
 import { auth, db } from '../firebase';
@@ -436,7 +436,7 @@ const updateUserSubscription = async (userId, subscriptionData) => {
       if (!currentUser) return { success: false, error: 'No user logged in' };
       
       try {
-        return await extendSubscriptionGracePeriod(currentUser.uid, extensionDays);
+        return await extendSubscriptionGracePeriodService(currentUser.uid, extensionDays);
       } catch (error) {
         console.error('Error extending subscription grace period:', error);
         return { success: false, error: error.message };

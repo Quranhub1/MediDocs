@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useStudy } from '../context/StudyContext';
-import { useTheme } from '../context/ThemeContext';
 
 const FlashcardStudy = ({ courseId, unitId, onClose }) => {
   const { flashcards, createFlashcard, updateFlashcardReview } = useStudy();
-  const { theme } = useTheme();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [showAnswer, setShowAnswer] = useState(false);

@@ -15,7 +15,7 @@ export const useStudy = () => {
 };
 
 export const StudyProvider = ({ children }) => {
-  const { user } = useAuth();
+  const { currentUser: user } = useAuth();
   const { addToast } = useToast();
   const [streak, setStreak] = useState({ current: 0, longest: 0, lastStudyDate: null });
   const [badges, setBadges] = useState([]);

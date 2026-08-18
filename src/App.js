@@ -10,7 +10,6 @@ import RegisterModal from './components/RegisterModal';
 import PaymentModal from './components/PaymentModal';
 import ContactModal from './components/ContactModal';
 import AIStudyAssistant from './components/AIStudyAssistant';
-import ThemeToggle from './components/ThemeToggle';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';

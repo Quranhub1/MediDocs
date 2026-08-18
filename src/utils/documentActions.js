@@ -13,11 +13,11 @@ export const getDocumentUrl = (doc) => {
 export const escapeHtml = (text) => {
   if (typeof text !== 'string') return '';
   return text
-    .replace(/&/g, '&')
-    .replace(/</g, '<')
-    .replace(/>/g, '>')
-    .replace(/"/g, '"')
-    .replace(/'/g, '&#039;')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 };
 
 export const getDocumentFileName = (doc) => {

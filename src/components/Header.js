@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useTheme } from '../context/ThemeContext';
 import ThemeToggle from '../components/ThemeToggle';
 
 const Header = ({ 
@@ -12,7 +11,6 @@ const Header = ({
   currentView,
   onViewChange 
 }) => {
-  const { theme, toggleTheme } = useTheme();
   const [aiSearchQuery, setAiSearchQuery] = useState('');
   const [scrolled, setScrolled] = useState(false);
 

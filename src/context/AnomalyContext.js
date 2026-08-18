@@ -15,7 +15,7 @@ export const useAnomaly = () => {
 };
 
 export const AnomalyProvider = ({ children }) => {
-  const { user } = useAuth();
+  const { currentUser: user } = useAuth();
   const { addToast } = useToast();
   const [alerts, setAlerts] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);

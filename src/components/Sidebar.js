@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from '../context/AuthContext';
 
 const Sidebar = ({ isOpen, onClose, onHomeClick, onCoursesClick, onAboutClick, onContactClick, onPrivacyClick, onAdminClick }) => {
-  const { user } = useAuth();
+  const { currentUser: user } = useAuth();
 
   // Admin check
   const ADMIN_PHONE = '256749846848';

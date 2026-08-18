@@ -14,14 +14,11 @@ import QuizMode from './QuizMode';
 import CollaborativeNotes from './CollaborativeNotes';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import AdvancedSearch from './AdvancedSearch';
-import { useTheme } from '../context/ThemeContext';
 import { useStudy } from '../context/StudyContext';
-import { useBookmarks } from '../context/BookmarkContext';
 import { useToast } from '../context/ToastContext';
 import { fetchCourses, fetchSemesters, fetchCourseUnits, fetchDocuments, fetchAllDocuments } from '../services/FirestoreService';
 
 const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, onContactClick, onAIChatClick, setView }) => {
-  const { theme } = useTheme();
   const { recordStudySession } = useStudy();
   const { addToast } = useToast();
   const [courses, setCourses] = useState([]);
@@ -73,7 +70,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
     if (view !== 'home' && user) {
       recordStudySession(5);
     }
-  }, [view, user]);
+  }, [view, user, recordStudySession]);
 
   const handleCourseClick = async (course) => {
     setSelectedCourse(course);
