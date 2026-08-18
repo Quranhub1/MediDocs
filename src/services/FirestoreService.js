@@ -435,4 +435,3 @@ export const submitContactForm = async (formData) => {
     return { success: false, error: error.message };
   }
 };
-}
