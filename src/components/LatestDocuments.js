@@ -124,7 +124,10 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange }) => {
   const handleChoosePlan = (planKey) => {
     setSelectedPlan(planKey);
     setShowLimitModal(false);
-    setShowPaymentModal(true);
+    // Only show payment modal if user is not subscribed
+    if (!isSubscriber) {
+      setShowPaymentModal(true);
+    }
   };
 
   const handlePaymentSuccess = () => {
