@@ -5,6 +5,21 @@ export const getDocumentUrl = (doc) => {
   return doc.filePath || doc.fileUrl || doc.url || null;
 };
 
+/**
+ * Escape HTML special characters to prevent XSS
+ * @param {string} text - Input string to escape
+ * @returns {string} - Escaped string
+ */
+export const escapeHtml = (text) => {
+  if (typeof text !== 'string') return '';
+  return text
+    .replace(/&/g, '&')
+    .replace(/</g, '<')
+    .replace(/>/g, '>')
+    .replace(/"/g, '"')
+    .replace(/'/g, '&#039;')
+};
+
 export const getDocumentFileName = (doc) => {
   const url = getDocumentUrl(doc);
   if (url) {

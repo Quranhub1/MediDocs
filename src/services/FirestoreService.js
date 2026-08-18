@@ -7,6 +7,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../firebase';
+import { escapeHtml } from '../utils/documentActions';
 
 // Subscription plans configuration
 export const SUBSCRIPTION_PLANS = {
@@ -388,4 +389,50 @@ export function getSubscriptionCountdown(user) {
     const minutes = Math.ceil((diff % (1000 * 60)) / (1000 * 60));
     return { text: `${minutes} min remaining`, days: 0, expired: false };
   }
+}
+
+// Submit contact form via email endpoint
+export const submitContactForm = async (formData) => {
+  try {
+    const { name, email, subject, message } = formData;
+    
+    // Validate required fields
+    if (!name || !email || !subject || !message) {
+      return { success: false, error: 'All fields are required' };
+    }
+    
+    // Escape HTML special characters to prevent XSS
+    const escapedName = escapeHtml(name.trim());
+    const escapedEmail = escapeHtml(email.trim());
+    const escapedSubject = escapeHtml(subject.trim());
+    const escapedMessage = escapeHtml(message.trim());
+    
+    // Prepare email data
+    const emailData = {
+      to: 'kaigwaakram123@gmail.com', // Admin email
+      subject: escapedSubject,
+      message: `Name: ${escapedName}\\nEmail: ${escapedEmail}\\n\\nMessage:\\n${escapedMessage}`,
+      eventType: 'Contact Form Submission',
+      userEmail: escapedEmail,
+      userName: escapedName
+    };
+    
+    const response = await fetch('/api/notify/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(emailData)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { success: false, error: errorData.message || 'Failed to send message' };
+    }
+    
+    const data = await response.json();
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error submitting contact form:', error);
+    return { success: false, error: error.message };
+  }
+};
 }
