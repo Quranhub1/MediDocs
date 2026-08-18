@@ -95,30 +95,31 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange }) => {
     readOnline(doc);
   };
 
-  const handleDownload = (doc) => {
-    // Check if user is subscribed
-    if (!isSubscriber) {
-      // Check if document is premium
-      const isPremium = doc.status === 'premium';
-      
-      if (isPremium) {
-        // Premium document - show payment prompt
-        setShowPaymentModal(true);
-        return;
+const handleDownload = (doc) => {
+      // Check if user is subscribed
+      if (!isSubscriber) {
+        // Check if document is premium
+        const isPremium = doc.status === 'premium';
+        
+        if (isPremium) {
+          // Premium document - show payment prompt
+          setShowPaymentModal(true);
+          return;
+        }
+        
+        // Free document - check view limit
+        if (limitReached) {
+          // After free limit is reached, show payment prompt for any document
+          setShowPaymentModal(true);
+          return;
+        }
+        
+        // Record the view
+        recordView(doc.id);
       }
       
-      // Free document - check view limit
-      if (limitReached) {
-        setShowLimitModal(true);
-        return;
-      }
-      
-      // Record the view
-      recordView(doc.id);
-    }
-    
-    downloadDocument(doc);
-  };
+      downloadDocument(doc);
+    };
 
   const handleChoosePlan = (planKey) => {
     setSelectedPlan(planKey);
