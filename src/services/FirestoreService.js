@@ -623,20 +623,20 @@ export const lockExpiredSubscriptions = async () => {
 };
 
 // Get subscription countdown
-export const getSubscriptionCountdown = (user) => {
+export function getSubscriptionCountdown(user) {
   if (!user || !user.subscriptionExpiry) return null;
-  
+   
   const expiry = user.subscriptionExpiry.toDate ? user.subscriptionExpiry.toDate() : new Date(user.subscriptionExpiry);
   const now = new Date();
   const diff = expiry - now;
-  
+   
   if (diff <= 0) {
     return { text: 'Expired', days: 0, expired: true };
   }
-  
+   
   const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
   const hours = Math.ceil((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  
+   
   if (days > 0) {
     return { text: `${days} day${days > 1 ? 's' : ''} remaining`, days, expired: false };
   } else if (hours > 0) {
@@ -645,4 +645,4 @@ export const getSubscriptionCountdown = (user) => {
     const minutes = Math.ceil((diff % (1000 * 60)) / (1000 * 60));
     return { text: `${minutes} min remaining`, days: 0, expired: false };
   }
-};
+}
