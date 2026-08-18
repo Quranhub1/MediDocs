@@ -196,12 +196,15 @@ export const fetchDocuments = async (courseId, semesterId, unitId, forceRefresh 
     if (!courseId || !semesterId || !unitId) return { success: false, error: 'Course ID, Semester ID, and Unit ID required', data: [] };
     const docsRef = collection(db, `RESOURCES_STUDYPEDIA/${courseId}/semesters/${semesterId}/courseunits/${unitId}/documents`);
     const snapshot = await getDocs(docsRef);
-    const documents = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...docData,
-      createdAtDate: convertTimestamp(docData.createdAt),
-      status: docData.status || 'free'
-    }));
+    const documents = snapshot.docs.map(doc => {
+      const docData = doc.data();
+      return {
+        id: doc.id,
+        ...docData,
+        createdAtDate: convertTimestamp(docData.createdAt),
+        status: docData.status || 'free'
+      };
+    });
     return { success: true, data: documents };
   } catch (error) {
     console.error('Error fetching documents:', error);
