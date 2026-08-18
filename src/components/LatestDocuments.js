@@ -1,13 +1,8 @@
-<<<<<<< ours
-import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
-import { readOnline, downloadDocument, getDocumentUrl } from '../utils/documentActions';
-=======
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { readOnline, downloadDocument, getDocumentUrl } from '../utils/documentActions';
 import { useViewLimit } from '../hooks/useViewLimit';
 import LimitReachedModal from './LimitReachedModal';
 import PaymentModal from './PaymentModal';
->>>>>>> theirs
 
 const LatestDocuments = ({ documents, user, userProfile, onViewChange }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
