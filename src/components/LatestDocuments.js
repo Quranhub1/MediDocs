@@ -130,10 +130,7 @@ const handleDownload = (doc) => {
   const handlePaymentSuccess = () => {
     setShowPaymentModal(false);
     // Refresh user profile to update subscription status
-    if (onViewChange) {
-      // Trigger a refresh of the user profile
-      window.location.reload();
-    }
+    refreshUserProfile && refreshUserProfile();
   };
 
   if (displayDocuments.length === 0) {
