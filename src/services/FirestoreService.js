@@ -497,13 +497,24 @@ export const submitContactForm = async (formData) => {
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      return { success: false, error: errorData.message || 'Failed to send message' };
-    }
-    
-    const data = await response.json();
-    return { success: true, data };
+return { success: false, error: errorData.message || 'Failed to send message' };
+     }
+     
+     const data = await response.json();
+     return { success: true, data };
+   } catch (error) {
+     console.error('Error submitting contact form:', error);
+     return { success: false, error: error.message };
+   }
+ };
+
+export const submitPayment = async (paymentData) => {
+  try {
+    const paymentsRef = collection(db, 'payments');
+    const docRef = await addDoc(paymentsRef, paymentData);
+    return { success: true, id: docRef.id };
   } catch (error) {
-    console.error('Error submitting contact form:', error);
+    console.error('Error submitting payment:', error);
     return { success: false, error: error.message };
   }
 };
