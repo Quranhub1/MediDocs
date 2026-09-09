@@ -342,6 +342,11 @@ app.get('/api/subscriptions/expiring', generalLimiter, async (req, res) => {
   }
 });
 
+app.get('/sitemap.xml', (req, res) => {
+  res.setHeader('Content-Type', 'application/xml');
+  res.sendFile(path.join(__dirname, 'build', 'sitemap.xml'));
+});
+
 app.get('*', generalLimiter, (req, res) => {
   res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
