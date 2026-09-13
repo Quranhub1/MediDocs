@@ -1,23 +1,16 @@
-const CACHE_NAME = 'medidocs-v7';
+const CACHE_NAME = 'medidocs-v8';
 const RUNTIME_CACHE_NAME = 'medidocs-runtime-v1';
 const IMAGE_CACHE_NAME = 'medidocs-images-v2';
 const DOCUMENTS_CACHE_NAME = 'medidocs-documents-v2';
 const API_CACHE_NAME = 'medidocs-api-v2';
 
-// Keep this list limited to files that are actually served from /public.
-// CRA puts the compiled JS/CSS bundles under /static/ at build time.
+// Only cache assets that are valid, text/HTML/SVG files served by /public.
+// Compiled CRA bundles are cached at runtime from /static/.
 const APP_SHELL = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/favicon.ico',
-  '/favicon-96x96.png',
-  '/favicon-128x128.png',
-  '/favicon-144x144.png',
-  '/favicon-152x152.png',
-  '/favicon-192x192.png',
-  '/favicon-384x384.png',
-  '/favicon-512x512.png'
+  '/medidocs-icon.svg'
 ];
 
 self.addEventListener('install', (event) => {
@@ -54,8 +47,6 @@ const isStaticAsset = (url) =>
   url.pathname.startsWith('/static/') || /\.(css|js|woff2?|ttf|otf)$/i.test(url.pathname);
 const isApiRequest = (url) => url.pathname.startsWith('/api/');
 
-// Network-first navigation keeps content fresh while allowing the installed
-// app to open when the device is offline.
 const navigationResponse = async (request) => {
   try {
     const response = await fetch(request);
@@ -127,9 +118,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  event.respondWith(
-    fetch(request).catch(() => caches.match(request))
-  );
+  event.respondWith(fetch(request).catch(() => caches.match(request)));
 });
 
 self.addEventListener('message', (event) => {
