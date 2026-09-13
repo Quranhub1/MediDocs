@@ -14,7 +14,7 @@ window.addEventListener('unhandledrejection', (event) => {
   const reason = event.reason;
   if (reason && typeof reason === 'object') {
     const message = reason.message || reason.code || '';
-    if (message.includes('securetoken.googleapis.com') || 
+    if (message.includes('securetoken.googleapis.com') ||
         message.includes('Cloud Firestore backend') ||
         message.includes('client is offline') ||
         message.includes('ERR_CONNECTION_CLOSED')) {
@@ -32,15 +32,3 @@ root.render(
     </ErrorBoundary>
   </React.StrictMode>
 );
-
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then((registration) => {
-        console.log('SW registered: ', registration);
-      })
-      .catch((registrationError) => {
-        console.log('SW registration failed: ', registrationError);
-      });
-  });
-}
