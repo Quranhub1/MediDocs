@@ -36,22 +36,34 @@ function AppContent() {
   const [showContactModal, setShowContactModal] = useState(false);
   const [showAIChatModal, setShowAIChatModal] = useState(false);
   const [pwaInstallPrompt, setPwaInstallPrompt] = useState(null);
+  const [showInstallHelp, setShowInstallHelp] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
+    const standalone =
+      window.matchMedia?.('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true;
+    setIsStandalone(standalone);
+
     const handler = (e) => {
       e.preventDefault();
       setPwaInstallPrompt(e);
+      setShowInstallHelp(false);
     };
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
 
-  useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js')
-        .then((registration) => console.log('SW registered:', registration))
-        .catch((error) => console.log('SW registration failed:', error));
-    }
+    const installedHandler = () => {
+      setPwaInstallPrompt(null);
+      setShowInstallHelp(false);
+      setIsStandalone(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', installedHandler);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('appinstalled', installedHandler);
+    };
   }, []);
 
   useEffect(() => {
@@ -83,14 +95,20 @@ function AppContent() {
   };
 
   const installPWA = async () => {
-    if (pwaInstallPrompt) {
+    if (!pwaInstallPrompt) return;
+
+    try {
       pwaInstallPrompt.prompt();
       const { outcome } = await pwaInstallPrompt.userChoice;
       if (outcome === 'accepted') {
         setPwaInstallPrompt(null);
       }
+    } catch (error) {
+      console.warn('PWA installation prompt failed:', error);
     }
   };
+
+  const canShowInstall = !isStandalone && (pwaInstallPrompt || showInstallHelp);
 
   return (
     <>
@@ -105,10 +123,10 @@ function AppContent() {
             </div>
           </div>
         )}
-        
+
         <div className="flex flex-col min-h-screen">
-          <Header 
-            user={currentUser} 
+          <Header
+            user={currentUser}
             currentView={currentView}
             onViewChange={handleViewChange}
             onLoginClick={() => setShowLoginModal(true)}
@@ -117,10 +135,10 @@ function AppContent() {
             onMenuClick={toggleSidebar}
             onAISearch={handleAISearch}
           />
-          
+
           <main className="flex-grow">
-            <Sidebar 
-              isOpen={isSidebarOpen} 
+            <Sidebar
+              isOpen={isSidebarOpen}
               onClose={closeSidebar}
               onHomeClick={() => handleViewChange('home')}
               onCoursesClick={() => handleViewChange('courses')}
@@ -129,16 +147,13 @@ function AppContent() {
               onPrivacyClick={() => handleViewChange('privacy')}
               onAdminClick={() => handleViewChange('admin')}
             />
-            
+
             <div className="w-full">
               {currentView === 'admin' ? (
-                  <AdminDashboard 
-                    user={currentUser}
-                    onViewChange={handleViewChange}
-                  />
+                <AdminDashboard user={currentUser} onViewChange={handleViewChange} />
               ) : (
-                <MainContent 
-                  view={currentView} 
+                <MainContent
+                  view={currentView}
                   user={currentUser}
                   userProfile={userProfile}
                   setView={handleViewChange}
@@ -150,13 +165,13 @@ function AppContent() {
               )}
             </div>
           </main>
-          
-          <BottomNav 
-            currentView={currentView} 
-            onViewChange={handleViewChange} 
+
+          <BottomNav
+            currentView={currentView}
+            onViewChange={handleViewChange}
             user={currentUser}
           />
-          
+
           <footer className="hidden lg:block bg-gradient-to-r from-emerald-600 to-teal-700 text-white py-8 px-4">
             <div className="max-w-7xl mx-auto">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -188,66 +203,106 @@ function AppContent() {
             </div>
           </footer>
         </div>
-        
-        <LoginModal 
-          show={showLoginModal} 
+
+        <LoginModal
+          show={showLoginModal}
           onClose={() => setShowLoginModal(false)}
           onSwitchToRegister={() => {
             setShowLoginModal(false);
             setShowRegisterModal(true);
           }}
         />
-        
-        <RegisterModal 
-          show={showRegisterModal} 
+
+        <RegisterModal
+          show={showRegisterModal}
           onClose={() => setShowRegisterModal(false)}
           onSwitchToLogin={() => {
             setShowRegisterModal(false);
             setShowLoginModal(true);
           }}
         />
-        
-        <PaymentModal 
-          show={showPaymentModal} 
+
+        <PaymentModal
+          show={showPaymentModal}
           onClose={() => setShowPaymentModal(false)}
         />
-        
-        <ContactModal 
-          show={showContactModal} 
+
+        <ContactModal
+          show={showContactModal}
           onClose={() => setShowContactModal(false)}
         />
-        
-        <AIStudyAssistant 
-          show={showAIChatModal} 
+
+        <AIStudyAssistant
+          show={showAIChatModal}
           onClose={() => setShowAIChatModal(false)}
           user={currentUser}
           userProfile={userProfile}
         />
-        
+
         <button
           onClick={() => setShowAIChatModal(true)}
           className="fixed bottom-20 right-6 z-40 w-16 h-16 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform"
           style={{ animation: 'pulse 2s infinite' }}
+          aria-label="Open AI study assistant"
         >
           <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
           </svg>
         </button>
 
-        {pwaInstallPrompt && (
-          <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:w-80 bg-white dark:bg-dark-card rounded-xl shadow-2xl p-4 z-50 border border-gray-200 dark:border-dark-border">
-            <p className="text-sm font-medium text-gray-900 dark:text-dark-text mb-3">Install MediDocs App</p>
-            <div className="flex gap-2">
-              <button onClick={installPWA} className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">
-                Install
-              </button>
-              <button onClick={() => setPwaInstallPrompt(null)} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-dark-text rounded-lg text-sm">
-                Later
-              </button>
+        {canShowInstall && (
+          <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 bg-white dark:bg-dark-card rounded-xl shadow-2xl p-4 z-50 border border-gray-200 dark:border-dark-border">
+            <div className="flex items-start gap-3">
+              <img src="/favicon-192x192.png" alt="MediDocs" className="w-12 h-12 rounded-xl flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-gray-900 dark:text-dark-text">Install MediDocs</p>
+                <p className="text-xs text-gray-600 dark:text-dark-muted mt-1">
+                  Add MediDocs to your Android home screen and open it like a normal app, without the Chrome address bar.
+                </p>
+              </div>
             </div>
+
+            {pwaInstallPrompt ? (
+              <div className="flex gap-2 mt-4">
+                <button
+                  onClick={installPWA}
+                  className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700"
+                >
+                  Install App
+                </button>
+                <button
+                  onClick={() => setPwaInstallPrompt(null)}
+                  className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-dark-text rounded-lg text-sm"
+                >
+                  Later
+                </button>
+              </div>
+            ) : (
+              <div className="mt-4 rounded-lg bg-gray-50 dark:bg-gray-800 p-3">
+                <p className="text-xs font-semibold text-gray-800 dark:text-dark-text">If Chrome does not show an install button</p>
+                <p className="text-xs text-gray-600 dark:text-dark-muted mt-1">
+                  Open Chrome's menu ⋮ and choose <strong>Add to Home screen</strong> or <strong>Install app</strong>.
+                </p>
+                <button
+                  onClick={() => setShowInstallHelp(false)}
+                  className="mt-3 text-xs font-medium text-emerald-700 dark:text-emerald-400"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
           </div>
         )}
-        
+
+        {!isStandalone && !pwaInstallPrompt && !showInstallHelp && (
+          <button
+            onClick={() => setShowInstallHelp(true)}
+            className="fixed bottom-4 left-4 z-40 px-3 py-2 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg shadow-lg text-xs font-semibold text-gray-700 dark:text-dark-text"
+          >
+            Install MediDocs
+          </button>
+        )}
+
         <style>{`
           @keyframes pulse {
             0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
