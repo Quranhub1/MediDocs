@@ -102,6 +102,98 @@ const escapeHtml = (value) => {
     .replace(/'/g, '&#39;');
 };
 
+const toDate = (value) => {
+  if (!value) return null;
+  if (typeof value.toDate === 'function') return value.toDate();
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+// Aggregated, non-sensitive statistics used by the existing Google Apps Script.
+// No names, email addresses, phone numbers, passwords, or authentication data are returned.
+app.get('/api/daily-report-data', async (req, res) => {
+  try {
+    if (!adminDb) {
+      return res.status(503).json({ success: false, error: 'Reporting database is not available' });
+    }
+
+    const now = new Date();
+    const previous24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const date = new Intl.DateTimeFormat('en-UG', {
+      timeZone: 'Africa/Kampala',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }).format(now);
+
+    const [usersSnapshot, paymentsSnapshot] = await Promise.all([
+      adminDb.collection('users').get(),
+      adminDb.collection('payments').get()
+    ]);
+
+    const users = usersSnapshot.docs.map(doc => doc.data());
+    const payments = paymentsSnapshot.docs.map(doc => doc.data());
+
+    const newUsers = users.filter(user => {
+      const createdAt = toDate(user.createdAt);
+      return createdAt && createdAt >= previous24Hours && createdAt <= now;
+    }).length;
+
+    const activeSubscriptions = users.filter(user =>
+      user.subscriptionStatus === 'active' && user.subscriptionApproved === true
+    ).length;
+
+    const expiredSubscriptions = users.filter(user => {
+      const expiry = toDate(user.subscriptionExpiry);
+      return Boolean(expiry && expiry <= now && user.subscriptionApproved === true);
+    }).length;
+
+    const bannedAccounts = users.filter(user => user.banned === true).length;
+
+    const recentPayments = payments.filter(payment => {
+      const createdAt = toDate(payment.createdAt);
+      return createdAt && createdAt >= previous24Hours && createdAt <= now;
+    });
+
+    const approvedPayments = recentPayments.filter(payment =>
+      payment.status === 'approved' || payment.status === 'success'
+    ).length;
+
+    const declinedPayments = recentPayments.filter(payment =>
+      payment.status === 'declined'
+    ).length;
+
+    const memory = process.memoryUsage();
+
+    res.json({
+      success: true,
+      date,
+      period: 'Last 24 hours',
+      newUsers,
+      totalUsers: users.length,
+      activeSubscriptions,
+      expiredSubscriptions,
+      bannedAccounts,
+      paymentsReceived: recentPayments.length,
+      approvedPayments,
+      declinedPayments,
+      application: {
+        uptimeSeconds: Math.round(process.uptime()),
+        nodeVersion: process.version,
+        memoryRssMb: Number((memory.rss / 1024 / 1024).toFixed(1)),
+        heapUsedMb: Number((memory.heapUsed / 1024 / 1024).toFixed(1))
+      },
+      httpRequests: 'Not tracked',
+      p95Latency: 'Not tracked',
+      cpuUsage: 'Not tracked',
+      memoryUsage: `${(memory.rss / 1024 / 1024).toFixed(1)} MB RSS`
+    });
+  } catch (error) {
+    console.error('Daily report data error:', error);
+    res.status(500).json({ success: false, error: 'Unable to generate daily report data' });
+  }
+});
+
 const sanitizePaystackReference = (reference) => {
   if (typeof reference !== 'string') return null;
   const trimmed = reference.trim();
