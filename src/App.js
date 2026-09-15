@@ -6,6 +6,7 @@ import BottomNav from './components/BottomNav';
 import MainContent from './components/MainContent';
 import AdminDashboard from './components/AdminDashboard';
 import SubscriptionManager from './components/SubscriptionManager';
+import AdminUserRegistry from './components/AdminUserRegistry';
 import UserSubscriptionPanel from './components/UserSubscriptionPanel';
 import LoginModal from './components/LoginModal';
 import RegisterModal from './components/RegisterModal';
@@ -139,6 +140,7 @@ function AppContent() {
               {isAdminView ? (
                 <>
                   <AdminDashboard user={currentUser} onViewChange={handleViewChange} />
+                  <AdminUserRegistry />
                   <SubscriptionManager />
                 </>
               ) : (
@@ -171,7 +173,7 @@ function AppContent() {
         <AIStudyAssistant show={showAIChatModal} onClose={() => setShowAIChatModal(false)} user={currentUser} userProfile={userProfile} />
 
         <button onClick={() => setShowAIChatModal(true)} className="fixed bottom-20 right-6 z-40 w-16 h-16 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform" style={{ animation: 'pulse 2s infinite' }} aria-label="Open AI study assistant">
-          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
         </button>
 
         {canShowInstall && (
