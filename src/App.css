@@ -1,255 +1,49 @@
-/* Custom styles for the MediDocs React App */
-
-/* Smooth scrolling */
-html {
-  scroll-behavior: smooth;
-}
-
-/* Active menu item highlight */
-.active-menu {
-  background-color: #dbeafe !important;
-  color: #2563eb !important;
-  font-weight: 600;
-}
-
-.dark .active-menu {
-  background-color: #1e40af !important;
-  color: #60a5fa !important;
-}
-
-/* Latest docs slide animation */
-.slide-in {
-  animation: slideIn 0.3s ease-out;
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateX(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-/* Carousel dot styles */
-.carousel-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background-color: #cbd5e1;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.carousel-dot.active {
-  background-color: #3b82f6;
-  transform: scale(1.2);
-}
-
-.carousel-dot:hover {
-  background-color: #64748b;
-}
-
-/* Toast animations */
-@keyframes slideInRight {
-  from { opacity: 0; transform: translateX(100%); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-/* Responsive adjustments */
+/* MediDocs responsive, accessible and motion-aware UI layer */
+html { scroll-behavior: smooth; }
+body { -webkit-tap-highlight-color: transparent; }
+button, a, input, select, textarea { touch-action: manipulation; }
+.touch-target { min-width: 44px; min-height: 44px; }
+.skip-link { position: fixed; left: 1rem; top: -100px; z-index: 100; padding: .75rem 1rem; border-radius: .75rem; background: #111827; color: white; font-weight: 700; transition: top .2s ease; }
+.skip-link:focus { top: 1rem; }
+.active-menu { background-color: #dbeafe !important; color: #2563eb !important; font-weight: 600; }
+.dark .active-menu { background-color: #1e40af !important; color: #60a5fa !important; }
+.slide-in { animation: slideIn .3s ease-out; }
+@keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes mdCardIn { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes mdBarIn { from { width: 0; } }
+.md-dashboard-card { animation: mdCardIn .5s ease both; transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease; }
+.md-dashboard-card:hover { transform: translateY(-3px); }
+.md-card-icon { transition: transform .3s ease; }
+.md-dashboard-card:hover .md-card-icon { transform: scale(1.12) rotate(-4deg); }
+.md-chart-bar { animation: mdBarIn .9s ease both; }
+.md-page-transition { animation: mdPageIn .25s ease-out; }
+@keyframes mdPageIn { from { opacity: .72; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+.carousel-dot { width: 10px; height: 10px; border-radius: 50%; background-color: #cbd5e1; cursor: pointer; transition: all .3s ease; }
+.carousel-dot.active { background-color: #3b82f6; transform: scale(1.2); }
+.carousel-dot:hover { background-color: #64748b; }
+@keyframes slideInRight { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+.skeleton { background: linear-gradient(90deg, rgba(148,163,184,.12), rgba(148,163,184,.28), rgba(148,163,184,.12)); background-size: 200% 100%; animation: skeletonShimmer 1.4s linear infinite; border-radius: .75rem; }
+@keyframes skeletonShimmer { to { background-position: -200% 0; } }
+.large-text body { font-size: 18px; }
+.large-text .text-xs { font-size: .82rem !important; }
+.large-text .text-sm { font-size: 1rem !important; }
+.high-contrast body { filter: contrast(1.08); }
+.high-contrast button:focus-visible, .high-contrast a:focus-visible, .high-contrast input:focus-visible, .high-contrast select:focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
+.low-bandwidth img:not([alt="MediDocs app icon"]), .low-bandwidth video, .low-bandwidth [data-decorative="true"] { display: none !important; }
+.low-bandwidth *, .low-bandwidth *::before, .low-bandwidth *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; background-image: none !important; }
+.dark input, .dark select, .dark textarea { color-scheme: dark; }
+.dark ::selection { background: rgba(16,185,129,.35); }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+.force-reduced-motion *, .force-reduced-motion *::before, .force-reduced-motion *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 @media (max-width: 640px) {
-  /* Sidebar narrower on mobile */
-  #sidebar {
-    width: 85% !important;
-    max-width: 280px !important;
-  }
-  
-  /* All Modals - full screen on mobile */
-  #login-modal > div,
-  #register-modal > div,
-  #payment-modal > div,
-  #contact-modal > div,
-  #ai-chat-modal > div,
-  #ai-response-modal > div {
-    max-width: 95% !important;
-    width: 95% !important;
-    max-height: 90vh !important;
-    margin: 0.5rem !important;
-    overflow-y: auto !important;
-  }
-  
-  /* Modal text sizes */
-  #login-modal .text-xl,
-  #register-modal .text-xl,
-  #payment-modal .text-xl,
-  #contact-modal .text-xl,
-  #ai-chat-modal .text-xl {
-    font-size: 1rem !important;
-  }
-  
-  #login-modal .text-lg,
-  #register-modal .text-lg,
-  #payment-modal .text-lg,
-  #contact-modal .text-lg,
-  #ai-chat-modal .text-lg {
-    font-size: 0.875rem !important;
-  }
-  
-  /* Modal padding */
-  #login-modal .p-6,
-  #register-modal .p-6,
-  #payment-modal .p-6,
-  #contact-modal .p-6,
-  #ai-chat-modal .p-6,
-  #ai-chat-modal .p-4 {
-    padding: 0.75rem !important;
-  }
-  
-  /* Modal inputs */
-  #login-modal input,
-  #register-modal input,
-  #payment-modal input,
-  #contact-modal input,
-  #ai-chat-modal input {
-    font-size: 0.875rem !important;
-    padding: 0.5rem !important;
-  }
-  
-  /* Modal buttons */
-  #login-modal button,
-  #register-modal button,
-  #payment-modal button,
-  #contact-modal button,
-  #ai-chat-modal button {
-    padding: 0.5rem 0.75rem !important;
-    font-size: 0.75rem !important;
-  }
-  
-  /* Smaller text sizes on mobile */
-  h1 {
-    font-size: 2rem !important;
-  }
-  
-  h2 {
-    font-size: 1.5rem !important;
-  }
-  
-  h3 {
-    font-size: 1.25rem !important;
-  }
-  
-  p {
-    font-size: 0.875rem !important;
-  }
-  
-  /* Smaller padding on mobile */
-  .p-8 {
-    padding: 1rem !important;
-  }
-  
-  .p-6 {
-    padding: 0.75rem !important;
-  }
-  
-  .p-4 {
-    padding: 0.5rem !important;
-  }
-  
-  /* Smaller margins on mobile */
-  .mb-8 {
-    margin-bottom: 1rem !important;
-  }
-  
-  .mb-6 {
-    margin-bottom: 0.75rem !important;
-  }
-  
-  .mb-4 {
-    margin-bottom: 0.5rem !important;
-  }
-  
-  .mt-8 {
-    margin-top: 1rem !important;
-  }
-  
-  .mt-12 {
-    margin-top: 1.5rem !important;
-  }
-  
-  /* Smaller buttons on mobile */
-  .py-3 {
-    padding-top: 0.5rem !important;
-    padding-bottom: 0.5rem !important;
-  }
-  
-  .py-4 {
-    padding-top: 0.5rem !important;
-    padding-bottom: 0.5rem !important;
-  }
-  
-  .px-6 {
-    padding-left: 1rem !important;
-    padding-right: 1rem !important;
-  }
-  
-  .px-8 {
-    padding-left: 1rem !important;
-    padding-right: 1rem !important;
-  }
-  
-  /* Smaller logo on mobile */
-  .w-32.h-32 {
-    width: 5rem !important;
-    height: 5rem !important;
-  }
-  
-  /* Stack buttons vertically on mobile */
-  .flex-col.md\:flex-row {
-    flex-direction: column !important;
-  }
-  
-  .flex-col.md\:flex-row.gap-4 {
-    gap: 0.5rem !important;
-  }
-  
-  /* Smaller latest docs section on mobile */
-  #latest-docs-section,
-  #latest-docs-carousel {
-    margin-top: 0.5rem !important;
-    padding: 0.5rem !important;
-  }
-  
-  /* Smaller document cards on mobile */
-  .bg-gradient-to-br.from-white.to-blue-50 {
-    padding: 0.75rem !important;
-    flex-direction: column !important;
-  }
-  
-  /* Smaller font for document titles on mobile */
-  .text-lg {
-    font-size: 1rem !important;
-  }
-  
-  /* Smaller buttons in document cards */
-  .rounded-full {
-    padding: 0.5rem 0.75rem !important;
-    font-size: 0.75rem !important;
-  }
-  
-  /* Make content containers full width on mobile */
-  .max-w-4xl {
-    max-width: 95% !important;
-  }
-  
-  /* Smaller course/semester buttons on mobile */
-  .grid-cols-1.sm\:grid-cols-2.md\:grid-cols-3 {
-    grid-template-columns: 1fr !important;
-  }
-  
-  /* Adjust main content padding on mobile */
-  .p-8.bg-white {
-    padding: 0.75rem !important;
-  }
+  #sidebar { width: 85% !important; max-width: 280px !important; }
+  #login-modal > div, #register-modal > div, #payment-modal > div, #contact-modal > div, #ai-chat-modal > div, #ai-response-modal > div { max-width: 95% !important; width: 95% !important; max-height: 90vh !important; margin: .5rem !important; overflow-y: auto !important; }
+  #login-modal input, #register-modal input, #payment-modal input, #contact-modal input, #ai-chat-modal input { font-size: 1rem !important; min-height: 44px; }
+  #login-modal button, #register-modal button, #payment-modal button, #contact-modal button, #ai-chat-modal button { min-height: 44px; }
+  h1 { font-size: 2rem !important; } h2 { font-size: 1.5rem !important; } h3 { font-size: 1.25rem !important; }
+  .p-8 { padding: 1rem !important; } .p-6 { padding: .75rem !important; }
+  .max-w-4xl { max-width: 95% !important; }
+  .pb-16 { padding-bottom: 4.5rem !important; }
 }
+@media (max-width: 480px) { .shadow-2xl { box-shadow: 0 8px 24px rgba(15,23,42,.14) !important; } .backdrop-blur-sm { backdrop-filter: none !important; } .text-6xl { font-size: 3rem !important; } }
+@media (min-width: 641px) and (max-width: 900px) { .md-dashboard-card { min-height: 120px; } }
