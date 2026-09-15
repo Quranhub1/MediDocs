@@ -18,6 +18,9 @@ import { StudyProvider } from './context/StudyContext';
 import { BookmarkProvider } from './context/BookmarkContext';
 import { AnomalyProvider, useAnomaly } from './context/AnomalyContext';
 
+const PWA_PROMPT_SHOWN_KEY = 'medidocs_pwa_install_prompt_shown_v1';
+const PWA_INSTALLED_KEY = 'medidocs_pwa_installed_v1';
+
 function AppContent() {
   const { currentUser, userProfile, isBanned, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -38,6 +41,7 @@ function AppContent() {
   const [pwaInstallPrompt, setPwaInstallPrompt] = useState(null);
   const [showInstallHelp, setShowInstallHelp] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [installPromptSeen, setInstallPromptSeen] = useState(false);
 
   useEffect(() => {
     const standalone =
@@ -45,15 +49,42 @@ function AppContent() {
       window.navigator.standalone === true;
     setIsStandalone(standalone);
 
-    const handler = (e) => {
-      e.preventDefault();
-      setPwaInstallPrompt(e);
+    try {
+      const installed = localStorage.getItem(PWA_INSTALLED_KEY) === 'true';
+      const promptSeen = localStorage.getItem(PWA_PROMPT_SHOWN_KEY) === 'true';
+      if (installed) setIsStandalone(true);
+      setInstallPromptSeen(promptSeen || installed);
+    } catch {}
+
+    const handler = (event) => {
+      try {
+        if (
+          standalone ||
+          localStorage.getItem(PWA_INSTALLED_KEY) === 'true' ||
+          localStorage.getItem(PWA_PROMPT_SHOWN_KEY) === 'true'
+        ) {
+          return;
+        }
+        event.preventDefault();
+        localStorage.setItem(PWA_PROMPT_SHOWN_KEY, 'true');
+      } catch {
+        // If storage is unavailable, still avoid repeatedly prompting in this session.
+        if (standalone) return;
+        event.preventDefault();
+      }
+      setInstallPromptSeen(true);
+      setPwaInstallPrompt(event);
       setShowInstallHelp(false);
     };
 
     const installedHandler = () => {
+      try {
+        localStorage.setItem(PWA_INSTALLED_KEY, 'true');
+        localStorage.setItem(PWA_PROMPT_SHOWN_KEY, 'true');
+      } catch {}
       setPwaInstallPrompt(null);
       setShowInstallHelp(false);
+      setInstallPromptSeen(true);
       setIsStandalone(true);
     };
 
@@ -70,7 +101,7 @@ function AppContent() {
     if (currentUser && checkLoginAnomaly) {
       checkLoginAnomaly(currentUser.email, 'unknown', navigator.userAgent);
     }
-  }, [currentUser]);
+  }, [currentUser, checkLoginAnomaly]);
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
@@ -100,24 +131,31 @@ function AppContent() {
     try {
       pwaInstallPrompt.prompt();
       const { outcome } = await pwaInstallPrompt.userChoice;
+      setPwaInstallPrompt(null);
       if (outcome === 'accepted') {
-        setPwaInstallPrompt(null);
+        try {
+          localStorage.setItem(PWA_INSTALLED_KEY, 'true');
+          localStorage.setItem(PWA_PROMPT_SHOWN_KEY, 'true');
+        } catch {}
+        setIsStandalone(true);
       }
     } catch (error) {
       console.warn('PWA installation prompt failed:', error);
+      setPwaInstallPrompt(null);
     }
   };
 
-  const canShowInstall = !isStandalone && (pwaInstallPrompt || showInstallHelp);
+  const canShowInstall = !isStandalone && !installPromptSeen && (pwaInstallPrompt || showInstallHelp);
 
   return (
     <>
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       <div className="min-h-screen bg-gray-50 dark:bg-dark-bg pb-16 lg:pb-0 transition-colors duration-300 overflow-x-hidden">
         {isBanned && (
-          <div className="fixed inset-0 z-50 bg-red-50 dark:bg-red-900/20 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 bg-red-50 dark:bg-red-900/20 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="banned-title">
             <div className="bg-white dark:bg-dark-card rounded-2xl shadow-2xl p-8 max-w-md text-center">
-              <div className="text-6xl mb-4">🚫</div>
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-dark-text mb-2">Account Banned</h2>
+              <div className="text-6xl mb-4" aria-hidden="true">🚫</div>
+              <h2 id="banned-title" className="text-2xl font-bold text-gray-800 dark:text-dark-text mb-2">Account Banned</h2>
               <p className="text-gray-600 dark:text-dark-muted mb-6">Your account has been banned. Please contact support for assistance.</p>
               <button onClick={handleLogout} className="px-6 py-2 bg-red-500 text-white rounded-lg">Logout</button>
             </div>
@@ -136,7 +174,7 @@ function AppContent() {
             onAISearch={handleAISearch}
           />
 
-          <main className="flex-grow">
+          <main id="main-content" tabIndex="-1" className="flex-grow">
             <Sidebar
               isOpen={isSidebarOpen}
               onClose={closeSidebar}
@@ -245,19 +283,19 @@ function AppContent() {
           style={{ animation: 'pulse 2s infinite' }}
           aria-label="Open AI study assistant"
         >
-          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
           </svg>
         </button>
 
         {canShowInstall && (
-          <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 bg-white dark:bg-dark-card rounded-xl shadow-2xl p-4 z-50 border border-gray-200 dark:border-dark-border">
+          <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 bg-white dark:bg-dark-card rounded-xl shadow-2xl p-4 z-50 border border-gray-200 dark:border-dark-border" role="dialog" aria-label="Install MediDocs">
             <div className="flex items-start gap-3">
-              <img src="/favicon-192x192.png" alt="MediDocs" className="w-12 h-12 rounded-xl flex-shrink-0" />
+              <img src="/medidocs-icon.svg" alt="MediDocs app icon" className="w-12 h-12 rounded-xl flex-shrink-0" />
               <div className="min-w-0">
                 <p className="text-sm font-bold text-gray-900 dark:text-dark-text">Install MediDocs</p>
                 <p className="text-xs text-gray-600 dark:text-dark-muted mt-1">
-                  Add MediDocs to your Android home screen and open it like a normal app, without the Chrome address bar.
+                  Install MediDocs as an app for a cleaner, standalone experience without the normal browser address bar.
                 </p>
               </div>
             </div>
@@ -274,14 +312,14 @@ function AppContent() {
                   onClick={() => setPwaInstallPrompt(null)}
                   className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-dark-text rounded-lg text-sm"
                 >
-                  Later
+                  Close
                 </button>
               </div>
             ) : (
               <div className="mt-4 rounded-lg bg-gray-50 dark:bg-gray-800 p-3">
-                <p className="text-xs font-semibold text-gray-800 dark:text-dark-text">If Chrome does not show an install button</p>
+                <p className="text-xs font-semibold text-gray-800 dark:text-dark-text">Add MediDocs from your browser</p>
                 <p className="text-xs text-gray-600 dark:text-dark-muted mt-1">
-                  Open Chrome's menu ⋮ and choose <strong>Add to Home screen</strong> or <strong>Install app</strong>.
+                  On iPhone/iPad, use your browser's Share menu and choose <strong>Add to Home Screen</strong>. On supported desktop or Android browsers, choose <strong>Install app</strong> or <strong>Add to Home screen</strong>.
                 </p>
                 <button
                   onClick={() => setShowInstallHelp(false)}
@@ -294,10 +332,11 @@ function AppContent() {
           </div>
         )}
 
-        {!isStandalone && !pwaInstallPrompt && !showInstallHelp && (
+        {!isStandalone && !installPromptSeen && !pwaInstallPrompt && !showInstallHelp && (
           <button
             onClick={() => setShowInstallHelp(true)}
             className="fixed bottom-4 left-4 z-40 px-3 py-2 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg shadow-lg text-xs font-semibold text-gray-700 dark:text-dark-text"
+            aria-label="Show instructions to install MediDocs"
           >
             Install MediDocs
           </button>
