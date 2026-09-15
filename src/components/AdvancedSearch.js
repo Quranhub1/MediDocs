@@ -1,191 +1,60 @@
-import React, { useState, useEffect } from 'react';
-import { collection, query, orderBy, getDocs } from 'firebase/firestore';
-import { db } from '../firebase';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useBookmarks } from '../context/BookmarkContext';
-import { useTheme } from '../context/ThemeContext';
+import { fetchAllDocuments, fetchCourses } from '../services/FirestoreService';
 
-const AdvancedSearch = ({ onClose, onViewChange }) => {
-  const { theme } = useTheme();
-  const { bookmarks, recentSearches, clearRecentSearches, addRecentSearch, isBookmarked } = useBookmarks();
+const GROUPS = [
+  { id: 'courses', label: 'Courses', icon: '📚' },
+  { id: 'notes', label: 'Notes', icon: '📝' },
+  { id: 'flashcards', label: 'Flashcards', icon: '🗂️' },
+  { id: 'questions', label: 'Questions', icon: '❓' },
+  { id: 'drugs', label: 'Drug reference', icon: '💊' },
+  { id: 'cases', label: 'Clinical cases', icon: '🩺' }
+];
+
+const textOf = (item) => [item.title, item.name, item.description, item.courseName, item.unitName, item.category, item.type, item.resourceType, item.tags].flat().filter(Boolean).join(' ').toLowerCase(); 
+const classify = (item, fallback = 'notes') => { const text = textOf(item); const type = `${item.type || ''} ${item.category || ''} ${item.resourceType || ''}`.toLowerCase(); if (/flashcard/.test(type) || /flashcard/.test(text)) return 'flashcards'; if (/question|quiz|mcq|exam/.test(type) || /question|quiz|mcq|exam/.test(text)) return 'questions'; if (/drug|pharmac/.test(type) || /ceftriaxone|paracetamol|amoxicillin|drug|pharmac/.test(text)) return 'drugs'; if (/case|clinical/.test(type) || /clinical case|case study/.test(text)) return 'cases'; return fallback; };
+
+const AdvancedSearch = ({ onClose }) => {
+  const { recentSearches, clearRecentSearches, addRecentSearch, isBookmarked } = useBookmarks();
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState({
-    course: '',
-    semester: '',
-    unit: '',
-    status: 'all',
-    sortBy: 'newest'
-  });
-  const [results, setResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
+  const [results, setResults] = useState({ courses: [], notes: [], flashcards: [], questions: [], drugs: [], cases: [] });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [sortBy, setSortBy] = useState('relevance');
 
-  useEffect(() => {
-    if (recentSearches.length > 0) {
-      setSearchQuery(recentSearches[0].term);
-    }
-  }, []);
+  useEffect(() => { if (recentSearches.length) setSearchQuery(recentSearches[0].term); }, [recentSearches]);
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
-
-    setIsSearching(true);
+  const runSearch = async (term = searchQuery) => {
+    const clean = term.trim();
+    if (!clean) return;
+    setLoading(true); setError('');
     try {
-      let q = query(collection(db, 'RESOURCES_STUDYPEDIA'), orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
-      let docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-
-      if (searchQuery.trim()) {
-        const lowerQuery = searchQuery.toLowerCase();
-        docs = docs.filter(doc => 
-          doc.title?.toLowerCase().includes(lowerQuery) ||
-          doc.description?.toLowerCase().includes(lowerQuery) ||
-          doc.courseId?.toLowerCase().includes(lowerQuery)
-        );
-      }
-
-      if (filters.course) {
-        docs = docs.filter(doc => doc.courseId === filters.course);
-      }
-      if (filters.status !== 'all') {
-        docs = docs.filter(doc => doc.status === filters.status);
-      }
-
-      setResults(docs);
-      await addRecentSearch(searchQuery);
-    } catch (error) {
-      console.error('Error searching:', error);
-    } finally {
-      setIsSearching(false);
-    }
+      const [courseResult, documentResult] = await Promise.all([fetchCourses(false), fetchAllDocuments(200, false)]);
+      const q = clean.toLowerCase();
+      const matchedCourses = (courseResult.data || []).filter((item) => textOf(item).includes(q));
+      const matchedDocs = (documentResult.data || []).filter((item) => textOf(item).includes(q));
+      const grouped = { courses: matchedCourses, notes: [], flashcards: [], questions: [], drugs: [], cases: [] };
+      matchedDocs.forEach((item) => { grouped[classify(item)].push(item); });
+      Object.keys(grouped).forEach((key) => grouped[key].sort((a, b) => sortBy === 'newest' ? ((b.createdAtDate?.getTime?.() || 0) - (a.createdAtDate?.getTime?.() || 0)) : textOf(a).localeCompare(textOf(b))));
+      setResults(grouped);
+      await addRecentSearch(clean);
+    } catch (e) { console.error(e); setError('Search could not be completed. Check your connection and try again.'); }
+    finally { setLoading(false); }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-dark-card rounded-2xl shadow-2xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-dark-text">Advanced Search</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:hover:text-dark-text">
-            ✕
-          </button>
-        </div>
+  const total = useMemo(() => Object.values(results).reduce((sum, items) => sum + items.length, 0), [results]);
 
-        <form onSubmit={handleSearch} className="mb-6 space-y-4">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search documents, courses, topics..."
-              className="flex-1 px-4 py-3 border border-gray-200 dark:border-dark-border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-            <button
-              type="submit"
-              disabled={isSearching}
-              className="px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:bg-gray-300"
-            >
-              {isSearching ? 'Searching...' : 'Search'}
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-dark-muted mb-2">Course</label>
-              <input
-                type="text"
-                value={filters.course}
-                onChange={(e) => setFilters({ ...filters, course: e.target.value })}
-                placeholder="Course ID"
-                className="w-full px-4 py-2 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-gray-900 dark:text-dark-text"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-dark-muted mb-2">Status</label>
-              <select
-                value={filters.status}
-                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-gray-900 dark:text-dark-text"
-              >
-                <option value="all">All</option>
-                <option value="free">Free</option>
-                <option value="premium">Premium</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-dark-muted mb-2">Sort By</label>
-              <select
-                value={filters.sortBy}
-                onChange={(e) => setFilters({ ...filters, sortBy: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-gray-900 dark:text-dark-text"
-              >
-                <option value="newest">Newest</option>
-                <option value="oldest">Oldest</option>
-                <option value="popular">Most Popular</option>
-              </select>
-            </div>
-            <div className="flex items-end">
-              <button
-                type="button"
-                onClick={clearRecentSearches}
-                className="w-full py-2 text-sm text-red-600 hover:text-red-700"
-              >
-                Clear History
-              </button>
-            </div>
-          </div>
-        </form>
-
-        {recentSearches.length > 0 && (
-          <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-700 dark:text-dark-muted mb-2">Recent Searches</h3>
-            <div className="flex flex-wrap gap-2">
-              {recentSearches.map((search, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setSearchQuery(search.term)}
-                  className="px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-dark-text rounded-full text-sm hover:bg-emerald-100"
-                >
-                  {search.term}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-4">
-          {results.map((doc) => (
-            <div
-              key={doc.id}
-              className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-dark-border hover:border-emerald-300 transition-colors"
-            >
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-medium text-gray-900 dark:text-dark-text">{doc.title}</h3>
-                  <p className="text-sm text-gray-600 dark:text-dark-muted">{doc.description?.substring(0, 100)}...</p>
-                  <div className="flex gap-2 mt-2">
-                    <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs">
-                      {doc.courseId?.toUpperCase()}
-                    </span>
-                    <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
-                      {doc.status}
-                    </span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => isBookmarked(doc.id) ? null : null}
-                  className="text-2xl"
-                >
-                  {isBookmarked(doc.id) ? '🔖' : '📑'}
-                </button>
-              </div>
-            </div>
-          ))}
-          {results.length === 0 && !isSearching && (
-            <p className="text-center text-gray-500 dark:text-dark-muted py-8">No results found. Try a different search.</p>
-          )}
-        </div>
-      </div>
+  return <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4" role="dialog" aria-modal="true" aria-label="Search MediDocs">
+    <div className="bg-white dark:bg-dark-card rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] overflow-y-auto p-4 sm:p-7">
+      <div className="flex items-center justify-between gap-3 mb-5"><div><h2 className="text-2xl font-bold text-gray-900 dark:text-dark-text">Search MediDocs</h2><p className="text-sm text-gray-500 dark:text-dark-muted mt-1">Search courses, notes and medical topics in one place.</p></div><button className="touch-target text-gray-500 text-xl" onClick={onClose} aria-label="Close search">✕</button></div>
+      <form onSubmit={(e) => { e.preventDefault(); runSearch(); }} className="flex flex-col sm:flex-row gap-2 mb-4"><input autoFocus value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Try “malaria treatment”, “cranial nerves”, “heart failure”, “ceftriaxone”..." className="touch-target flex-1 px-4 py-3 border border-gray-200 dark:border-dark-border rounded-xl bg-white dark:bg-dark-bg text-gray-900 dark:text-dark-text focus:ring-2 focus:ring-emerald-500 outline-none" aria-label="Search MediDocs" /><button disabled={loading} className="touch-target px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold disabled:opacity-60">{loading ? 'Searching…' : 'Search'}</button></form>
+      <div className="flex flex-wrap gap-2 mb-5">{['malaria treatment','cranial nerves','heart failure','ceftriaxone','nursing care plan'].map((term) => <button key={term} type="button" onClick={() => { setSearchQuery(term); runSearch(term); }} className="touch-target px-3 py-2 rounded-full bg-gray-100 dark:bg-gray-800 text-xs sm:text-sm text-gray-700 dark:text-dark-text hover:bg-emerald-100 dark:hover:bg-emerald-900/30">{term}</button>)}</div>
+      <div className="flex items-center justify-between mb-4"><span className="text-sm font-semibold text-gray-700 dark:text-dark-text">{total ? `${total} result${total === 1 ? '' : 's'}` : 'Search by category'}</span><div className="flex gap-2"><select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="touch-target px-2 py-2 rounded-lg border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-bg text-xs text-gray-700 dark:text-dark-text"><option value="relevance">Relevance</option><option value="newest">Newest</option><option value="alpha">A-Z</option></select><button onClick={clearRecentSearches} className="touch-target text-xs text-red-600 px-2">Clear history</button></div></div>
+      {error && <div className="mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-900/20 text-sm text-red-700 dark:text-red-300" role="alert">{error}</div>}
+      {recentSearches.length > 0 && <div className="mb-5"><p className="text-xs font-semibold text-gray-500 dark:text-dark-muted mb-2">Recent searches</p><div className="flex flex-wrap gap-2">{recentSearches.slice(0, 8).map((s, i) => <button key={`${s.term}-${i}`} onClick={() => { setSearchQuery(s.term); runSearch(s.term); }} className="touch-target px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-xs text-gray-600 dark:text-dark-text">{s.term}</button>)}</div></div>}
+      <div className="grid md:grid-cols-2 gap-4">{GROUPS.map((group) => <section key={group.id} className="rounded-2xl border border-gray-200 dark:border-dark-border overflow-hidden"><div className="px-4 py-3 bg-gray-50 dark:bg-gray-800/70 flex items-center justify-between"><h3 className="font-bold text-gray-900 dark:text-dark-text">{group.icon} {group.label}</h3><span className="text-xs text-gray-500 dark:text-dark-muted">{results[group.id].length}</span></div><div className="p-3">{results[group.id].length ? <div className="space-y-2">{results[group.id].slice(0, 6).map((item) => <article key={`${group.id}-${item.id}`} className="p-3 rounded-xl bg-white dark:bg-dark-bg border border-gray-100 dark:border-dark-border"><div className="flex justify-between gap-2"><div className="min-w-0"><h4 className="font-semibold text-sm text-gray-900 dark:text-dark-text truncate">{item.title || item.name || 'Untitled resource'}</h4><p className="text-xs text-gray-500 dark:text-dark-muted mt-1 line-clamp-2">{item.description || item.unitName || item.courseName || 'MediDocs learning resource'}</p></div>{item.id && <span className="text-lg" aria-label={isBookmarked(item.id) ? 'Bookmarked' : 'Resource'}>{isBookmarked(item.id) ? '🔖' : '•'}</span>}</div></article>)}</div> : <div className="md-empty-state text-center py-5"><span className="text-2xl" aria-hidden="true">{group.icon}</span><p className="text-xs text-gray-500 dark:text-dark-muted mt-2">No matching {group.label.toLowerCase()} yet.</p></div>}</div></section>)}</div>
     </div>
-  );
+  </div>;
 };
 
 export default AdvancedSearch;
