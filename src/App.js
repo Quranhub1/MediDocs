@@ -68,7 +68,6 @@ function AppContent() {
         event.preventDefault();
         localStorage.setItem(PWA_PROMPT_SHOWN_KEY, 'true');
       } catch {
-        // If storage is unavailable, still avoid repeatedly prompting in this session.
         if (standalone) return;
         event.preventDefault();
       }
@@ -145,7 +144,10 @@ function AppContent() {
     }
   };
 
-  const canShowInstall = !isStandalone && !installPromptSeen && (pwaInstallPrompt || showInstallHelp);
+  // The native beforeinstallprompt event is shown exactly once per browser/user.
+  // Keep the visible card tied to the actual prompt object so it does not
+  // disappear immediately after we mark it as seen in localStorage.
+  const canShowInstall = !isStandalone && (pwaInstallPrompt || showInstallHelp);
 
   return (
     <>
@@ -289,7 +291,7 @@ function AppContent() {
         </button>
 
         {canShowInstall && (
-          <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 bg-white dark:bg-dark-card rounded-xl shadow-2xl p-4 z-50 border border-gray-200 dark:border-dark-border" role="dialog" aria-label="Install MediDocs">
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] sm:w-96 bg-white dark:bg-dark-card rounded-xl shadow-2xl p-4 z-[60] border border-gray-200 dark:border-dark-border" role="dialog" aria-label="Install MediDocs">
             <div className="flex items-start gap-3">
               <img src="/medidocs-icon.svg" alt="MediDocs app icon" className="w-12 h-12 rounded-xl flex-shrink-0" />
               <div className="min-w-0">
@@ -335,7 +337,7 @@ function AppContent() {
         {!isStandalone && !installPromptSeen && !pwaInstallPrompt && !showInstallHelp && (
           <button
             onClick={() => setShowInstallHelp(true)}
-            className="fixed bottom-4 left-4 z-40 px-3 py-2 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg shadow-lg text-xs font-semibold text-gray-700 dark:text-dark-text"
+            className="fixed top-4 left-1/2 -translate-x-1/2 z-40 px-3 py-2 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg shadow-lg text-xs font-semibold text-gray-700 dark:text-dark-text"
             aria-label="Show instructions to install MediDocs"
           >
             Install MediDocs
