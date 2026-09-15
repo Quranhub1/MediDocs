@@ -1,249 +1,41 @@
 import React, { useState, useEffect } from 'react';
-import { useTheme } from '../context/ThemeContext';
 import ThemeToggle from '../components/ThemeToggle';
 
-const Header = ({ 
-  user, 
-  onLoginClick, 
-  onRegisterClick, 
-  onLogoutClick, 
-  onMenuClick, 
-  onAISearch,
-  currentView,
-  onViewChange 
-}) => {
-  const { theme, toggleTheme } = useTheme();
+const Header = ({ user, onLoginClick, onRegisterClick, onLogoutClick, onMenuClick, onAISearch, currentView, onViewChange }) => {
   const [aiSearchQuery, setAiSearchQuery] = useState('');
   const [scrolled, setScrolled] = useState(false);
-
-  // Admin check
   const ADMIN_PHONE = '256749846848';
   const ADMIN_EMAIL = 'kaigwaakram123@gmail.com';
-  const isAdmin = user?.phone === ADMIN_PHONE || 
-    (user?.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
+  const isAdmin = user?.phone === ADMIN_PHONE || (user?.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const handleAiSearch = (e) => {
-    e.preventDefault();
-    if (aiSearchQuery.trim()) {
-      onAISearch(aiSearchQuery);
-    }
-  };
-
+  useEffect(() => { const handleScroll = () => setScrolled(window.scrollY > 20); window.addEventListener('scroll', handleScroll); return () => window.removeEventListener('scroll', handleScroll); }, []);
+  const handleAiSearch = (e) => { e.preventDefault(); if (aiSearchQuery.trim()) onAISearch(aiSearchQuery); };
   const menuItems = [
-    { id: 'home', label: 'Home', section: 'hero' },
-    { id: 'courses', label: 'Courses', section: 'courses' },
-    { id: 'about', label: 'About', section: 'about' },
-    { id: 'contact', label: 'Contact', section: 'contact' },
+    { id: 'home', label: 'Home' }, { id: 'courses', label: 'Courses' }, { id: 'about', label: 'About' }, { id: 'contact', label: 'Contact' }
   ];
+  const allMenuItems = isAdmin ? [...menuItems, { id: 'admin', label: 'Admin' }] : menuItems;
+  const handleNavClick = (item) => { onViewChange(item.id); window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
-  const allMenuItems = isAdmin ? [...menuItems, { id: 'admin', label: 'Admin', section: 'admin' }] : menuItems;
-
-  const handleNavClick = (item) => {
-    onViewChange(item.id);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  if (!user) {
-    return (
-      <header 
-        className={`sticky top-0 z-50 transition-all duration-300 ${
-          scrolled ? 'bg-white dark:bg-dark-card shadow-lg' : 'bg-white dark:bg-dark-card'
-        }`}
-      >
-        <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-1 px-4">
-          <div className="max-w-7xl mx-auto flex flex-wrap justify-center gap-x-4 gap-y-1 items-center text-xs">
-            <span className="flex items-center gap-1">📞 +256 749 846 848</span>
-            <span className="flex items-center gap-1">📧 kaigwaakram123@gmail.com</span>
-          </div>
-        </div>
-        
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <button 
-                id="menu-button"
-                className="lg:hidden p-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-gray-700 text-gray-600 dark:text-dark-muted hover:text-emerald-600 transition-all duration-200"
-                onClick={onMenuClick}
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7"></path>
-                </svg>
-              </button>
-              
-              <button 
-                id="home-button"
-                onClick={() => handleNavClick({ id: 'home' })}
-                className="flex items-center gap-2 hover:scale-105 transition-transform duration-200"
-              >
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m2 0a2 2 0 110 4 2 2 0 010-4zM3 6h18a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z"></path>
-                  </svg>
-                </div>
-                <span className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-teal-700 bg-clip-text text-transparent hidden sm:block">
-                  MediDocs
-                </span>
-              </button>
-            </div>
-
-            <nav className="hidden lg:flex items-center space-x-2">
-              {allMenuItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => handleNavClick(item)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
-                    currentView === item.id
-                      ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
-                      : 'text-gray-600 dark:text-dark-muted hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  <span>{item.label}</span>
-                </button>
-              ))}
-            </nav>
-
-            <div className="flex items-center space-x-3">
-              <ThemeToggle />
-              
-              <div className="hidden md:block relative">
-                <form onSubmit={handleAiSearch} className="relative">
-                  <input
-                    type="text"
-                    id="ai-search-input"
-                    placeholder="Ask AI..."
-                    value={aiSearchQuery}
-                    onChange={(e) => setAiSearchQuery(e.target.value)}
-                    className="w-40 lg:w-48 px-4 py-2 pl-10 text-sm border-2 border-gray-200 dark:border-dark-border rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-dark-card text-gray-900 dark:text-dark-text"
-                  />
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                    </svg>
-                  </div>
-                </form>
-              </div>
-
-              <button 
-                id="login-button"
-                onClick={onLoginClick}
-                className="px-4 py-2 text-emerald-600 dark:text-emerald-400 font-medium hover:bg-emerald-50 dark:hover:bg-gray-700 rounded-lg transition-all duration-200"
-              >
-                Login
-              </button>
-              <button 
-                id="register-button"
-                onClick={onRegisterClick}
-                className="hidden sm:inline-flex px-5 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
-              >
-                Get Started
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="md:hidden px-4 pb-3">
-          <form onSubmit={handleAiSearch} className="relative">
-            <input
-              type="text"
-              placeholder="Ask AI about your studies..."
-              value={aiSearchQuery}
-              onChange={(e) => setAiSearchQuery(e.target.value)}
-              className="w-full px-4 py-2 pl-10 text-sm border border-gray-200 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-dark-card text-gray-900 dark:text-dark-text"
-            />
-            <div className="absolute left-3 top-1/2 -translate-y-1/2">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-              </svg>
-            </div>
-          </form>
-        </div>
-      </header>
-    );
-  }
+  if (!user) return (
+    <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white dark:bg-dark-card shadow-lg' : 'bg-white dark:bg-dark-card'}`}>
+      <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-1 px-4"><div className="max-w-7xl mx-auto flex flex-wrap justify-center gap-x-4 gap-y-1 items-center text-xs"><span>📞 +256 749 846 848</span><span>📧 kaigwaakram123@gmail.com</span></div></div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"><div className="flex justify-between items-center h-16"><div className="flex items-center space-x-4">
+        <button id="menu-button" className="lg:hidden p-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-gray-700 text-gray-600 dark:text-dark-muted hover:text-emerald-600 transition-all duration-200" onClick={onMenuClick} aria-label="Open menu"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7" /></svg></button>
+        <button id="home-button" onClick={() => handleNavClick({ id: 'home' })} className="flex items-center gap-2 hover:scale-105 transition-transform duration-200"><div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg"><svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m2 0a2 2 0 110 4 2 2 0 010-4zM3 6h18a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z" /></svg></div><span className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-teal-700 bg-clip-text text-transparent hidden sm:block">MediDocs</span></button>
+      </div><nav className="hidden lg:flex items-center space-x-2">{allMenuItems.map((item) => <button key={item.id} onClick={() => handleNavClick(item)} className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${currentView === item.id ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'text-gray-600 dark:text-dark-muted hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-gray-700'}`}>{item.label}</button>)}</nav>
+      <div className="flex items-center space-x-3"><ThemeToggle /><div className="hidden md:block relative"><form onSubmit={handleAiSearch} className="relative"><input type="text" id="ai-search-input" placeholder="Ask AI..." value={aiSearchQuery} onChange={(e) => setAiSearchQuery(e.target.value)} className="w-40 lg:w-48 px-4 py-2 pl-10 text-sm border-2 border-gray-200 dark:border-dark-border rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-dark-card text-gray-900 dark:text-dark-text" /><div className="absolute left-3 top-1/2 -translate-y-1/2"><svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 1114 0 7 7 0 01-14 0z" /></svg></div></form></div><button id="login-button" onClick={onLoginClick} className="px-4 py-2 text-emerald-600 dark:text-emerald-400 font-medium hover:bg-emerald-50 dark:hover:bg-gray-700 rounded-lg">Login</button><button id="register-button" onClick={onRegisterClick} className="hidden sm:inline-flex px-5 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all">Get Started</button></div></div></div>
+      <div className="md:hidden px-4 pb-3"><form onSubmit={handleAiSearch} className="relative"><input type="text" placeholder="Ask AI about your studies..." value={aiSearchQuery} onChange={(e) => setAiSearchQuery(e.target.value)} className="w-full px-4 py-2 pl-10 text-sm border border-gray-200 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-dark-card text-gray-900 dark:text-dark-text" /></form></div>
+    </header>
+  );
 
   return (
     <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white dark:bg-dark-card shadow-lg' : 'bg-white dark:bg-dark-card'}`}>
-      <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-1 px-4">
-        <div className="max-w-7xl mx-auto flex flex-wrap justify-center gap-x-4 gap-y-1 items-center text-xs">
-          <span className="flex items-center gap-1">📞 +256 749 846 848</span>
-          <span className="flex items-center gap-1">📧 kaigwaakram123@gmail.com</span>
-        </div>
-      </div>
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <div className="flex items-center space-x-4">
-            <button 
-              id="menu-button"
-              className="lg:hidden p-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-gray-700 text-gray-600 dark:text-dark-muted hover:text-emerald-600 transition-all duration-200"
-              onClick={onMenuClick}
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7"></path>
-              </svg>
-            </button>
-            
-            <button 
-              id="home-button"
-              onClick={() => handleNavClick({ id: 'home' })}
-              className="flex items-center gap-2 hover:scale-105 transition-transform duration-200"
-            >
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m2 0a2 2 0 110 4 2 2 0 010-4zM3 6h18a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z"></path>
-                </svg>
-              </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-teal-700 bg-clip-text text-transparent hidden sm:block">
-                MediDocs
-              </span>
-            </button>
-          </div>
-
-          <nav className="hidden lg:flex items-center space-x-2">
-            {allMenuItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => handleNavClick(item)}
-                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 ${
-                  currentView === item.id
-                    ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
-                    : 'text-gray-600 dark:text-dark-muted hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-gray-700'
-                }`}
-              >
-                <span>{item.label}</span>
-              </button>
-            ))}
-          </nav>
-
-          <div className="flex items-center space-x-4">
-            <ThemeToggle />
-            
-            <div className="hidden md:flex items-center space-x-2 bg-emerald-50 dark:bg-gray-700 px-3 py-1.5 rounded-full">
-              <img 
-                src="https://i.imgur.com/kkopgnq.png" 
-                alt="User" 
-                className="w-8 h-8 rounded-full border-2 border-emerald-200"
-              />
-              <span className="text-sm font-medium text-gray-700 dark:text-dark-text">{user.email?.split('@')[0]}</span>
-            </div>
-            <button 
-              id="logout-button"
-              onClick={onLogoutClick}
-              className="px-4 py-2 text-red-600 dark:text-red-400 font-medium hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all duration-200"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      </div>
+      <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-1 px-4"><div className="max-w-7xl mx-auto flex flex-wrap justify-center gap-x-4 gap-y-1 items-center text-xs"><span>📞 +256 749 846 848</span><span>📧 kaigwaakram123@gmail.com</span></div></div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"><div className="flex justify-between items-center h-16"><div className="flex items-center space-x-4">
+        <button id="menu-button" className="lg:hidden p-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-gray-700 text-gray-600 dark:text-dark-muted hover:text-emerald-600 transition-all duration-200" onClick={onMenuClick} aria-label="Open menu"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7" /></svg></button>
+        <button id="home-button" onClick={() => handleNavClick({ id: 'home' })} className="flex items-center gap-2 hover:scale-105 transition-transform duration-200"><div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg"><svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m2 0a2 2 0 110 4 2 2 0 010-4zM3 6h18a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z" /></svg></div><span className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-teal-700 bg-clip-text text-transparent hidden sm:block">MediDocs</span></button>
+      </div><nav className="hidden lg:flex items-center space-x-2">{allMenuItems.map((item) => <button key={item.id} onClick={() => handleNavClick(item)} className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${currentView === item.id ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'text-gray-600 dark:text-dark-muted hover:text-emerald-600 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>{item.label}</button>)}</nav>
+      <div className="flex items-center space-x-3"><ThemeToggle /><button onClick={() => handleNavClick({ id: 'profile' })} className={`hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl transition-all ${currentView === 'profile' ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-emerald-50 dark:bg-gray-700 hover:bg-emerald-100 dark:hover:bg-gray-600'}`} aria-label="Open my profile"><span className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center font-bold text-sm">{(user.displayName || user.email || 'U').charAt(0).toUpperCase()}</span><span className="text-sm font-medium text-gray-700 dark:text-dark-text max-w-[120px] truncate">{user.displayName || user.email?.split('@')[0]}</span></button><button id="logout-button" onClick={onLogoutClick} className="px-4 py-2 text-red-600 dark:text-red-400 font-medium hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">Logout</button></div></div></div>
     </header>
   );
 };
