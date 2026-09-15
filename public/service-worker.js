@@ -1,4 +1,4 @@
-const CACHE_NAME = 'medidocs-v2';
+const CACHE_NAME = 'medidocs-v3';
 const APP_SHELL = ['/', '/index.html', '/manifest.json', '/favicon.ico', '/medidocs-icon.svg'];
 
 self.addEventListener('install', (event) => {
@@ -27,7 +27,6 @@ self.addEventListener('fetch', (event) => {
 
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
 
-  // Keep navigation fresh so new MediDocs deployments are picked up quickly.
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
@@ -43,8 +42,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache static same-origin assets after the first successful network load.
-  // Firebase and other cross-origin services are intentionally left alone.
   const isStaticAsset = /\.(?:js|css|svg|png|jpg|jpeg|webp|ico|woff2?)$/i.test(url.pathname);
   if (!isStaticAsset && url.pathname !== '/manifest.json') return;
 
