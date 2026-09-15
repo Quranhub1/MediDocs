@@ -8,6 +8,7 @@ import AdminDashboard from './components/AdminDashboard';
 import SubscriptionManager from './components/SubscriptionManager';
 import AdminUserRegistry from './components/AdminUserRegistry';
 import UserSubscriptionPanel from './components/UserSubscriptionPanel';
+import UserProfile from './components/UserProfile';
 import LoginModal from './components/LoginModal';
 import RegisterModal from './components/RegisterModal';
 import PaymentModal from './components/PaymentModal';
@@ -55,7 +56,7 @@ function AppContent() {
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
-  const handleLogout = async () => { await logout(); setShowLoginModal(false); setShowRegisterModal(false); };
+  const handleLogout = async () => { await logout(); setShowLoginModal(false); setShowRegisterModal(false); setCurrentView('home'); try { localStorage.setItem('medidocs_current_view', 'home'); } catch {} };
   const handleAISearch = () => setShowAIChatModal(true);
   const handleViewChange = (viewId) => { setCurrentView(viewId); try { localStorage.setItem('medidocs_current_view', viewId); } catch {} window.scrollTo({ top: 0, behavior: 'smooth' }); closeSidebar(); };
   const openRenewal = (plan = null) => { setSelectedPaymentPlan(plan); setShowPaymentModal(true); };
@@ -73,7 +74,7 @@ function AppContent() {
           <main id="main-content" tabIndex="-1" className="flex-grow md-page-transition">
             <Sidebar isOpen={isSidebarOpen} onClose={closeSidebar} onHomeClick={() => handleViewChange('home')} onCoursesClick={() => handleViewChange('courses')} onAboutClick={() => handleViewChange('about')} onContactClick={() => handleViewChange('contact')} onPrivacyClick={() => handleViewChange('privacy')} onAdminClick={() => handleViewChange('admin')} />
             <div className="w-full">
-              {isAdminView ? <><AdminDashboard user={currentUser} onViewChange={handleViewChange} /><AdminUserRegistry /><SubscriptionManager /></> : <>
+              {isAdminView ? <><AdminDashboard user={currentUser} onViewChange={handleViewChange} /><AdminUserRegistry /><SubscriptionManager /></> : currentView === 'profile' && currentUser ? <UserProfile onViewChange={handleViewChange} onLogout={handleLogout} /> : <>
                 {currentUser && currentView === 'home' && <DashboardEnhancements userProfile={userProfile} />}
                 <MainContent view={currentView} user={currentUser} userProfile={userProfile} setView={handleViewChange} onLoginClick={() => setShowLoginModal(true)} onRegisterClick={() => setShowRegisterModal(true)} onContactClick={() => setShowContactModal(true)} onAIChatClick={() => setShowAIChatModal(true)} />
                 {currentUser && currentView === 'home' && <UserSubscriptionPanel user={currentUser} userProfile={userProfile} onRenew={openRenewal} />}
