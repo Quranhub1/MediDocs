@@ -19,6 +19,7 @@ import { useStudy } from '../context/StudyContext';
 import { useBookmarks } from '../context/BookmarkContext';
 import { useToast } from '../context/ToastContext';
 import { fetchCourses, fetchSemesters, fetchCourseUnits, fetchDocuments, fetchAllDocuments } from '../services/FirestoreService';
+import { getDocumentUrl, downloadDocument } from '../utils/documentActions';
 
 const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, onContactClick, onAIChatClick, setView }) => {
   const { theme } = useTheme();
@@ -110,25 +111,13 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   };
 
   const handleDownload = async (doc) => {
-    if (!doc.filePath) {
+    const url = getDocumentUrl(doc);
+    if (!url) {
       addToast('No download link available for this document', 'error');
       return;
     }
-    try {
-      const response = await fetch(doc.filePath);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${doc.title || 'document'}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      addToast('Download started!', 'success');
-    } catch (error) {
-      window.open(doc.filePath, '_blank');
-    }
+    console.info('[MainContent] download', { id: doc?.id || null, title: doc?.title || null, url });
+    await downloadDocument(doc);
   };
 
   const goBack = () => {
