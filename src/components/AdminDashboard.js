@@ -547,8 +547,9 @@ const AdminDashboard = ({ user, onViewChange }) => {
     try {
       const docPath = editingDocument.fullPath || `RESOURCES_STUDYPEDIA/${editDocForm.courseId}/semesters/${editDocForm.semesterId}/courseunits/${editDocForm.unitId}/documents/${editingDocument.id}`;
       await updateDoc(docRef(db, docPath), {
-        title: editDocForm.title,
-        filePath: editDocForm.filePath,
+        title: editDocForm.title.trim(),
+        fileUrl: editDocForm.filePath.trim(),
+        filePath: editDocForm.filePath.trim(),
         thumbnailUrl: editDocForm.thumbnailUrl || '',
         description: editDocForm.description || '',
         time: editDocForm.time,
@@ -1504,7 +1505,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
                                 </td>
                                 <td className="px-6 py-4">
                                   <div className="flex gap-2">
-                                    <button onClick={() => { setEditingDocument(doc); setEditDocForm({ title: doc.title || '', filePath: doc.filePath || '', thumbnailUrl: doc.thumbnailUrl || '', description: doc.description || '', time: doc.time || 'normal', status: doc.status || 'free', courseId: doc.courseId || '', semesterId: doc.semesterId || '', unitId: doc.unitId || '' }); }} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors">Edit</button>
+                                    <button onClick={() => { setEditingDocument(doc); setEditDocForm({ title: doc.title || '', filePath: doc.fileUrl || doc.filePath || doc.url || '', description: doc.description || '', time: doc.time || 'normal', status: doc.status || 'free', courseId: doc.courseId || '', semesterId: doc.semesterId || '', unitId: doc.unitId || '' }); }} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors">Edit</button>
                                     <button onClick={() => deleteDocument(doc)} className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors">Delete</button>
                                   </div>
                                 </td>
