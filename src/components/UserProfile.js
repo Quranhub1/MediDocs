@@ -82,6 +82,7 @@ const UserProfile = ({ onViewChange, onLogout, onRenew }) => {
 
     const cloudName = process.env.REACT_APP_CLOUDINARY_CLOUD_NAME;
     const uploadPreset = process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET;
+    const uploadPresetFingerprint = Array.from(uploadPreset || '').reduce((sum, char, index) => sum + ((index + 1) * char.charCodeAt(0)), 0);
     const reportCloudinaryDebug = (details = {}) => {
       fetch('/api/debug/cloudinary', {
         method: 'POST',
@@ -90,6 +91,8 @@ const UserProfile = ({ onViewChange, onLogout, onRenew }) => {
           stage: details.stage || 'unknown',
           cloudNameConfigured: Boolean(cloudName),
           uploadPresetConfigured: Boolean(uploadPreset),
+          uploadPresetLength: uploadPreset?.length || 0,
+          uploadPresetFingerprint,
           fileType: file.type,
           fileSize: file.size,
           httpStatus: details.httpStatus || 0,
@@ -117,6 +120,8 @@ const UserProfile = ({ onViewChange, onLogout, onRenew }) => {
       console.info('[CLOUDINARY DEBUG] Starting profile photo upload', {
         cloudNameConfigured: Boolean(cloudName),
         uploadPresetConfigured: Boolean(uploadPreset),
+        uploadPresetLength: uploadPreset.length,
+        uploadPresetFingerprint,
         fileType: file.type,
         fileSize: file.size
       });
