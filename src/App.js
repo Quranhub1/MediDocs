@@ -16,7 +16,7 @@ import ContactModal from './components/ContactModal';
 import AIStudyAssistant from './components/AIStudyAssistant';
 import { AccessibilityControls, default as DashboardEnhancements } from './components/UIEnhancements';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
 import { StudyProvider } from './context/StudyContext';
 import { BookmarkProvider } from './context/BookmarkContext';
@@ -27,7 +27,6 @@ const PWA_INSTALLED_KEY = 'medidocs_pwa_installed_v1';
 
 function AppContent() {
   const { currentUser, userProfile, isBanned, logout, refreshUserProfile } = useAuth();
-  const { theme } = useTheme();
   const { checkLoginAnomaly } = useAnomaly();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentView, setCurrentView] = useState(() => { try { return localStorage.getItem('medidocs_current_view') || 'home'; } catch { return 'home'; } });
