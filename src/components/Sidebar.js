@@ -8,36 +8,11 @@ const Sidebar = ({ isOpen, onClose, onHomeClick, onCoursesClick, onAboutClick, o
   const initials = displayName.trim().charAt(0).toUpperCase() || 'U';
 
   const menuItems = [
-    {
-      id: 'home',
-      label: 'Home',
-      icon: 'M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10',
-      action: onHomeClick
-    },
-    {
-      id: 'courses',
-      label: 'Courses',
-      icon: 'M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5A2.5 2.5 0 016.5 22H20V2H6.5A2.5 2.5 0 004 4.5v15zM8 6h8M8 10h8',
-      action: onCoursesClick
-    },
-    {
-      id: 'about',
-      label: 'About Us',
-      icon: 'M13 16h-1v-4h-1m1-4h.01M12 3a9 9 0 100 18 9 9 0 000-18z',
-      action: onAboutClick
-    },
-    {
-      id: 'contact',
-      label: 'Contact',
-      icon: 'M3 8l9 6 9-6M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z',
-      action: onContactClick
-    },
-    {
-      id: 'privacy',
-      label: 'Privacy Policy',
-      icon: 'M12 3l8 4v5c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V7l8-4zm-3 9l2 2 4-4',
-      action: onPrivacyClick
-    }
+    { id: 'home', label: 'Home', icon: 'M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10', action: onHomeClick },
+    { id: 'courses', label: 'Courses', icon: 'M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5A2.5 2.5 0 016.5 22H20V2H6.5A2.5 2.5 0 004 4.5v15zM8 6h8M8 10h8', action: onCoursesClick },
+    { id: 'about', label: 'About Us', icon: 'M13 16h-1v-4h-1m1-4h.01M12 3a9 9 0 100 18 9 9 0 000-18z', action: onAboutClick },
+    { id: 'contact', label: 'Contact', icon: 'M3 8l9 6 9-6M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z', action: onContactClick },
+    { id: 'privacy', label: 'Privacy Policy', icon: 'M12 3l8 4v5c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V7l8-4zm-3 9l2 2 4-4', action: onPrivacyClick }
   ];
 
   const allMenuItems = isAdmin
@@ -78,7 +53,7 @@ const Sidebar = ({ isOpen, onClose, onHomeClick, onCoursesClick, onAboutClick, o
             >
               <span className={`w-9 h-9 shrink-0 rounded-lg flex items-center justify-center transition-all duration-200 ${item.id === 'admin' ? 'bg-emerald-200 text-emerald-800' : 'bg-emerald-100 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white group-hover:scale-105'}`}>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" strokeLinejoin="round" d={item.icon} />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={item.icon} />
                 </svg>
               </span>
               <span className="truncate">{item.label}</span>
