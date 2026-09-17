@@ -17,7 +17,7 @@ export const useStudy = () => {
 export const StudyProvider = ({ children }) => {
   const { user } = useAuth();
   const { addToast } = useToast();
-  const [streak, setStreak] = useState({ current: 0, longest: 0, lastStudyDate: null });
+  const [streak, setStreak] = useState({ current: 0, longest: 0, lastStudyDate: null, totalStudyTime: 0 });
   const [badges, setBadges] = useState([]);
   const [flashcards, setFlashcards] = useState([]);
   const [quizzes, setQuizzes] = useState([]);
@@ -29,7 +29,6 @@ export const StudyProvider = ({ children }) => {
       loadStreak();
       loadBadges();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const loadStreak = async () => {
@@ -42,8 +41,11 @@ export const StudyProvider = ({ children }) => {
         setStreak({
           current: data.currentStreak || 0,
           longest: data.longestStreak || 0,
-          lastStudyDate: data.lastStudyDate?.toDate?.() || data.lastStudyDate
+          lastStudyDate: data.lastStudyDate?.toDate?.() || data.lastStudyDate,
+          totalStudyTime: data.totalStudyTime || 0
         });
+      } else {
+        setStreak({ current: 0, longest: 0, lastStudyDate: null, totalStudyTime: 0 });
       }
     } catch (error) {
       console.error('Error loading streak:', error);
@@ -72,6 +74,7 @@ export const StudyProvider = ({ children }) => {
       
       let newStreak = streak.current;
       let newLongest = streak.longest;
+      let newTotalStudyTime = streak.totalStudyTime || 0;
       
       if (docSnap.exists()) {
         const data = docSnap.data();
@@ -86,22 +89,24 @@ export const StudyProvider = ({ children }) => {
           newStreak = 1;
         }
         newLongest = Math.max(newLongest, newStreak);
+        newTotalStudyTime = (data.totalStudyTime || 0) + durationMinutes;
         
         await updateDoc(docRef, {
           currentStreak: newStreak,
           longestStreak: newLongest,
           lastStudyDate: serverTimestamp(),
-          totalStudyTime: (data.totalStudyTime || 0) + durationMinutes,
+          totalStudyTime: newTotalStudyTime,
           updatedAt: serverTimestamp()
         });
       } else {
         newStreak = 1;
         newLongest = 1;
+        newTotalStudyTime = durationMinutes;
         await setDoc(docRef, {
           currentStreak: 1,
           longestStreak: 1,
           lastStudyDate: serverTimestamp(),
-          totalStudyTime: durationMinutes,
+          totalStudyTime: newTotalStudyTime,
           createdAt: serverTimestamp()
         });
       }
@@ -109,7 +114,8 @@ export const StudyProvider = ({ children }) => {
       setStreak({
         current: newStreak,
         longest: newLongest,
-        lastStudyDate: new Date()
+        lastStudyDate: new Date(),
+        totalStudyTime: newTotalStudyTime
       });
 
       await checkAndAwardBadges(newStreak, durationMinutes);
@@ -206,9 +212,7 @@ export const StudyProvider = ({ children }) => {
         nextReview: serverTimestamp()
       });
 
-      setFlashcards(prev => prev.map(f => 
-        f.id === flashcardId ? { ...f, interval, repetitions, easeFactor, nextReview } : f
-      ));
+      setFlashcards(prev => prev.map(f => f.id === flashcardId ? { ...f, interval, repetitions, easeFactor, nextReview } : f));
     } catch (error) {
       console.error('Error updating flashcard:', error);
     }
@@ -217,14 +221,7 @@ export const StudyProvider = ({ children }) => {
   const createQuiz = async (questions, courseId, unitId) => {
     if (!user) return;
     try {
-      const quiz = {
-        questions,
-        courseId,
-        unitId,
-        createdAt: serverTimestamp(),
-        completed: false,
-        score: 0
-      };
+      const quiz = { questions, courseId, unitId, createdAt: serverTimestamp(), completed: false, score: 0 };
       const docRef = await setDoc(doc(collection(db, 'users', user.uid, 'quizzes')), quiz);
       setQuizzes(prev => [...prev, { id: docRef.id, ...quiz }]);
       return docRef;
@@ -236,15 +233,8 @@ export const StudyProvider = ({ children }) => {
   const submitQuizResult = async (quizId, score, totalQuestions) => {
     if (!user) return;
     try {
-      await updateDoc(doc(db, 'users', user.uid, 'quizzes', quizId), {
-        completed: true,
-        score,
-        totalQuestions,
-        completedAt: serverTimestamp()
-      });
-      setQuizzes(prev => prev.map(q => 
-        q.id === quizId ? { ...q, completed: true, score, totalQuestions } : q
-      ));
+      await updateDoc(doc(db, 'users', user.uid, 'quizzes', quizId), { completed: true, score, totalQuestions, completedAt: serverTimestamp() });
+      setQuizzes(prev => prev.map(q => q.id === quizId ? { ...q, completed: true, score, totalQuestions } : q));
       addToast(`Quiz completed! Score: ${score}/${totalQuestions}`, 'success');
     } catch (error) {
       console.error('Error submitting quiz:', error);
@@ -254,14 +244,7 @@ export const StudyProvider = ({ children }) => {
   const addStudyNote = async (content, courseId, unitId, documentId) => {
     if (!user) return;
     try {
-      const note = {
-        content,
-        courseId,
-        unitId,
-        documentId,
-        createdAt: serverTimestamp(),
-        shared: false
-      };
+      const note = { content, courseId, unitId, documentId, createdAt: serverTimestamp(), shared: false };
       const docRef = await setDoc(doc(collection(db, 'users', user.uid, 'studyNotes')), note);
       setStudyNotes(prev => [...prev, { id: docRef.id, ...note }]);
       addToast('Note saved!', 'success');
@@ -275,42 +258,17 @@ export const StudyProvider = ({ children }) => {
   const shareStudyNote = async (noteId) => {
     if (!user) return;
     try {
-      await updateDoc(doc(db, 'users', user.uid, 'studyNotes', noteId), {
-        shared: true,
-        sharedAt: serverTimestamp()
-      });
-      setStudyNotes(prev => prev.map(n => 
-        n.id === noteId ? { ...n, shared: true } : n
-      ));
+      await updateDoc(doc(db, 'users', user.uid, 'studyNotes', noteId), { shared: true, sharedAt: serverTimestamp() });
+      setStudyNotes(prev => prev.map(n => n.id === noteId ? { ...n, shared: true } : n));
       addToast('Note shared with classmates!', 'success');
     } catch (error) {
       console.error('Error sharing note:', error);
     }
   };
 
-  const value = {
-    streak,
-    badges,
-    flashcards,
-    quizzes,
-    studyNotes,
-    loading,
-    recordStudySession,
-    createFlashcard,
-    updateFlashcardReview,
-    createQuiz,
-    submitQuizResult,
-    addStudyNote,
-    shareStudyNote,
-    loadStreak,
-    loadBadges
-  };
+  const value = { streak, badges, flashcards, quizzes, studyNotes, loading, recordStudySession, createFlashcard, updateFlashcardReview, createQuiz, submitQuizResult, addStudyNote, shareStudyNote, loadStreak, loadBadges };
 
-  return (
-    <StudyContext.Provider value={value}>
-      {children}
-    </StudyContext.Provider>
-  );
+  return <StudyContext.Provider value={value}>{children}</StudyContext.Provider>;
 };
 
 export default StudyContext;
