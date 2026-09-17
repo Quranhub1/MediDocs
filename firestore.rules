@@ -33,6 +33,10 @@ service cloud.firestore {
       allow update: if request.auth != null && request.auth.uid == userId 
                    && request.resource.data.keys().hasAll(['name', 'phone']) 
                    && request.resource.data.size() <= 5;
+      // Allow a signed-in user to change only their own Cloudinary profile photo URL.
+      // This does not change the existing profile-field update rule above.
+      allow update: if request.auth != null && request.auth.uid == userId
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['photoURL', 'photoUpdatedAt']);
       allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
       allow create: if request.auth != null;
     }
