@@ -33,8 +33,6 @@ button, a, input, select, textarea { touch-action: manipulation; }
 .low-bandwidth *, .low-bandwidth *::before, .low-bandwidth *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; background-image: none !important; }
 .dark input, .dark select, .dark textarea { color-scheme: dark; }
 .dark ::selection { background: rgba(16,185,129,.35); }
-
-/* Shared layout rhythm */
 .md-section { position: relative; }
 .md-section-heading { max-width: 760px; margin-inline: auto; }
 .md-eyebrow { display: inline-flex; align-items: center; gap: .45rem; padding: .35rem .7rem; border-radius: 999px; background: rgba(16,185,129,.09); color: #047857; font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
@@ -43,20 +41,23 @@ button, a, input, select, textarea { touch-action: manipulation; }
 .md-course-card:focus-within { outline: 3px solid rgba(16,185,129,.25); outline-offset: 2px; }
 .md-empty-state { min-height: 190px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 
-/* Keep floating controls clear of the mobile navigation and safe-area inset. */
+/* Floating controls */
 .md-ai-fab { bottom: calc(5.5rem + env(safe-area-inset-bottom)); right: 1rem; }
 .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+/* Keep the AI assistant and accessibility control in separate lanes. */
+.md-accessibility-fab { bottom: calc(10rem + env(safe-area-inset-bottom)); right: 1rem; }
 
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
 .force-reduced-motion *, .force-reduced-motion *::before, .force-reduced-motion *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 
 @media (max-width: 767px) {
-  /* One-column course cards are easier to scan and tap on narrow Android screens. */
   .md-course-grid { grid-template-columns: minmax(0, 1fr) !important; }
   .md-course-card { min-height: 0; }
   .md-courses-section { padding-top: 2.25rem !important; padding-bottom: 2.5rem !important; }
   .md-section-heading { margin-bottom: 1.5rem !important; }
-  .md-ai-fab { right: .75rem; }
+  .md-ai-fab { right: .75rem; bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
+  .md-accessibility-fab { right: .75rem; bottom: calc(10.5rem + env(safe-area-inset-bottom)); }
   #sidebar { width: 85% !important; max-width: 300px !important; }
   #login-modal > div, #register-modal > div, #payment-modal > div, #contact-modal > div, #ai-chat-modal > div, #ai-response-modal > div { max-width: 95% !important; width: 95% !important; max-height: 90vh !important; margin: .5rem !important; overflow-y: auto !important; }
   #login-modal input, #register-modal input, #payment-modal input, #contact-modal input, #ai-chat-modal input { font-size: 1rem !important; min-height: 44px; }
@@ -72,7 +73,5 @@ button, a, input, select, textarea { touch-action: manipulation; }
   .text-6xl { font-size: 3rem !important; }
   .md-courses-section h2 { font-size: 1.65rem !important; }
 }
-@media (min-width: 768px) and (max-width: 1024px) {
-  .md-course-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-}
+@media (min-width: 768px) and (max-width: 1024px) { .md-course-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
 @media (min-width: 641px) and (max-width: 900px) { .md-dashboard-card { min-height: 120px; } }
