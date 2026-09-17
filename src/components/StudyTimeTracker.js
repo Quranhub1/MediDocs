@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { doc, setDoc, updateDoc, getDoc, increment, serverTimestamp } from 'firebase/firestore';
+import { doc, runTransaction } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 
@@ -22,17 +22,23 @@ const formatDuration = (seconds) => {
   };
 };
 
+const getStudyDay = (date) => {
+  if (!date) return null;
+  const value = date?.toDate?.() || (date instanceof Date ? date : new Date(date));
+  return Number.isNaN(value.getTime()) ? null : getDateKey(value);
+};
+
+const getPreviousDateKey = (date = new Date()) => {
+  const previous = new Date(date);
+  previous.setDate(previous.getDate() - 1);
+  return getDateKey(previous);
+};
+
 const StudyTimeTracker = () => {
   const { user } = useAuth();
   const lastTickRef = useRef(null);
   const pendingSecondsRef = useRef(0);
   const flushingRef = useRef(false);
-  const mountedRef = useRef(false);
-
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => { mountedRef.current = false; };
-  }, []);
 
   useEffect(() => {
     if (!user || !db) return undefined;
@@ -44,6 +50,7 @@ const StudyTimeTracker = () => {
 
     const flush = async (force = false) => {
       if (flushingRef.current || !user || !db) return;
+
       const now = Date.now();
       if (active && lastTickRef.current) {
         pendingSecondsRef.current += Math.max(0, (now - lastTickRef.current) / 1000);
@@ -56,43 +63,83 @@ const StudyTimeTracker = () => {
 
       pendingSecondsRef.current -= seconds;
       flushingRef.current = true;
+
       const studyRef = doc(db, 'userStudyData', user.uid);
       const dateKey = getDateKey();
       const duration = formatDuration(seconds);
+      const recordedAt = new Date();
+      const status = active ? 'active' : 'away';
 
       try {
-        const snapshot = await getDoc(studyRef);
-        const payload = {
-          totalStudySeconds: increment(seconds),
-          [`dailyStudySeconds.${dateKey}`]: increment(seconds),
-          lastStudyAt: serverTimestamp(),
-          studyStatus: active ? 'active' : 'away',
-          updatedAt: serverTimestamp()
-        };
+        let result = null;
 
-        if (snapshot.exists()) {
-          await updateDoc(studyRef, payload);
-        } else {
-          await setDoc(studyRef, {
-            totalStudySeconds: seconds,
-            [`dailyStudySeconds.${dateKey}`]: seconds,
-            currentStreak: 1,
-            longestStreak: 1,
-            lastStudyDate: serverTimestamp(),
-            lastStudyAt: serverTimestamp(),
-            studyStatus: active ? 'active' : 'away',
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
-          });
-        }
+        await runTransaction(db, async (transaction) => {
+          const snapshot = await transaction.get(studyRef);
+          const existing = snapshot.exists() ? snapshot.data() : {};
+          const previousStudyDate = getStudyDay(existing.lastStudyDate);
+          const today = dateKey;
+          const yesterday = getPreviousDateKey(recordedAt);
+
+          let currentStreak = Number(existing.currentStreak) || 0;
+          let longestStreak = Number(existing.longestStreak) || 0;
+
+          if (!previousStudyDate) {
+            currentStreak = 1;
+          } else if (previousStudyDate === today) {
+            currentStreak = Math.max(1, currentStreak);
+          } else if (previousStudyDate === yesterday) {
+            currentStreak += 1;
+          } else {
+            currentStreak = 1;
+          }
+
+          longestStreak = Math.max(longestStreak, currentStreak);
+
+          const existingTotalSeconds = Number(existing.totalStudySeconds) || Math.round((Number(existing.totalStudyTime) || 0) * 60);
+          const totalStudySeconds = existingTotalSeconds + seconds;
+          const existingDaily = existing.dailyStudySeconds?.[dateKey];
+          const dailyStudySeconds = (Number(existingDaily) || 0) + seconds;
+
+          const data = {
+            totalStudySeconds,
+            totalStudyTime: Math.floor(totalStudySeconds / 60),
+            [`dailyStudySeconds.${dateKey}`]: dailyStudySeconds,
+            currentStreak,
+            longestStreak,
+            lastStudyDate: recordedAt,
+            lastStudyAt: recordedAt,
+            studyStatus: status,
+            updatedAt: recordedAt
+          };
+
+          if (snapshot.exists()) {
+            transaction.update(studyRef, data);
+          } else {
+            transaction.set(studyRef, {
+              ...data,
+              createdAt: recordedAt
+            });
+          }
+
+          result = { currentStreak, longestStreak, totalStudySeconds, dailyStudySeconds };
+        });
 
         console.info('[STUDY TIME]', {
           uid: user.uid,
           recordedSeconds: seconds,
           recordedDuration: `${duration.hours}h ${duration.minutes}m ${duration.seconds}s`,
+          totalStudySeconds: result?.totalStudySeconds,
+          totalStudyDuration: result ? `${formatDuration(result.totalStudySeconds).hours}h ${formatDuration(result.totalStudySeconds).minutes}m ${formatDuration(result.totalStudySeconds).seconds}s` : undefined,
+          dailyStudySeconds: result?.dailyStudySeconds,
+          currentStreak: result?.currentStreak,
+          longestStreak: result?.longestStreak,
           dateKey,
-          status: active ? 'active' : 'away'
+          status
         });
+
+        window.dispatchEvent(new CustomEvent('medidocs:study-time-updated', {
+          detail: result
+        }));
       } catch (error) {
         pendingSecondsRef.current += seconds;
         console.error('[STUDY TIME] Failed to persist study time:', error);
@@ -108,9 +155,7 @@ const StudyTimeTracker = () => {
       }
       active = document.visibilityState === 'visible';
       lastTickRef.current = now;
-      if (!active) {
-        void flush(true);
-      }
+      if (!active) void flush(true);
     };
 
     const handleFocus = () => {
