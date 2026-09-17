@@ -3,12 +3,21 @@ import { sendPasswordResetEmail } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
+import { useStudy } from '../context/StudyContext';
 
 const formatDate = (value) => {
   if (!value) return 'Not recorded';
   const date = value?.toDate ? value.toDate() : new Date(value);
   if (Number.isNaN(date.getTime())) return 'Not recorded';
   return date.toLocaleDateString('en-UG', { year: 'numeric', month: 'long', day: 'numeric' });
+};
+
+const formatMinutes = (minutes = 0) => {
+  const total = Math.max(0, Number(minutes) || 0);
+  const hours = Math.floor(total / 60);
+  const mins = Math.round(total % 60);
+  if (!hours) return `${mins} min`;
+  return `${hours}h ${mins}m`;
 };
 
 const ProfileRow = ({ label, value, children }) => (
@@ -18,8 +27,14 @@ const ProfileRow = ({ label, value, children }) => (
   </div>
 );
 
+const ProgressBar = ({ value = 0 }) => {
+  const safeValue = Math.max(0, Math.min(100, Number(value) || 0));
+  return <div className="h-2.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden" role="progressbar" aria-valuenow={Math.round(safeValue)} aria-valuemin="0" aria-valuemax="100" aria-label="Course progress"><div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-700" style={{ width: `${safeValue}%` }} /></div>;
+};
+
 const UserProfile = ({ onViewChange, onLogout }) => {
   const { currentUser, userProfile, isAdmin, refreshUserProfile } = useAuth();
+  const { streak, badges } = useStudy();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(userProfile?.name || currentUser?.displayName || '');
   const [phone, setPhone] = useState(userProfile?.phone || currentUser?.phoneNumber || '');
@@ -31,6 +46,9 @@ const UserProfile = ({ onViewChange, onLogout }) => {
   const plan = effectiveAdmin ? 'lifetime' : (userProfile?.subscriptionPlan || userProfile?.subscription || 'free');
   const status = effectiveAdmin ? 'active' : (userProfile?.subscriptionStatus || (userProfile?.subscriptionApproved ? 'active' : 'inactive'));
   const expiry = effectiveAdmin ? null : userProfile?.subscriptionExpiry;
+  const progress = Math.max(0, Math.min(100, Number(userProfile?.courseProgress ?? userProfile?.progress ?? 0) || 0));
+  const completedCourses = Number(userProfile?.completedCourses ?? userProfile?.coursesCompleted ?? 0) || 0;
+  const completedUnits = Number(userProfile?.completedUnits ?? userProfile?.unitsCompleted ?? 0) || 0;
   const initials = useMemo(() => (name || currentUser?.email || 'U').trim().charAt(0).toUpperCase(), [name, currentUser?.email]);
 
   const saveProfile = async (event) => {
@@ -68,7 +86,7 @@ const UserProfile = ({ onViewChange, onLogout }) => {
           {effectiveAdmin && <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/30 px-3 py-1 text-xs font-bold text-amber-800 dark:text-amber-300">★ Administrator</span>}
         </div>
         <h1 id="profile-title" className="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-dark-text mt-1">Profile & Settings</h1>
-        <p className="text-gray-600 dark:text-dark-muted mt-2">Manage your MediDocs account, subscription and security settings.</p>
+        <p className="text-gray-600 dark:text-dark-muted mt-2">Manage your account, learning progress, subscription and security in one place.</p>
       </div>
 
       {message && <div role="status" className={`mb-6 rounded-xl p-4 text-sm font-medium ${message.type === 'success' ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300' : 'bg-red-50 text-red-800 dark:bg-red-900/20 dark:text-red-300'}`}>{message.text}</div>}
@@ -92,6 +110,19 @@ const UserProfile = ({ onViewChange, onLogout }) => {
             )}
           </div>
 
+          <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm border border-gray-100 dark:border-dark-border p-5 sm:p-6" aria-labelledby="learning-status-title">
+            <div className="flex items-start justify-between gap-3 mb-5"><div><h2 id="learning-status-title" className="text-xl font-bold text-gray-900 dark:text-dark-text">Learning progress & status</h2><p className="text-sm text-gray-500 dark:text-dark-muted mt-1">Your personal study tracker lives here, keeping the dashboard focused on learning.</p></div><span className="text-2xl" aria-hidden="true">📈</span></div>
+            <div className="mb-5"><div className="flex items-center justify-between gap-3 mb-2"><span className="text-sm font-semibold text-gray-700 dark:text-dark-text">Course progress</span><strong className="text-sm text-emerald-700 dark:text-emerald-400">{Math.round(progress)}%</strong></div><ProgressBar value={progress} /></div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="rounded-xl bg-gray-50 dark:bg-dark-bg p-4"><p className="text-xs text-gray-500 dark:text-dark-muted">Current streak</p><p className="text-xl font-extrabold text-gray-900 dark:text-dark-text mt-1">{streak.current} days</p></div>
+              <div className="rounded-xl bg-gray-50 dark:bg-dark-bg p-4"><p className="text-xs text-gray-500 dark:text-dark-muted">Longest streak</p><p className="text-xl font-extrabold text-gray-900 dark:text-dark-text mt-1">{streak.longest} days</p></div>
+              <div className="rounded-xl bg-gray-50 dark:bg-dark-bg p-4"><p className="text-xs text-gray-500 dark:text-dark-muted">Study time</p><p className="text-xl font-extrabold text-gray-900 dark:text-dark-text mt-1">{formatMinutes(userProfile?.totalStudyTime)}</p></div>
+              <div className="rounded-xl bg-gray-50 dark:bg-dark-bg p-4"><p className="text-xs text-gray-500 dark:text-dark-muted">Badges earned</p><p className="text-xl font-extrabold text-gray-900 dark:text-dark-text mt-1">{badges.length}</p></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mt-3"><div className="rounded-xl border border-gray-100 dark:border-dark-border p-4"><p className="text-xs text-gray-500 dark:text-dark-muted">Courses completed</p><p className="text-lg font-bold text-gray-900 dark:text-dark-text mt-1">{completedCourses}</p></div><div className="rounded-xl border border-gray-100 dark:border-dark-border p-4"><p className="text-xs text-gray-500 dark:text-dark-muted">Units completed</p><p className="text-lg font-bold text-gray-900 dark:text-dark-text mt-1">{completedUnits}</p></div></div>
+            <p className="text-xs text-gray-500 dark:text-dark-muted mt-4">Last study activity: {formatDate(streak.lastStudyDate)}</p>
+          </div>
+
           <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm border border-gray-100 dark:border-dark-border p-5 sm:p-6">
             <div className="flex items-center justify-between gap-3 mb-4"><div><h2 className="text-xl font-bold text-gray-900 dark:text-dark-text">Security</h2><p className="text-sm text-gray-500 dark:text-dark-muted mt-1">Your password is never displayed here. Humans have invented enough ways to leak secrets.</p></div><span className="text-2xl" aria-hidden="true">🔐</span></div>
             <ProfileRow label="Password" value="••••••••••••" /><ProfileRow label="Email verification" value={currentUser.emailVerified ? 'Verified' : 'Not verified'} />
@@ -101,9 +132,9 @@ const UserProfile = ({ onViewChange, onLogout }) => {
 
         <aside className="space-y-6">
           <div className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl shadow-lg p-6 text-white">
-            <div className="flex items-center justify-between gap-3"><p className="text-emerald-100 text-sm font-semibold">Current subscription</p>{effectiveAdmin && <span className="text-xs font-bold bg-white/15 rounded-full px-2.5 py-1">ADMIN</span>}</div>
+            <div className="flex items-center justify-between gap-3"><p className="text-emerald-100 text-sm font-semibold">Account status</p>{effectiveAdmin && <span className="text-xs font-bold bg-white/15 rounded-full px-2.5 py-1">ADMIN</span>}</div>
             <h2 className="text-2xl font-extrabold mt-1 capitalize">{String(plan).replace(/[-_]/g, ' ')}</h2>
-            <div className="mt-4 space-y-2 text-sm"><div className="flex justify-between gap-3"><span className="text-emerald-100">Status</span><strong className="capitalize">{String(status).replace(/[-_]/g, ' ')}</strong></div><div className="flex justify-between gap-3"><span className="text-emerald-100">Expires</span><strong>{expiry ? formatDate(expiry) : (effectiveAdmin ? 'Never' : 'No expiry')}</strong></div></div>
+            <div className="mt-4 space-y-2 text-sm"><div className="flex justify-between gap-3"><span className="text-emerald-100">Subscription</span><strong className="capitalize">{String(status).replace(/[-_]/g, ' ')}</strong></div><div className="flex justify-between gap-3"><span className="text-emerald-100">Expires</span><strong>{expiry ? formatDate(expiry) : (effectiveAdmin ? 'Never' : 'No expiry')}</strong></div></div>
             {effectiveAdmin && <div className="mt-4 rounded-xl bg-white/10 border border-white/15 p-3 text-sm"><strong>Lifetime administrator access</strong><p className="text-emerald-100 mt-1">This access is restored from the server after every sign-in and hard refresh.</p></div>}
             <button onClick={() => onViewChange(effectiveAdmin ? 'admin' : 'home')} className="touch-target w-full mt-5 px-4 py-3 rounded-xl bg-white text-emerald-700 font-bold hover:bg-emerald-50">{effectiveAdmin ? 'Open Admin Control Center' : 'View subscription'}</button>
           </div>
