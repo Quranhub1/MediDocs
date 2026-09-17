@@ -6,17 +6,25 @@ import ErrorBoundary from './components/ErrorBoundary';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
-// Register the production service worker only after the page has loaded.
-// Keeping this in the entry point avoids bundling the worker into the React app.
+// MediDocs does not require offline caching. Remove any previously installed
+// service worker so stale/corrupt cached app files cannot break navigation.
 if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register(`${process.env.PUBLIC_URL || ''}/service-worker.js`, {
-      scope: process.env.PUBLIC_URL || '/',
-    }).then((registration) => {
-      console.info('MediDocs service worker registered:', registration.scope);
-    }).catch((error) => {
-      console.warn('MediDocs service worker registration failed:', error);
-    });
+    navigator.serviceWorker.getRegistrations()
+      .then((registrations) => Promise.all(
+        registrations.map((registration) => registration.unregister())
+      ))
+      .then(() => {
+        if ('caches' in window) {
+          return caches.keys().then((keys) => Promise.all(
+            keys.map((key) => caches.delete(key))
+          ));
+        }
+        return undefined;
+      })
+      .catch((error) => {
+        console.warn('MediDocs cache cleanup failed:', error);
+      });
   });
 }
 
