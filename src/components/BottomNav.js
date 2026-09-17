@@ -1,17 +1,56 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 
+const Icon = ({ name, active = false }) => {
+  const paths = {
+    home: 'M3 10.5 12 3l9 7.5M5.5 9.5V21h13V9.5M9 21v-6h6v6',
+    courses: 'M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5m0-16V21.5m0-16A2.5 2.5 0 0 1 6.5 3H20',
+    contact: 'M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Zm0 1 8 6 8-6',
+    profile: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 9a7 7 0 0 1 14 0',
+    admin: 'M12 3 20 6v5c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10V6l8-3Zm0 5v8m-4-4h8'
+  };
+  return (
+    <svg className={`w-6 h-6 transition-all duration-300 ${active ? 'scale-110' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={paths[name]} fill={active && name === 'home' ? 'currentColor' : 'none'} />
+    </svg>
+  );
+};
+
 const BottomNav = ({ currentView, onViewChange, user }) => {
   const { isAdmin } = useAuth();
   const adminVisible = isAdmin || user?.email?.toLowerCase() === 'kaigwaakram123@gmail.com';
   const navItems = [
-    { id: 'home', label: 'Home', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0v-4a1 1 0 011-1h2a1 1 0 011 1v4' },
-    { id: 'courses', label: 'Courses', icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18 5.754 18 7.5 18s3.332 0 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332 0 4.5 1.253v13' },
-    { id: 'contact', label: 'Contact', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10z' }
+    { id: 'home', label: 'Home', icon: 'home' },
+    { id: 'courses', label: 'Courses', icon: 'courses' },
+    { id: 'contact', label: 'Contact', icon: 'contact' }
   ];
-  if (user) navItems.push({ id: 'profile', label: 'Profile', icon: 'M15 19a6 6 0 00-12 0m6-12a4 4 0 110 8 4 4 0 010-8zm5 3h5m-2.5-2.5V12' });
-  if (adminVisible) navItems.push({ id: 'admin', label: 'Admin', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-1.066 2.573c.94 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543-.94-3.31.826-2.37 2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z' });
-  return <nav className="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-dark-card/95 backdrop-blur border-t border-gray-200 dark:border-dark-border shadow-lg lg:hidden z-40 safe-area-bottom" aria-label="Mobile navigation"><div className="flex justify-around items-center min-h-16 px-1">{navItems.map((item) => { const active = currentView === item.id; return <button key={item.id} onClick={() => { onViewChange(item.id); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className={`touch-target flex flex-col items-center justify-center flex-1 min-h-16 px-1 transition-colors ${active ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`} aria-current={active ? 'page' : undefined}><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" strokeWidth="2" d={item.icon} /></svg><span className="text-[11px] font-semibold mt-1">{item.label}</span></button>; })}</div></nav>;
+  if (user) navItems.push({ id: 'profile', label: 'Profile', icon: 'profile' });
+  if (adminVisible) navItems.push({ id: 'admin', label: 'Admin', icon: 'admin' });
+
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-dark-card/90 backdrop-blur-xl border-t border-gray-200/80 dark:border-dark-border shadow-[0_-8px_30px_rgba(0,0,0,0.08)] lg:hidden z-40 safe-area-bottom" aria-label="Mobile navigation">
+      <div className="flex items-center justify-around min-h-16 px-2 py-1.5 gap-1">
+        {navItems.map((item) => {
+          const active = currentView === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => { onViewChange(item.id); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              className={`touch-target relative flex flex-col items-center justify-center flex-1 min-h-14 rounded-2xl px-1 transition-all duration-300 ${active ? 'text-emerald-600 dark:text-emerald-300 bg-gradient-to-b from-emerald-50 to-teal-50 dark:from-emerald-900/35 dark:to-teal-900/25 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-300 hover:bg-gray-50 dark:hover:bg-gray-800/70'}`}
+              aria-current={active ? 'page' : undefined}
+              aria-label={item.label}
+            >
+              <span className={`flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-300 ${active ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/25' : ''}`}>
+                <Icon name={item.icon} active={active} />
+              </span>
+              <span className={`text-[10px] sm:text-[11px] font-semibold mt-0.5 tracking-wide ${active ? 'font-bold' : ''}`}>{item.label}</span>
+              {active && <span className="absolute -bottom-0.5 w-7 h-0.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500" aria-hidden="true" />}
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
 };
 
 export default BottomNav;
