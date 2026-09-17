@@ -59,6 +59,7 @@ button, a, input, select, textarea { touch-action: manipulation; }
   animation: mdAiGlow 2.4s ease-in-out infinite;
   isolation: isolate;
   overflow: visible;
+  position: relative;
 }
 .md-ai-fab::before {
   content: '';
@@ -88,7 +89,9 @@ button, a, input, select, textarea { touch-action: manipulation; }
 .md-ai-fab:hover::before { opacity: 1; transform: scale(1.08); }
 .md-ai-fab:active { transform: scale(.95); }
 .md-ai-fab:focus-visible { outline: 3px solid rgba(6,182,212,.5); outline-offset: 4px; }
-.md-ai-fab svg { position: relative; z-index: 1; filter: drop-shadow(0 2px 3px rgba(0,0,0,.18)); }
+.md-ai-icon { position: relative; z-index: 1; display: block; flex: 0 0 auto; color: #fff; filter: drop-shadow(0 2px 3px rgba(0,0,0,.18)); }
+.md-ai-spark { position: absolute; right: 8px; top: 6px; z-index: 2; color: #fff; font-size: 12px; line-height: 1; text-shadow: 0 0 8px rgba(255,255,255,.9); animation: mdAiSpark 1.8s ease-in-out infinite; pointer-events: none; }
+@keyframes mdAiSpark { 0%, 100% { opacity: .45; transform: scale(.75) rotate(0deg); } 50% { opacity: 1; transform: scale(1.2) rotate(18deg); } }
 .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
 
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
