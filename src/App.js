@@ -58,6 +58,7 @@ function AppContent() {
   const closeSidebar = () => setIsSidebarOpen(false);
   const handleLogout = async () => { await logout(); setShowLoginModal(false); setShowRegisterModal(false); setCurrentView('home'); try { localStorage.setItem('medidocs_current_view', 'home'); } catch {} };
   const handleViewChange = (viewId) => { setCurrentView(viewId); try { localStorage.setItem('medidocs_current_view', viewId); } catch {} window.scrollTo({ top: 0, behavior: 'smooth' }); closeSidebar(); };
+  const handleAISearch = () => setShowAIChatModal(true);
   const openRenewal = (plan = null) => { setSelectedPaymentPlan(plan); setShowPaymentModal(true); };
   const installPWA = async () => { if (!pwaInstallPrompt) return; try { pwaInstallPrompt.prompt(); const { outcome } = await pwaInstallPrompt.userChoice; setPwaInstallPrompt(null); if (outcome === 'accepted') { try { localStorage.setItem(PWA_INSTALLED_KEY, 'true'); localStorage.setItem(PWA_PROMPT_SHOWN_KEY, 'true'); } catch {} setIsStandalone(true); setInstallPromptSeen(true); } } catch (error) { console.warn('PWA installation prompt failed:', error); setPwaInstallPrompt(null); } };
   const canShowInstall = !isStandalone && (pwaInstallPrompt || showInstallHelp);
