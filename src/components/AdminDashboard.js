@@ -74,6 +74,8 @@ const AdminDashboard = ({ user, onViewChange }) => {
   const [newDoc, setNewDoc] = useState({
     title: '',
     filePath: '',
+    fileUrl: '',
+    documentFile: null,
     thumbnailUrl: '',
     thumbnailFile: null,
     description: '',
@@ -115,6 +117,8 @@ const AdminDashboard = ({ user, onViewChange }) => {
   const [editDocForm, setEditDocForm] = useState({
     title: '',
     filePath: '',
+    fileUrl: '',
+    documentFile: null,
     thumbnailUrl: '',
     description: '',
     time: 'normal',
@@ -588,13 +592,37 @@ const AdminDashboard = ({ user, onViewChange }) => {
   const addDocument = async (e) => {
     e.preventDefault();
 
-    if (!newDoc.courseId || !newDoc.semesterId || !newDoc.unitId) {
-      alert('Please select Course, Semester, and Unit');
+    if (!newDoc.title.trim() || !newDoc.courseId || !newDoc.semesterId || !newDoc.unitId) {
+      alert('Please provide a title and select Course, Semester, and Unit');
       return;
     }
 
     setAddingDoc(true);
     try {
+      let fileUrl = (newDoc.fileUrl || newDoc.filePath || '').trim();
+
+      if (newDoc.documentFile) {
+        const uploadResult = await uploadDocument(
+          newDoc.documentFile,
+          `documents/${newDoc.courseId}/${newDoc.semesterId}/${newDoc.unitId}`
+        );
+        if (!uploadResult.success || !uploadResult.url) {
+          throw new Error(uploadResult.error || 'Document upload failed');
+        }
+        fileUrl = uploadResult.url;
+      }
+
+      if (!fileUrl) {
+        throw new Error('Provide a document URL or choose a document file to upload');
+      }
+
+      try {
+        const parsed = new URL(fileUrl);
+        if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error();
+      } catch {
+        throw new Error('Document URL must be a valid http(s) URL');
+      }
+
       let thumbnailUrl = newDoc.thumbnailUrl;
 
       if (newDoc.thumbnailFile) {
@@ -604,22 +632,36 @@ const AdminDashboard = ({ user, onViewChange }) => {
         }
       }
 
-      const docRef = collection(db, `RESOURCES_STUDYPEDIA/${newDoc.courseId}/semesters/${newDoc.semesterId}/courseunits/${newDoc.unitId}/documents`);
+      const documentsRef = collection(db, `RESOURCES_STUDYPEDIA/${newDoc.courseId}/semesters/${newDoc.semesterId}/courseunits/${newDoc.unitId}/documents`);
 
-      await addDoc(docRef, {
-        title: newDoc.title,
-        filePath: newDoc.filePath,
+      const documentData = {
+        title: newDoc.title.trim(),
+        fileUrl,
+        filePath: fileUrl,
         thumbnailUrl: thumbnailUrl || '',
-        description: newDoc.description || '',
+        description: newDoc.description.trim(),
         time: newDoc.time,
         status: newDoc.status,
         createdAt: serverTimestamp()
+      };
+
+      console.info('[AdminDashboard] adding document', {
+        courseId: newDoc.courseId,
+        semesterId: newDoc.semesterId,
+        unitId: newDoc.unitId,
+        title: documentData.title,
+        fileUrl,
+        uploadedFile: Boolean(newDoc.documentFile)
       });
+
+      await addDoc(documentsRef, documentData);
 
       alert('Document added successfully!');
       setNewDoc({
         title: '',
         filePath: '',
+        fileUrl: '',
+        documentFile: null,
         thumbnailUrl: '',
         thumbnailFile: null,
         description: '',
@@ -1340,6 +1382,56 @@ const AdminDashboard = ({ user, onViewChange }) => {
                       </form>
                     )}
                   </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-md p-6 border border-emerald-100">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Add Document Entry</h3>
+                  <p className="text-sm text-gray-500 mb-6">Create a Firestore document entry. You can paste a hosted URL or upload the file to Firebase Storage.</p>
+                  <form onSubmit={addDocument} className="space-y-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Title *</label>
+                        <input type="text" value={newDoc.title} onChange={(e) => setNewDoc({ ...newDoc, title: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg" placeholder="e.g. Anatomy Lecture Notes" required />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Document URL</label>
+                        <input type="url" value={newDoc.fileUrl || newDoc.filePath} onChange={(e) => setNewDoc({ ...newDoc, fileUrl: e.target.value, filePath: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg" placeholder="https://..." />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Or upload document</label>
+                        <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp,.mp4,.webm" onChange={(e) => setNewDoc({ ...newDoc, documentFile: e.target.files?.[0] || null })} className="w-full text-sm" />
+                        <p className="text-xs text-gray-500 mt-1">If a file is selected, it will be uploaded and its Storage URL will be saved automatically.</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Thumbnail URL</label>
+                        <input type="url" value={newDoc.thumbnailUrl} onChange={(e) => setNewDoc({ ...newDoc, thumbnailUrl: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg" placeholder="Optional https://..." />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                        <select value={newDoc.status} onChange={(e) => setNewDoc({ ...newDoc, status: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg">
+                          <option value="free">Free</option>
+                          <option value="premium">Premium</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Time</label>
+                        <select value={newDoc.time} onChange={(e) => setNewDoc({ ...newDoc, time: e.target.value })} className="w-full px-4 py-2 border border-gray-200 rounded-lg">
+                          <option value="normal">Normal</option>
+                          <option value="latest">Latest</option>
+                        </select>
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                        <textarea value={newDoc.description} onChange={(e) => setNewDoc({ ...newDoc, description: e.target.value })} rows="3" className="w-full px-4 py-2 border border-gray-200 rounded-lg" placeholder="Optional description" />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button type="submit" disabled={addingDoc} className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 disabled:bg-gray-400">
+                        {addingDoc ? 'Saving Document...' : 'Add Document to Firestore'}
+                      </button>
+                      {newDoc.documentFile && <span className="text-sm text-gray-600 truncate">{newDoc.documentFile.name}</span>}
+                    </div>
+                  </form>
                 </div>
 
                 <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
