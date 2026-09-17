@@ -50,21 +50,21 @@ const DocumentReader = ({ document, onClose }) => {
     setEmbedFailed(false);
     setLoading(false);
     setFontSize(16);
-    setIsFullscreen(Boolean(globalThis.document?.fullscreenElement));
+    setIsFullscreen(Boolean(document.fullscreenElement));
 
     const handleFullscreenChange = () => {
-      setIsFullscreen(Boolean(globalThis.document?.fullscreenElement));
+      setIsFullscreen(Boolean(document.fullscreenElement));
     };
 
-    globalThis.document?.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => globalThis.document?.removeEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, [document]);
 
   const toggleFullscreen = () => {
-    if (!globalThis.document?.fullscreenElement) {
+    if (!document.fullscreenElement) {
       containerRef.current?.requestFullscreen();
     } else {
-      globalThis.document.exitFullscreen();
+      document.exitFullscreen();
     }
   };
 
