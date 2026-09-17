@@ -42,6 +42,7 @@ const ContactSection = ({ onContactClick }) => {
   };
 
   const whatsappUrl = 'https://wa.me/256756454646';
+  const callUrl = 'tel:+256749846848';
 
   return (
     <section className="relative min-h-screen mb-8">
@@ -85,6 +86,19 @@ const ContactSection = ({ onContactClick }) => {
                     <p className="text-sm font-semibold text-green-800">WhatsApp</p>
                     <p className="text-green-700">0756 454 646</p>
                     <p className="text-xs text-green-600 mt-0.5">Tap to start a WhatsApp chat</p>
+                  </div>
+                </a>
+
+                <a
+                  href={callUrl}
+                  className="flex items-center gap-4 p-4 rounded-2xl bg-blue-50 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-all duration-200 shadow-sm"
+                  aria-label="Call MediDocs directly"
+                >
+                  <span className="w-11 h-11 rounded-full bg-blue-500 text-white flex items-center justify-center text-xl shadow-sm" aria-hidden="true">📞</span>
+                  <div>
+                    <p className="text-sm font-semibold text-blue-800">Call Us</p>
+                    <p className="text-blue-700">0749 846 848</p>
+                    <p className="text-xs text-blue-600 mt-0.5">Tap to call directly</p>
                   </div>
                 </a>
 
@@ -152,7 +166,7 @@ const ContactSection = ({ onContactClick }) => {
               <div>
                 <label htmlFor="contact-subject" className="block text-sm font-medium text-gray-700 mb-2">
                   Subject
-                </label>
+n                </label>
                 <input
                   type="text"
                   id="contact-subject"
