@@ -29,6 +29,11 @@ const PAYSTACK_VERIFY_PATH = '/transaction/verify';
 const aiMemoryCache = new Map();
 const AI_CACHE_MAX_ENTRIES = 10000;
 
+// Short-lived admin profile cache prevents repeated Firestore reads/writes
+// when the frontend checks administrator access during startup/navigation.
+const adminProfileCache = new Map();
+const ADMIN_PROFILE_CACHE_MS = 5 * 60 * 1000;
+
 let adminDb = null;
 let adminAuth = null;
 
@@ -82,12 +87,41 @@ app.get('/api/admin/status', async (req, res) => {
     catch (error) { return res.status(401).json({ success: false, isAdmin: false, error: 'Invalid authentication token' }); }
     const email = (decodedToken.email || '').trim().toLowerCase();
     if (!isConfiguredAdmin(email)) return res.json({ success: true, isAdmin: false });
+    const cached = adminProfileCache.get(decodedToken.uid);
+    if (cached && Date.now() - cached.cachedAt < ADMIN_PROFILE_CACHE_MS) {
+      return res.json({ success: true, isAdmin: true, profile: cached.profile });
+    }
+
     const userRef = adminDb.collection('users').doc(decodedToken.uid);
-    const userSnap = await userRef.get();
-    const existing = userSnap.exists ? userSnap.data() : {};
+    let existing = {};
+    try {
+      const userSnap = await userRef.get();
+      existing = userSnap.exists ? userSnap.data() : {};
+    } catch (error) {
+      console.error('[AdminStatus] Firestore profile read failed:', {
+        code: error?.code,
+        message: error?.message
+      });
+      // The configured admin email has already been verified by Firebase Auth.
+      // Do not turn a temporary Firestore quota failure into an admin lockout.
+      const profile = getAdminProfile(decodedToken.uid, email, {});
+      adminProfileCache.set(decodedToken.uid, { profile, cachedAt: Date.now() });
+      return res.json({ success: true, isAdmin: true, profile });
+    }
+
     const profile = getAdminProfile(decodedToken.uid, email, existing);
-    await userRef.set({ ...profile, createdAt: existing.createdAt || new Date().toISOString() }, { merge: true });
-    res.json({ success: true, isAdmin: true, profile: { ...profile, createdAt: existing.createdAt || profile.createdAt || null } });
+    const responseProfile = {
+      ...profile,
+      createdAt: existing.createdAt || profile.createdAt || null
+    };
+
+    // Cache the result. Do not write the profile on every status check.
+    adminProfileCache.set(decodedToken.uid, {
+      profile: responseProfile,
+      cachedAt: Date.now()
+    });
+
+    res.json({ success: true, isAdmin: true, profile: responseProfile });
   } catch (error) {
     console.error('Admin status error:', error);
     res.status(500).json({ success: false, isAdmin: false, error: 'Unable to restore administrator access' });
