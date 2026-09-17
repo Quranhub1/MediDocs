@@ -17,7 +17,7 @@ export const useStudy = () => {
 export const StudyProvider = ({ children }) => {
   const { user } = useAuth();
   const { addToast } = useToast();
-  const [streak, setStreak] = useState({ current: 0, longest: 0, lastStudyDate: null, totalStudyTime: 0 });
+  const [streak, setStreak] = useState({ current: 0, longest: 0, lastStudyDate: null, totalStudyTime: 0, totalStudySeconds: 0 });
   const [badges, setBadges] = useState([]);
   const [flashcards, setFlashcards] = useState([]);
   const [quizzes, setQuizzes] = useState([]);
@@ -31,6 +31,12 @@ export const StudyProvider = ({ children }) => {
     }
   }, [user]);
 
+  useEffect(() => {
+    const refreshStudyData = () => loadStreak();
+    window.addEventListener('medidocs:study-time-updated', refreshStudyData);
+    return () => window.removeEventListener('medidocs:study-time-updated', refreshStudyData);
+  }, [user]);
+
   const loadStreak = async () => {
     if (!user || !db) return;
     try {
@@ -38,14 +44,16 @@ export const StudyProvider = ({ children }) => {
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         const data = docSnap.data();
+        const totalStudySeconds = Number(data.totalStudySeconds) || Math.round((Number(data.totalStudyTime) || 0) * 60);
         setStreak({
           current: data.currentStreak || 0,
           longest: data.longestStreak || 0,
           lastStudyDate: data.lastStudyDate?.toDate?.() || data.lastStudyDate,
-          totalStudyTime: data.totalStudyTime || 0
+          totalStudyTime: Math.floor(totalStudySeconds / 60),
+          totalStudySeconds
         });
       } else {
-        setStreak({ current: 0, longest: 0, lastStudyDate: null, totalStudyTime: 0 });
+        setStreak({ current: 0, longest: 0, lastStudyDate: null, totalStudyTime: 0, totalStudySeconds: 0 });
       }
     } catch (error) {
       console.error('Error loading streak:', error);
@@ -65,6 +73,12 @@ export const StudyProvider = ({ children }) => {
 
   const recordStudySession = async (durationMinutes = 0) => {
     if (!user) return;
+
+    if (durationMinutes === 5) {
+      console.warn('[STUDY TIME] Ignoring deprecated synthetic 5-minute session. Real time is tracked by StudyTimeTracker.');
+      return;
+    }
+
     setLoading(true);
     try {
       const docRef = doc(db, 'userStudyData', user.uid);
@@ -96,6 +110,7 @@ export const StudyProvider = ({ children }) => {
           longestStreak: newLongest,
           lastStudyDate: serverTimestamp(),
           totalStudyTime: newTotalStudyTime,
+          totalStudySeconds: newTotalStudyTime * 60,
           updatedAt: serverTimestamp()
         });
       } else {
@@ -107,6 +122,7 @@ export const StudyProvider = ({ children }) => {
           longestStreak: 1,
           lastStudyDate: serverTimestamp(),
           totalStudyTime: newTotalStudyTime,
+          totalStudySeconds: newTotalStudyTime * 60,
           createdAt: serverTimestamp()
         });
       }
@@ -115,7 +131,8 @@ export const StudyProvider = ({ children }) => {
         current: newStreak,
         longest: newLongest,
         lastStudyDate: new Date(),
-        totalStudyTime: newTotalStudyTime
+        totalStudyTime: newTotalStudyTime,
+        totalStudySeconds: newTotalStudyTime * 60
       });
 
       await checkAndAwardBadges(newStreak, durationMinutes);
