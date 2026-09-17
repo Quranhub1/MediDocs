@@ -14,7 +14,6 @@ import PaymentModal from './components/PaymentModal';
 import ContactModal from './components/ContactModal';
 import AIStudyAssistant from './components/AIStudyAssistant';
 import StudyTimeTracker from './components/StudyTimeTracker';
-import { AccessibilityControls } from './components/UIEnhancements';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
@@ -74,7 +73,7 @@ function AppContent() {
           <main id="main-content" tabIndex="-1" className="flex-grow md-page-transition">
             <Sidebar isOpen={isSidebarOpen} onClose={closeSidebar} onHomeClick={() => handleViewChange('home')} onCoursesClick={() => handleViewChange('courses')} onAboutClick={() => handleViewChange('about')} onContactClick={() => handleViewChange('contact')} onPrivacyClick={() => handleViewChange('privacy')} onAdminClick={() => handleViewChange('admin')} />
             <div className="w-full">
-              {isAdminView ? <><AdminDashboard user={currentUser} onViewChange={handleViewChange} /><AdminUserRegistry /><SubscriptionManager /></> : currentView === 'profile' && currentUser ? <><UserProfile onViewChange={handleViewChange} onLogout={handleLogout} onRenew={openRenewal} /><AccessibilityControls /></> : <MainContent view={currentView} user={currentUser} userProfile={userProfile} setView={handleViewChange} onLoginClick={() => setShowLoginModal(true)} onRegisterClick={() => setShowRegisterModal(true)} onContactClick={() => setShowContactModal(true)} onAIChatClick={() => setShowAIChatModal(true)} />}
+              {isAdminView ? <><AdminDashboard user={currentUser} onViewChange={handleViewChange} /><AdminUserRegistry /><SubscriptionManager /></> : currentView === 'profile' && currentUser ? <UserProfile onViewChange={handleViewChange} onLogout={handleLogout} onRenew={openRenewal} /> : <MainContent view={currentView} user={currentUser} userProfile={userProfile} setView={handleViewChange} onLoginClick={() => setShowLoginModal(true)} onRegisterClick={() => setShowRegisterModal(true)} onContactClick={() => setShowContactModal(true)} onAIChatClick={() => setShowAIChatModal(true)} />}
             </div>
           </main>
           <BottomNav currentView={currentView} onViewChange={handleViewChange} user={currentUser} userProfile={userProfile} />
