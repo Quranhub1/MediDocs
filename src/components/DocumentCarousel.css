@@ -1,0 +1,28 @@
+.medidocs-carousel-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.55) rgba(255, 255, 255, 0.12);
+}
+
+.medidocs-carousel-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.medidocs-carousel-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+
+.medidocs-carousel-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 999px;
+}
+
+.medidocs-carousel-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .medidocs-carousel-motion {
+    transition: none !important;
+  }
+}
