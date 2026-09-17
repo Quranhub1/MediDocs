@@ -21,6 +21,8 @@ services:
         value: your_app_id
       - key: REACT_APP_FIREBASE_MEASUREMENT_ID
         value: your_measurement_id
+      # Cloudinary values are intentionally public client-side configuration.
+      # They must be present during the React build because CRA embeds REACT_APP_* values into the bundle.
       - key: REACT_APP_CLOUDINARY_CLOUD_NAME
         value: nasvtpxr
       - key: REACT_APP_CLOUDINARY_UPLOAD_PRESET
