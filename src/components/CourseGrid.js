@@ -14,7 +14,7 @@ const CourseGrid = ({ courses, onBrowseClick }) => {
           </p>
         </div>
 
-        {courses?.length ? (
+        {courses && courses.length ? (
           <div className="md-course-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-6">
             {courses.map((course, index) => (
               <article
