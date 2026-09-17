@@ -50,21 +50,21 @@ const DocumentReader = ({ document, onClose }) => {
     setEmbedFailed(false);
     setLoading(false);
     setFontSize(16);
-    setIsFullscreen(Boolean(document?.fullscreenElement));
+    setIsFullscreen(Boolean(globalThis.document?.fullscreenElement));
 
     const handleFullscreenChange = () => {
-      setIsFullscreen(Boolean(document?.fullscreenElement));
+      setIsFullscreen(Boolean(globalThis.document?.fullscreenElement));
     };
 
-    window.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => window.removeEventListener('fullscreenchange', handleFullscreenChange);
+    globalThis.document?.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => globalThis.document?.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, [document]);
 
   const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
+    if (!globalThis.document?.fullscreenElement) {
       containerRef.current?.requestFullscreen();
     } else {
-      document.exitFullscreen();
+      globalThis.document.exitFullscreen();
     }
   };
 
@@ -79,10 +79,7 @@ const DocumentReader = ({ document, onClose }) => {
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-dark-border bg-gray-50 dark:bg-dark-bg gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <span className="text-2xl">{getFileTypeIcon(fileName)}</span>
-            <div className="min-w-0">
-              <h3 className="font-semibold text-gray-900 dark:text-dark-text truncate">{document.title}</h3>
-              {hostName && <p className="text-xs text-gray-500 dark:text-dark-muted truncate">Hosted on {hostName}</p>}
-            </div>
+            <div className="min-w-0"><h3 className="font-semibold text-gray-900 dark:text-dark-text truncate">{document.title}</h3>{hostName && <p className="text-xs text-gray-500 dark:text-dark-muted truncate">Hosted on {hostName}</p>}</div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg px-1">
@@ -95,38 +92,19 @@ const DocumentReader = ({ document, onClose }) => {
             <button onClick={onClose} className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm hover:bg-red-200">Close</button>
           </div>
         </div>
-
         <div className="flex-1 overflow-y-auto bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
-          {loading && (
-            <div className="text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div><p className="text-gray-600 dark:text-dark-muted">Loading document...</p></div>
-          )}
-
-          {!loading && !useFallback && isPDF && (
-            <div className="w-full h-full"><iframe src={filePath} className="w-full h-full border-0" title={document.title} onLoad={() => setLoading(false)} onError={() => setEmbedFailed(true)}><p className="p-8 text-center">Your browser does not support PDFs. <a href={filePath} target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:underline">Download the PDF</a></p></iframe></div>
-          )}
-
-          {!loading && !useFallback && isImage && (
-            <div className="flex items-center justify-center p-4"><img src={filePath} alt={document.title} className="max-w-full max-h-full object-contain" onLoad={() => setLoading(false)} onError={() => setEmbedFailed(true)} /></div>
-          )}
-
-          {!loading && !useFallback && isVideo && (
-            <div className="flex items-center justify-center p-4 w-full h-full"><video controls className="max-w-full max-h-full" style={{ maxHeight: '80vh' }} onError={() => setEmbedFailed(true)}><source src={filePath} type={`video/${extension}`} />Your browser does not support the video tag.</video></div>
-          )}
-
-          {!loading && !useFallback && isOffice && (
-            <div className="w-full h-full"><iframe src={googleViewerUrl} className="w-full h-full border-0" title={document.title} allow="autoplay" onError={() => setEmbedFailed(true)}><p>Your browser does not support iframes. Please open the document directly.</p></iframe></div>
-          )}
-
+          {loading && <div className="text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div><p className="text-gray-600 dark:text-dark-muted">Loading document...</p></div>}
+          {!loading && !useFallback && isPDF && <div className="w-full h-full"><iframe src={filePath} className="w-full h-full border-0" title={document.title} onLoad={() => setLoading(false)} onError={() => setEmbedFailed(true)}><p className="p-8 text-center">Your browser does not support PDFs. <a href={filePath} target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:underline">Download the PDF</a></p></iframe></div>}
+          {!loading && !useFallback && isImage && <div className="flex items-center justify-center p-4"><img src={filePath} alt={document.title} className="max-w-full max-h-full object-contain" onLoad={() => setLoading(false)} onError={() => setEmbedFailed(true)} /></div>}
+          {!loading && !useFallback && isVideo && <div className="flex items-center justify-center p-4 w-full h-full"><video controls className="max-w-full max-h-full" style={{ maxHeight: '80vh' }} onError={() => setEmbedFailed(true)}><source src={filePath} type={`video/${extension}`} />Your browser does not support the video tag.</video></div>}
+          {!loading && !useFallback && isOffice && <div className="w-full h-full"><iframe src={googleViewerUrl} className="w-full h-full border-0" title={document.title} allow="autoplay" onError={() => setEmbedFailed(true)}><p>Your browser does not support iframes. Please open the document directly.</p></iframe></div>}
           {!loading && useFallback && (
             <div className="text-center p-8 max-w-lg" style={{ fontSize: `${fontSize}px` }}>
               <div className="text-6xl mb-4">{getFileTypeIcon(fileName)}</div>
               <h4 className="font-semibold text-gray-800 dark:text-dark-text mb-1 truncate">{document.title}</h4>
               <p className="text-gray-500 dark:text-dark-muted mb-6 break-all">{fileName}</p>
               <p className="text-gray-600 dark:text-dark-muted mb-6">{isExternalHost ? `This file is hosted on ${hostName}, which doesn't allow inline preview. Open it on the host site to view or download.` : 'This file type cannot be previewed inline.'}</p>
-              <div className="flex flex-wrap justify-center gap-3">
-                <a href={filePath} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">Open on {hostName || 'host'}</a>
-                <button onClick={() => downloadDocument(document)} className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800">Download</button>
-              </div>
+              <div className="flex flex-wrap justify-center gap-3"><a href={filePath} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">Open on {hostName || 'host'}</a><button onClick={() => downloadDocument(document)} className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800">Download</button></div>
             </div>
           )}
         </div>
