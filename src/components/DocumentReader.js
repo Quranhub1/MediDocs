@@ -40,18 +40,18 @@ const DocumentReader = ({ document: doc, onClose }) => {
     setEmbedFailed(false);
     setLoadStarted(false);
     setFontSize(16);
-    setIsFullscreen(Boolean(globalThis.document?.fullscreenElement));
-    const handleFullscreenChange = () => setIsFullscreen(Boolean(globalThis.document?.fullscreenElement));
-    globalThis.document?.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => globalThis.document?.removeEventListener('fullscreenchange', handleFullscreenChange);
+    setIsFullscreen(Boolean(document.fullscreenElement));
+    const handleFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, [doc]);
 
   const toggleFullscreen = async () => {
     try {
-      if (!globalThis.document?.fullscreenElement) {
+      if (!document.fullscreenElement) {
         await containerRef.current?.requestFullscreen?.();
       } else {
-        await globalThis.document?.exitFullscreen?.();
+        await document.exitFullscreen?.();
       }
     } catch (error) {
       console.error('[DocumentReader] fullscreen error:', error);
