@@ -19,7 +19,7 @@ const ProfileRow = ({ label, value, children }) => (
 );
 
 const UserProfile = ({ onViewChange, onLogout }) => {
-  const { currentUser, userProfile, refreshUserProfile } = useAuth();
+  const { currentUser, userProfile, isAdmin, refreshUserProfile } = useAuth();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(userProfile?.name || currentUser?.displayName || '');
   const [phone, setPhone] = useState(userProfile?.phone || currentUser?.phoneNumber || '');
@@ -27,9 +27,10 @@ const UserProfile = ({ onViewChange, onLogout }) => {
   const [message, setMessage] = useState(null);
   const [passwordLoading, setPasswordLoading] = useState(false);
 
-  const plan = userProfile?.subscriptionPlan || userProfile?.subscription || 'free';
-  const status = userProfile?.subscriptionStatus || (userProfile?.subscriptionApproved ? 'active' : 'inactive');
-  const expiry = userProfile?.subscriptionExpiry;
+  const effectiveAdmin = isAdmin || userProfile?.role === 'admin';
+  const plan = effectiveAdmin ? 'lifetime' : (userProfile?.subscriptionPlan || userProfile?.subscription || 'free');
+  const status = effectiveAdmin ? 'active' : (userProfile?.subscriptionStatus || (userProfile?.subscriptionApproved ? 'active' : 'inactive'));
+  const expiry = effectiveAdmin ? null : userProfile?.subscriptionExpiry;
   const initials = useMemo(() => (name || currentUser?.email || 'U').trim().charAt(0).toUpperCase(), [name, currentUser?.email]);
 
   const saveProfile = async (event) => {
@@ -62,7 +63,10 @@ const UserProfile = ({ onViewChange, onLogout }) => {
   return (
     <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10" aria-labelledby="profile-title">
       <div className="mb-6">
-        <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">My account</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">My account</p>
+          {effectiveAdmin && <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/30 px-3 py-1 text-xs font-bold text-amber-800 dark:text-amber-300">★ Administrator</span>}
+        </div>
         <h1 id="profile-title" className="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-dark-text mt-1">Profile & Settings</h1>
         <p className="text-gray-600 dark:text-dark-muted mt-2">Manage your MediDocs account, subscription and security settings.</p>
       </div>
@@ -84,7 +88,7 @@ const UserProfile = ({ onViewChange, onLogout }) => {
                 <div className="flex flex-wrap gap-3"><button disabled={saving} className="touch-target px-5 py-3 rounded-xl bg-emerald-600 text-white font-semibold disabled:opacity-60">{saving ? 'Saving…' : 'Save changes'}</button><button type="button" onClick={() => setEditing(false)} className="touch-target px-5 py-3 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-dark-text font-semibold">Cancel</button></div>
               </form>
             ) : (
-              <div><ProfileRow label="Username" value={name} /><ProfileRow label="Registered email" value={currentUser.email} /><ProfileRow label="Phone number" value={phone} /><ProfileRow label="Account created" value={formatDate(userProfile?.createdAt)} /><button onClick={() => setEditing(true)} className="touch-target mt-5 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">Edit profile</button></div>
+              <div><ProfileRow label="Username" value={name} /><ProfileRow label="Registered email" value={currentUser.email} /><ProfileRow label="Phone number" value={phone} /><ProfileRow label="Account created" value={formatDate(userProfile?.createdAt)} /><ProfileRow label="Account role" value={effectiveAdmin ? 'Administrator' : 'Student'} />{effectiveAdmin && <ProfileRow label="Access level"><span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 px-3 py-1 text-emerald-800 dark:text-emerald-300">Permanent access</span></ProfileRow>}<button onClick={() => setEditing(true)} className="touch-target mt-5 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">Edit profile</button></div>
             )}
           </div>
 
@@ -97,15 +101,16 @@ const UserProfile = ({ onViewChange, onLogout }) => {
 
         <aside className="space-y-6">
           <div className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl shadow-lg p-6 text-white">
-            <p className="text-emerald-100 text-sm font-semibold">Current subscription</p>
+            <div className="flex items-center justify-between gap-3"><p className="text-emerald-100 text-sm font-semibold">Current subscription</p>{effectiveAdmin && <span className="text-xs font-bold bg-white/15 rounded-full px-2.5 py-1">ADMIN</span>}</div>
             <h2 className="text-2xl font-extrabold mt-1 capitalize">{String(plan).replace(/[-_]/g, ' ')}</h2>
-            <div className="mt-4 space-y-2 text-sm"><div className="flex justify-between gap-3"><span className="text-emerald-100">Status</span><strong className="capitalize">{String(status).replace(/[-_]/g, ' ')}</strong></div><div className="flex justify-between gap-3"><span className="text-emerald-100">Expires</span><strong>{expiry ? formatDate(expiry) : 'No expiry'}</strong></div></div>
-            <button onClick={() => onViewChange('home')} className="touch-target w-full mt-5 px-4 py-3 rounded-xl bg-white text-emerald-700 font-bold hover:bg-emerald-50">View subscription</button>
+            <div className="mt-4 space-y-2 text-sm"><div className="flex justify-between gap-3"><span className="text-emerald-100">Status</span><strong className="capitalize">{String(status).replace(/[-_]/g, ' ')}</strong></div><div className="flex justify-between gap-3"><span className="text-emerald-100">Expires</span><strong>{expiry ? formatDate(expiry) : (effectiveAdmin ? 'Never' : 'No expiry')}</strong></div></div>
+            {effectiveAdmin && <div className="mt-4 rounded-xl bg-white/10 border border-white/15 p-3 text-sm"><strong>Lifetime administrator access</strong><p className="text-emerald-100 mt-1">This access is restored from the server after every sign-in and hard refresh.</p></div>}
+            <button onClick={() => onViewChange(effectiveAdmin ? 'admin' : 'home')} className="touch-target w-full mt-5 px-4 py-3 rounded-xl bg-white text-emerald-700 font-bold hover:bg-emerald-50">{effectiveAdmin ? 'Open Admin Control Center' : 'View subscription'}</button>
           </div>
 
           <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm border border-gray-100 dark:border-dark-border p-5">
             <h2 className="font-bold text-gray-900 dark:text-dark-text mb-3">Account shortcuts</h2>
-            <div className="space-y-2"><button onClick={() => onViewChange('courses')} className="touch-target w-full text-left px-4 py-3 rounded-xl hover:bg-emerald-50 dark:hover:bg-gray-700 text-gray-700 dark:text-dark-text font-medium">📚 My learning</button><button onClick={() => onViewChange('home')} className="touch-target w-full text-left px-4 py-3 rounded-xl hover:bg-emerald-50 dark:hover:bg-gray-700 text-gray-700 dark:text-dark-text font-medium">💳 Subscription & payments</button><button onClick={() => onViewChange('contact')} className="touch-target w-full text-left px-4 py-3 rounded-xl hover:bg-emerald-50 dark:hover:bg-gray-700 text-gray-700 dark:text-dark-text font-medium">💬 Contact support</button></div>
+            <div className="space-y-2"><button onClick={() => onViewChange('courses')} className="touch-target w-full text-left px-4 py-3 rounded-xl hover:bg-emerald-50 dark:hover:bg-gray-700 text-gray-700 dark:text-dark-text font-medium">📚 My learning</button><button onClick={() => onViewChange(effectiveAdmin ? 'admin' : 'home')} className="touch-target w-full text-left px-4 py-3 rounded-xl hover:bg-emerald-50 dark:hover:bg-gray-700 text-gray-700 dark:text-dark-text font-medium">💳 {effectiveAdmin ? 'Admin control center' : 'Subscription & payments'}</button><button onClick={() => onViewChange('contact')} className="touch-target w-full text-left px-4 py-3 rounded-xl hover:bg-emerald-50 dark:hover:bg-gray-700 text-gray-700 dark:text-dark-text font-medium">💬 Contact support</button></div>
           </div>
 
           <button onClick={onLogout} className="touch-target w-full px-5 py-3 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 font-bold border border-red-100 dark:border-red-900/40 hover:bg-red-100 dark:hover:bg-red-900/30">Log out of MediDocs</button>
