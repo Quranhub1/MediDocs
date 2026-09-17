@@ -41,6 +41,8 @@ const ContactSection = ({ onContactClick }) => {
     }
   };
 
+  const whatsappUrl = 'https://wa.me/256756454646';
+
   return (
     <section className="relative min-h-screen mb-8">
       <BackgroundImages />
@@ -71,18 +73,26 @@ const ContactSection = ({ onContactClick }) => {
               </p>
 
               <div className="space-y-4">
+                <a
+                  href={whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-4 p-4 rounded-2xl bg-green-50 border border-green-200 hover:bg-green-100 hover:border-green-300 transition-all duration-200 shadow-sm"
+                  aria-label="Chat with MediDocs on WhatsApp"
+                >
+                  <span className="w-11 h-11 rounded-full bg-green-500 text-white flex items-center justify-center text-xl shadow-sm" aria-hidden="true">💬</span>
+                  <div>
+                    <p className="text-sm font-semibold text-green-800">WhatsApp</p>
+                    <p className="text-green-700">0756 454 646</p>
+                    <p className="text-xs text-green-600 mt-0.5">Tap to start a WhatsApp chat</p>
+                  </div>
+                </a>
+
                 <div className="flex items-start gap-3">
                   <span className="mt-1 text-blue-500">📧</span>
                   <div>
                     <p className="text-sm font-medium text-gray-700">Email</p>
                     <p className="text-gray-600">kaigwaakram123@gmail.com</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <span className="mt-1 text-blue-500">📞</span>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">Phone / WhatsApp</p>
-                    <p className="text-gray-600">+256 749 846 848</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
