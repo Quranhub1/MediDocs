@@ -1,8 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { sendPasswordResetEmail, updateProfile } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import { auth, db, storage } from '../firebase';
+import { auth, db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useStudy } from '../context/StudyContext';
 
@@ -80,22 +79,35 @@ const UserProfile = ({ onViewChange, onLogout, onRenew }) => {
       setMessage({ type: 'error', text: 'Profile photos must be 5 MB or smaller.' });
       return;
     }
-    if (!storage) {
-      setMessage({ type: 'error', text: 'Profile photo storage is not available right now.' });
+
+    const cloudName = process.env.REACT_APP_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET;
+    if (!cloudName || !uploadPreset) {
+      setMessage({ type: 'error', text: 'Profile photo storage is not configured yet.' });
       return;
     }
 
     setUploadingPhoto(true);
     setMessage(null);
     try {
-      const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const photoRef = ref(storage, `profile-images/${currentUser.uid}/avatar.${extension}`);
-      await uploadBytes(photoRef, file, { contentType: file.type });
-      const downloadURL = await getDownloadURL(photoRef);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', uploadPreset);
+      formData.append('folder', `medidocs/profile-images/${currentUser.uid}`);
 
-      await updateProfile(currentUser, { photoURL: downloadURL });
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/image/upload`, {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.secure_url) {
+        throw new Error(data.error?.message || 'Cloudinary upload failed.');
+      }
+
+      await updateProfile(currentUser, { photoURL: data.secure_url });
       await updateDoc(doc(db, 'users', currentUser.uid), {
-        photoURL: downloadURL,
+        photoURL: data.secure_url,
         photoUpdatedAt: new Date()
       });
       await refreshUserProfile();
