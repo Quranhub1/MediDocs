@@ -150,7 +150,8 @@ app.post('/api/debug/cloudinary', (req, res) => {
     httpStatus,
     errorCode,
     errorMessage,
-    browser
+    browser,
+    rawResponsePreview
   } = req.body || {};
 
   console.error('[CLOUDINARY DEBUG] Profile photo upload event');
@@ -162,6 +163,7 @@ app.post('/api/debug/cloudinary', (req, res) => {
   console.error('[CLOUDINARY DEBUG] Cloudinary HTTP status:', Number(httpStatus) || 0);
   console.error('[CLOUDINARY DEBUG] Error code:', String(errorCode || 'none').slice(0, 120));
   console.error('[CLOUDINARY DEBUG] Error message:', String(errorMessage || 'none').slice(0, 500));
+  console.error('[CLOUDINARY DEBUG] Raw response preview:', String(rawResponsePreview || 'none').slice(0, 500));
   console.error('[CLOUDINARY DEBUG] Browser:', String(browser || 'unknown').slice(0, 200));
   console.error('[CLOUDINARY DEBUG] Timestamp:', new Date().toISOString());
 

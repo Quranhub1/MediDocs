@@ -131,7 +131,13 @@ const UserProfile = ({ onViewChange, onLogout, onRenew }) => {
         body: formData
       });
 
-      const data = await response.json().catch(() => ({}));
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        data = {};
+      }
       if (!response.ok || !data.secure_url) {
         const errorMessage = data.error?.message || `Cloudinary upload failed with HTTP ${response.status}.`;
         const errorCode = data.error?.code || '';
@@ -139,7 +145,8 @@ const UserProfile = ({ onViewChange, onLogout, onRenew }) => {
           stage: 'cloudinary_response_error',
           httpStatus: response.status,
           errorCode,
-          errorMessage
+          errorMessage,
+          rawResponsePreview: String(responseText || '').slice(0, 500)
         });
         throw new Error(errorMessage);
       }
