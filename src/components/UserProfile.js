@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
-import { sendPasswordResetEmail } from 'firebase/auth';
+import React, { useMemo, useRef, useState } from 'react';
+import { sendPasswordResetEmail, updateProfile } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { auth, db, storage } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useStudy } from '../context/StudyContext';
 
@@ -32,6 +33,19 @@ const ProgressBar = ({ value = 0 }) => {
   return <div className="h-2.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden" role="progressbar" aria-valuenow={Math.round(safeValue)} aria-valuemin="0" aria-valuemax="100" aria-label="Course progress"><div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-700" style={{ width: `${safeValue}%` }} /></div>;
 };
 
+const UserAvatar = ({ photoURL, initials, uploading, onChange }) => {
+  const inputRef = useRef(null);
+  return (
+    <div className="relative shrink-0">
+      <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading} className="group relative block w-20 h-20 rounded-2xl overflow-hidden shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-70" aria-label="Change profile photo">
+        {photoURL ? <img src={photoURL} alt="Profile" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center text-3xl font-extrabold">{initials}</div>}
+        <span className="absolute inset-x-0 bottom-0 bg-black/60 text-white text-[11px] font-semibold text-center py-1 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity">{uploading ? 'Uploading…' : 'Change photo'}</span>
+      </button>
+      <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={onChange} disabled={uploading} />
+    </div>
+  );
+};
+
 const UserProfile = ({ onViewChange, onLogout, onRenew }) => {
   const { currentUser, userProfile, isAdmin, refreshUserProfile } = useAuth();
   const { streak, badges } = useStudy();
@@ -39,6 +53,7 @@ const UserProfile = ({ onViewChange, onLogout, onRenew }) => {
   const [name, setName] = useState(userProfile?.name || currentUser?.displayName || '');
   const [phone, setPhone] = useState(userProfile?.phone || currentUser?.phoneNumber || '');
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [message, setMessage] = useState(null);
   const [passwordLoading, setPasswordLoading] = useState(false);
 
@@ -50,6 +65,47 @@ const UserProfile = ({ onViewChange, onLogout, onRenew }) => {
   const completedCourses = Number(userProfile?.completedCourses ?? userProfile?.coursesCompleted ?? 0) || 0;
   const completedUnits = Number(userProfile?.completedUnits ?? userProfile?.unitsCompleted ?? 0) || 0;
   const initials = useMemo(() => (name || currentUser?.email || 'U').trim().charAt(0).toUpperCase(), [name, currentUser?.email]);
+  const photoURL = userProfile?.photoURL || currentUser?.photoURL || '';
+
+  const handlePhotoChange = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !currentUser) return;
+
+    if (!file.type.startsWith('image/')) {
+      setMessage({ type: 'error', text: 'Please choose an image file.' });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage({ type: 'error', text: 'Profile photos must be 5 MB or smaller.' });
+      return;
+    }
+    if (!storage) {
+      setMessage({ type: 'error', text: 'Profile photo storage is not available right now.' });
+      return;
+    }
+
+    setUploadingPhoto(true);
+    setMessage(null);
+    try {
+      const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const photoRef = ref(storage, `profile-images/${currentUser.uid}/avatar.${extension}`);
+      await uploadBytes(photoRef, file, { contentType: file.type });
+      const downloadURL = await getDownloadURL(photoRef);
+
+      await updateProfile(currentUser, { photoURL: downloadURL });
+      await updateDoc(doc(db, 'users', currentUser.uid), {
+        photoURL: downloadURL,
+        photoUpdatedAt: new Date()
+      });
+      await refreshUserProfile();
+      setMessage({ type: 'success', text: 'Profile photo updated successfully.' });
+    } catch (error) {
+      setMessage({ type: 'error', text: error.message || 'Unable to upload your profile photo.' });
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   const saveProfile = async (event) => {
     event.preventDefault();
@@ -95,8 +151,8 @@ const UserProfile = ({ onViewChange, onLogout, onRenew }) => {
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm border border-gray-100 dark:border-dark-border p-5 sm:p-6">
             <div className="flex items-center gap-4 mb-5">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center text-2xl font-extrabold shadow-lg" aria-hidden="true">{initials}</div>
-              <div className="min-w-0"><h2 className="text-xl font-bold text-gray-900 dark:text-dark-text truncate">{name || 'MediDocs User'}</h2><p className="text-sm text-gray-500 dark:text-dark-muted truncate">{currentUser.email}</p></div>
+              <UserAvatar photoURL={photoURL} initials={initials} uploading={uploadingPhoto} onChange={handlePhotoChange} />
+              <div className="min-w-0"><h2 className="text-xl font-bold text-gray-900 dark:text-dark-text truncate">{name || 'MediDocs User'}</h2><p className="text-sm text-gray-500 dark:text-dark-muted truncate">{currentUser.email}</p><p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Tap your avatar to upload a photo</p></div>
             </div>
 
             {editing ? (
