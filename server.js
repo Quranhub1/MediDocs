@@ -15,7 +15,7 @@ const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 const GROQ_API_KEY = process.env.REACT_APP_OPENAI_API_KEY || process.env.GROQ_API_KEY;
 const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
 const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
 
 let paystackConfig = {
@@ -47,6 +47,77 @@ try {
 } catch (error) {
   console.error('Firebase Admin initialization error:', error);
 }
+
+const isConfiguredAdmin = (email) => Boolean(ADMIN_EMAIL && email && email.trim().toLowerCase() === ADMIN_EMAIL);
+
+const getAdminProfile = (uid, email, existing = {}) => ({
+  uid,
+  email: email || existing.email || ADMIN_EMAIL,
+  name: existing.name || 'MediDocs Administrator',
+  phone: existing.phone || '',
+  createdAt: existing.createdAt || null,
+  role: 'admin',
+  subscription: 'lifetime',
+  subscriptionPlan: 'lifetime',
+  subscriptionApproved: true,
+  subscriptionStatus: 'active',
+  subscriptionExpiry: null,
+  banned: false,
+  accountType: 'administrator',
+  accessLevel: 'permanent',
+  updatedAt: new Date().toISOString()
+});
+
+// Server-authoritative admin bootstrap. The client never receives ADMIN_EMAIL itself.
+// Every authenticated request from the configured admin re-applies lifetime access in Firestore,
+// so a hard refresh or an accidentally edited profile cannot downgrade the administrator.
+app.get('/api/admin/status', async (req, res) => {
+  try {
+    if (!adminAuth || !adminDb) {
+      return res.status(503).json({ success: false, isAdmin: false, error: 'Admin authentication is not configured' });
+    }
+
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+    if (!token) {
+      return res.status(401).json({ success: false, isAdmin: false, error: 'Missing authorization token' });
+    }
+
+    let decodedToken;
+    try {
+      decodedToken = await adminAuth.verifyIdToken(token);
+    } catch (error) {
+      return res.status(401).json({ success: false, isAdmin: false, error: 'Invalid authentication token' });
+    }
+
+    const email = (decodedToken.email || '').trim().toLowerCase();
+    if (!isConfiguredAdmin(email)) {
+      return res.json({ success: true, isAdmin: false });
+    }
+
+    const userRef = adminDb.collection('users').doc(decodedToken.uid);
+    const userSnap = await userRef.get();
+    const existing = userSnap.exists ? userSnap.data() : {};
+    const profile = getAdminProfile(decodedToken.uid, email, existing);
+
+    await userRef.set({
+      ...profile,
+      createdAt: existing.createdAt || new Date().toISOString()
+    }, { merge: true });
+
+    res.json({
+      success: true,
+      isAdmin: true,
+      profile: {
+        ...profile,
+        createdAt: existing.createdAt || profile.createdAt || null
+      }
+    });
+  } catch (error) {
+    console.error('Admin status error:', error);
+    res.status(500).json({ success: false, isAdmin: false, error: 'Unable to restore administrator access' });
+  }
+});
 
 async function loadPaystackConfig() {
   try {
@@ -110,7 +181,7 @@ const toDate = (value) => {
 };
 
 // Aggregated, non-sensitive statistics used by the existing Google Apps Script.
-// No names, email addresses, phone numbers, passwords, or authentication data are returned.
+// No names, email addresses, passwords, or authentication data are returned.
 app.get('/api/daily-report-data', async (req, res) => {
   try {
     if (!adminDb) {
@@ -140,10 +211,12 @@ app.get('/api/daily-report-data', async (req, res) => {
     }).length;
 
     const activeSubscriptions = users.filter(user =>
-      user.subscriptionStatus === 'active' && user.subscriptionApproved === true
+      (user.role === 'admin' && user.accessLevel === 'permanent') ||
+      (user.subscriptionStatus === 'active' && user.subscriptionApproved === true)
     ).length;
 
     const expiredSubscriptions = users.filter(user => {
+      if (user.role === 'admin' && user.accessLevel === 'permanent') return false;
       const expiry = toDate(user.subscriptionExpiry);
       return Boolean(expiry && expiry <= now && user.subscriptionApproved === true);
     }).length;
@@ -256,7 +329,7 @@ app.post('/api/config/paystack', generalLimiter, async (req, res) => {
       return res.status(401).json({ success: false, error: 'Missing authorization token' });
     }
 
-    if (!adminDb) {
+    if (!adminDb || !adminAuth) {
       return res.status(500).json({ success: false, error: 'Admin SDK not initialized' });
     }
 
@@ -267,8 +340,7 @@ app.post('/api/config/paystack', generalLimiter, async (req, res) => {
       return res.status(401).json({ success: false, error: 'Invalid token' });
     }
 
-    const isAdmin = decodedToken.phone_number === '256749846848' ||
-      (decodedToken.email && decodedToken.email.toLowerCase() === (ADMIN_EMAIL || '').toLowerCase());
+    const isAdmin = isConfiguredAdmin(decodedToken.email);
     if (!isAdmin) {
       return res.status(403).json({ success: false, error: 'Forbidden' });
     }
@@ -422,6 +494,7 @@ app.get('/api/subscriptions/expiring', generalLimiter, async (req, res) => {
     const expiringUsers = snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
       .filter(user => {
+        if (user.role === 'admin' && user.accessLevel === 'permanent') return false;
         if (!user.subscriptionExpiry || !user.subscriptionApproved) return false;
         const expiry = user.subscriptionExpiry.toDate ? user.subscriptionExpiry.toDate() : new Date(user.subscriptionExpiry);
         return expiry <= fiveDaysFromNow && expiry > new Date();
