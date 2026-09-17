@@ -1,6 +1,6 @@
 /* MediDocs responsive, accessible and motion-aware UI layer */
 html { scroll-behavior: smooth; }
-body { -webkit-tap-highlight-color: transparent; }
+body { -webkit-tap-highlight-color: transparent; margin: 0; background: #f8fafc; }
 button, a, input, select, textarea { touch-action: manipulation; }
 .touch-target { min-width: 44px; min-height: 44px; }
 .skip-link { position: fixed; left: 1rem; top: -100px; z-index: 100; padding: .75rem 1rem; border-radius: .75rem; background: #111827; color: white; font-weight: 700; transition: top .2s ease; }
@@ -33,17 +33,46 @@ button, a, input, select, textarea { touch-action: manipulation; }
 .low-bandwidth *, .low-bandwidth *::before, .low-bandwidth *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; background-image: none !important; }
 .dark input, .dark select, .dark textarea { color-scheme: dark; }
 .dark ::selection { background: rgba(16,185,129,.35); }
+
+/* Shared layout rhythm */
+.md-section { position: relative; }
+.md-section-heading { max-width: 760px; margin-inline: auto; }
+.md-eyebrow { display: inline-flex; align-items: center; gap: .45rem; padding: .35rem .7rem; border-radius: 999px; background: rgba(16,185,129,.09); color: #047857; font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.dark .md-eyebrow { background: rgba(16,185,129,.14); color: #6ee7b7; }
+.md-course-card { animation: mdCardIn .5s ease both; animation-delay: var(--md-delay, 0ms); }
+.md-course-card:focus-within { outline: 3px solid rgba(16,185,129,.25); outline-offset: 2px; }
+.md-empty-state { min-height: 190px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+
+/* Keep floating controls clear of the mobile navigation and safe-area inset. */
+.md-ai-fab { bottom: calc(5.5rem + env(safe-area-inset-bottom)); right: 1rem; }
+.safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
 .force-reduced-motion *, .force-reduced-motion *::before, .force-reduced-motion *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
-@media (max-width: 640px) {
-  #sidebar { width: 85% !important; max-width: 280px !important; }
+
+@media (max-width: 767px) {
+  /* One-column course cards are easier to scan and tap on narrow Android screens. */
+  .md-course-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  .md-course-card { min-height: 0; }
+  .md-courses-section { padding-top: 2.25rem !important; padding-bottom: 2.5rem !important; }
+  .md-section-heading { margin-bottom: 1.5rem !important; }
+  .md-ai-fab { right: .75rem; }
+  #sidebar { width: 85% !important; max-width: 300px !important; }
   #login-modal > div, #register-modal > div, #payment-modal > div, #contact-modal > div, #ai-chat-modal > div, #ai-response-modal > div { max-width: 95% !important; width: 95% !important; max-height: 90vh !important; margin: .5rem !important; overflow-y: auto !important; }
   #login-modal input, #register-modal input, #payment-modal input, #contact-modal input, #ai-chat-modal input { font-size: 1rem !important; min-height: 44px; }
   #login-modal button, #register-modal button, #payment-modal button, #contact-modal button, #ai-chat-modal button { min-height: 44px; }
   h1 { font-size: 2rem !important; } h2 { font-size: 1.5rem !important; } h3 { font-size: 1.25rem !important; }
-  .p-8 { padding: 1rem !important; } .p-6 { padding: .75rem !important; }
+  .p-8 { padding: 1rem !important; } .p-6 { padding: .9rem !important; }
   .max-w-4xl { max-width: 95% !important; }
-  .pb-16 { padding-bottom: 4.5rem !important; }
+  .pb-16 { padding-bottom: 5.25rem !important; }
 }
-@media (max-width: 480px) { .shadow-2xl { box-shadow: 0 8px 24px rgba(15,23,42,.14) !important; } .backdrop-blur-sm { backdrop-filter: none !important; } .text-6xl { font-size: 3rem !important; } }
+@media (max-width: 480px) {
+  .shadow-2xl { box-shadow: 0 8px 24px rgba(15,23,42,.14) !important; }
+  .backdrop-blur-sm { backdrop-filter: none !important; }
+  .text-6xl { font-size: 3rem !important; }
+  .md-courses-section h2 { font-size: 1.65rem !important; }
+}
+@media (min-width: 768px) and (max-width: 1024px) {
+  .md-course-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
 @media (min-width: 641px) and (max-width: 900px) { .md-dashboard-card { min-height: 120px; } }
