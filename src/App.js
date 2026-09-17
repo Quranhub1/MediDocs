@@ -82,7 +82,19 @@ function AppContent() {
         </div>
         {currentView === 'courses' && currentUser && <DashboardEnhancements userProfile={userProfile} />}
         <LoginModal show={showLoginModal} onClose={() => setShowLoginModal(false)} onSwitchToRegister={() => { setShowLoginModal(false); setShowRegisterModal(true); }} onSwitchToLogin={() => { setShowRegisterModal(false); setShowLoginModal(true); }} /><RegisterModal show={showRegisterModal} onClose={() => setShowRegisterModal(false)} onSwitchToLogin={() => { setShowRegisterModal(false); setShowLoginModal(true); }} /><PaymentModal show={showPaymentModal} selectedPlan={selectedPaymentPlan} onClose={() => setShowPaymentModal(false)} onPaymentSuccess={async () => { await refreshUserProfile(); }} /><ContactModal show={showContactModal} onClose={() => setShowContactModal(false)} /><AIStudyAssistant show={showAIChatModal} onClose={() => setShowAIChatModal(false)} user={currentUser} userProfile={userProfile} />
-        <button onClick={() => setShowAIChatModal(true)} className="md-ai-fab touch-target fixed z-40 rounded-full flex items-center justify-center" aria-label="Open AI study assistant"><svg className="w-7 h-7 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10M5 17h14"></path></svg></button>
+        <button type="button" onClick={() => setShowAIChatModal(true)} className="md-ai-fab touch-target fixed z-40 rounded-full flex items-center justify-center" aria-label="Open AI study assistant" title="AI Study Assistant">
+          <svg className="md-ai-icon" width="30" height="30" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M24 8V5" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+            <circle cx="24" cy="4" r="2.5" fill="currentColor"/>
+            <rect x="8" y="11" width="32" height="28" rx="9" stroke="currentColor" strokeWidth="3"/>
+            <circle cx="18" cy="24" r="3" fill="currentColor"/>
+            <circle cx="30" cy="24" r="3" fill="currentColor"/>
+            <path d="M16 31C18.2 33.2 20.8 34 24 34C27.2 34 29.8 33.2 32 31" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+            <path d="M8 22H5M43 22H40" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+            <path d="M13 39L10 42M35 39L38 42" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+          </svg>
+          <span className="md-ai-spark" aria-hidden="true">✦</span>
+        </button>
         {canShowInstall && <div className="fixed top-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] sm:w-96 bg-white dark:bg-dark-card rounded-xl shadow-2xl p-4 z-[60] border border-gray-200 dark:border-dark-border" role="dialog" aria-label="Install MediDocs"><div className="flex items-start gap-3"><img src="/medidocs-icon.svg" alt="MediDocs app icon" className="w-12 h-12 rounded-xl flex-shrink-0" /><div className="min-w-0"><p className="text-sm font-bold text-gray-900 dark:text-dark-text">Install MediDocs</p><p className="text-xs text-gray-600 dark:text-dark-muted mt-1">Install MediDocs as an app for a cleaner, standalone experience.</p></div></div>{pwaInstallPrompt ? <div className="flex gap-2 mt-4"><button onClick={installPWA} className="touch-target flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700">Install App</button><button onClick={() => setPwaInstallPrompt(null)} className="touch-target px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-dark-text rounded-lg text-sm">Close</button></div> : <div className="mt-4 rounded-lg bg-gray-50 dark:bg-gray-800 p-3"><p className="text-xs font-semibold text-gray-800 dark:text-dark-text">Add MediDocs from your browser</p><p className="text-xs text-gray-600 dark:text-dark-muted mt-1">Use your browser menu and choose <strong>Install app</strong> or <strong>Add to Home screen</strong>.</p><button onClick={() => { setShowInstallHelp(false); setInstallPromptSeen(true); try { localStorage.setItem(PWA_PROMPT_SHOWN_KEY, 'true'); } catch {} }} className="touch-target mt-3 text-xs font-medium text-emerald-700 dark:text-emerald-400">Dismiss</button></div>}</div>}
         {!isStandalone && !installPromptSeen && !pwaInstallPrompt && !showInstallHelp && <button onClick={() => { setShowInstallHelp(true); setInstallPromptSeen(true); try { localStorage.setItem(PWA_PROMPT_SHOWN_KEY, 'true'); } catch {} }} className="touch-target fixed top-4 left-1/2 -translate-x-1/2 z-40 px-3 py-2 bg-white dark:bg-dark-card border border-gray-200 dark:border-dark-border rounded-lg shadow-lg text-xs font-semibold text-gray-700 dark:text-dark-text" aria-label="Show instructions to install MediDocs">Install MediDocs</button>}
       </div>
@@ -90,5 +102,5 @@ function AppContent() {
   );
 }
 
-function App() { return <AuthProvider><ThemeProvider><ToastProvider><StudyProvider><BookmarkProvider><AnomalyProvider><AppContent /></AnomalyProvider></BookmarkProvider></StudyProvider></ToastProvider></ThemeProvider></AuthProvider>; }
+function App() { return <AuthProvider><ThemeProvider><ToastProvider><StudyProvider><BookmarkProvider><AnomalyProvider><AppContent /></AnomalyProvider></BookmarkProvider></StudyProvider></ToastProvider></AuthProvider>; }
 export default App;
