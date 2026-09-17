@@ -32,7 +32,7 @@ const ProgressBar = ({ value = 0 }) => {
   return <div className="h-2.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden" role="progressbar" aria-valuenow={Math.round(safeValue)} aria-valuemin="0" aria-valuemax="100" aria-label="Course progress"><div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-700" style={{ width: `${safeValue}%` }} /></div>;
 };
 
-const UserProfile = ({ onViewChange, onLogout }) => {
+const UserProfile = ({ onViewChange, onLogout, onRenew }) => {
   const { currentUser, userProfile, isAdmin, refreshUserProfile } = useAuth();
   const { streak, badges } = useStudy();
   const [editing, setEditing] = useState(false);
@@ -116,7 +116,7 @@ const UserProfile = ({ onViewChange, onLogout }) => {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="rounded-xl bg-gray-50 dark:bg-dark-bg p-4"><p className="text-xs text-gray-500 dark:text-dark-muted">Current streak</p><p className="text-xl font-extrabold text-gray-900 dark:text-dark-text mt-1">{streak.current} days</p></div>
               <div className="rounded-xl bg-gray-50 dark:bg-dark-bg p-4"><p className="text-xs text-gray-500 dark:text-dark-muted">Longest streak</p><p className="text-xl font-extrabold text-gray-900 dark:text-dark-text mt-1">{streak.longest} days</p></div>
-              <div className="rounded-xl bg-gray-50 dark:bg-dark-bg p-4"><p className="text-xs text-gray-500 dark:text-dark-muted">Study time</p><p className="text-xl font-extrabold text-gray-900 dark:text-dark-text mt-1">{formatMinutes(userProfile?.totalStudyTime)}</p></div>
+              <div className="rounded-xl bg-gray-50 dark:bg-dark-bg p-4"><p className="text-xs text-gray-500 dark:text-dark-muted">Study time</p><p className="text-xl font-extrabold text-gray-900 dark:text-dark-text mt-1">{formatMinutes(streak.totalStudyTime)}</p></div>
               <div className="rounded-xl bg-gray-50 dark:bg-dark-bg p-4"><p className="text-xs text-gray-500 dark:text-dark-muted">Badges earned</p><p className="text-xl font-extrabold text-gray-900 dark:text-dark-text mt-1">{badges.length}</p></div>
             </div>
             <div className="grid grid-cols-2 gap-3 mt-3"><div className="rounded-xl border border-gray-100 dark:border-dark-border p-4"><p className="text-xs text-gray-500 dark:text-dark-muted">Courses completed</p><p className="text-lg font-bold text-gray-900 dark:text-dark-text mt-1">{completedCourses}</p></div><div className="rounded-xl border border-gray-100 dark:border-dark-border p-4"><p className="text-xs text-gray-500 dark:text-dark-muted">Units completed</p><p className="text-lg font-bold text-gray-900 dark:text-dark-text mt-1">{completedUnits}</p></div></div>
@@ -136,12 +136,12 @@ const UserProfile = ({ onViewChange, onLogout }) => {
             <h2 className="text-2xl font-extrabold mt-1 capitalize">{String(plan).replace(/[-_]/g, ' ')}</h2>
             <div className="mt-4 space-y-2 text-sm"><div className="flex justify-between gap-3"><span className="text-emerald-100">Subscription</span><strong className="capitalize">{String(status).replace(/[-_]/g, ' ')}</strong></div><div className="flex justify-between gap-3"><span className="text-emerald-100">Expires</span><strong>{expiry ? formatDate(expiry) : (effectiveAdmin ? 'Never' : 'No expiry')}</strong></div></div>
             {effectiveAdmin && <div className="mt-4 rounded-xl bg-white/10 border border-white/15 p-3 text-sm"><strong>Lifetime administrator access</strong><p className="text-emerald-100 mt-1">This access is restored from the server after every sign-in and hard refresh.</p></div>}
-            <button onClick={() => onViewChange(effectiveAdmin ? 'admin' : 'home')} className="touch-target w-full mt-5 px-4 py-3 rounded-xl bg-white text-emerald-700 font-bold hover:bg-emerald-50">{effectiveAdmin ? 'Open Admin Control Center' : 'View subscription'}</button>
+            <button onClick={() => effectiveAdmin ? onViewChange('admin') : onRenew()} className="touch-target w-full mt-5 px-4 py-3 rounded-xl bg-white text-emerald-700 font-bold hover:bg-emerald-50">{effectiveAdmin ? 'Open Admin Control Center' : 'Manage subscription'}</button>
           </div>
 
           <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm border border-gray-100 dark:border-dark-border p-5">
             <h2 className="font-bold text-gray-900 dark:text-dark-text mb-3">Account shortcuts</h2>
-            <div className="space-y-2"><button onClick={() => onViewChange('courses')} className="touch-target w-full text-left px-4 py-3 rounded-xl hover:bg-emerald-50 dark:hover:bg-gray-700 text-gray-700 dark:text-dark-text font-medium">📚 My learning</button><button onClick={() => onViewChange(effectiveAdmin ? 'admin' : 'home')} className="touch-target w-full text-left px-4 py-3 rounded-xl hover:bg-emerald-50 dark:hover:bg-gray-700 text-gray-700 dark:text-dark-text font-medium">💳 {effectiveAdmin ? 'Admin control center' : 'Subscription & payments'}</button><button onClick={() => onViewChange('contact')} className="touch-target w-full text-left px-4 py-3 rounded-xl hover:bg-emerald-50 dark:hover:bg-gray-700 text-gray-700 dark:text-dark-text font-medium">💬 Contact support</button></div>
+            <div className="space-y-2"><button onClick={() => onViewChange('courses')} className="touch-target w-full text-left px-4 py-3 rounded-xl hover:bg-emerald-50 dark:hover:bg-gray-700 text-gray-700 dark:text-dark-text font-medium">📚 My learning</button><button onClick={() => effectiveAdmin ? onViewChange('admin') : onRenew()} className="touch-target w-full text-left px-4 py-3 rounded-xl hover:bg-emerald-50 dark:hover:bg-gray-700 text-gray-700 dark:text-dark-text font-medium">💳 {effectiveAdmin ? 'Admin control center' : 'Subscription & payments'}</button><button onClick={() => onViewChange('contact')} className="touch-target w-full text-left px-4 py-3 rounded-xl hover:bg-emerald-50 dark:hover:bg-gray-700 text-gray-700 dark:text-dark-text font-medium">💬 Contact support</button></div>
           </div>
 
           <button onClick={onLogout} className="touch-target w-full px-5 py-3 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 font-bold border border-red-100 dark:border-red-900/40 hover:bg-red-100 dark:hover:bg-red-900/30">Log out of MediDocs</button>
