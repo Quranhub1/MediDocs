@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
-import { downloadDocument, getDocumentUrl } from '../utils/documentActions';
+import { downloadDocument, getDocumentUrl, isValidDocumentUrl } from '../utils/documentActions';
 
 const NON_EMBEDDABLE_HOSTS = ['mega.nz', 'icedrive.net', 'mediafire.com', 'drive.google.com', 'dropbox.com', '1drv.ms', 'app.box.com'];
 
@@ -26,7 +26,20 @@ const DocumentReader = ({ document: doc, onClose }) => {
   const [loadStarted, setLoadStarted] = useState(false);
 
   const filePath = getDocumentUrl(doc) || '';
-  const fileName = filePath.split('?')[0].split('#')[0].split('/').pop() || doc?.title || 'document';
+  const validUrl = isValidDocumentUrl(doc);
+  const fileName = typeof filePath === 'string'
+    ? filePath.split('?')[0].split('#')[0].split('/').pop() || doc?.title || 'document'
+    : doc?.title || 'document';
+
+  useEffect(() => {
+    console.info('[DocumentReader] open', {
+      id: doc?.id || null,
+      title: doc?.title || null,
+      filePath,
+      validUrl,
+      filePathType: typeof filePath
+    });
+  }, [doc, filePath, validUrl]);
   const extension = (fileName.split('.').pop() || '').toLowerCase();
   const isPDF = extension === 'pdf' || doc?.fileType === 'application/pdf' || doc?.mimeType === 'application/pdf';
   const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension);
@@ -60,7 +73,7 @@ const DocumentReader = ({ document: doc, onClose }) => {
 
   if (!doc) return null;
 
-  const canPreview = Boolean(filePath) && !isExternalHost && (isPDF || isImage || isVideo || isOffice);
+  const canPreview = validUrl && !isExternalHost && (isPDF || isImage || isVideo || isOffice);
   const showFallback = !filePath || isExternalHost || !canPreview || embedFailed;
 
   return (
