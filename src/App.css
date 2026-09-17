@@ -59,7 +59,6 @@ button, a, input, select, textarea { touch-action: manipulation; }
   animation: mdAiGlow 2.4s ease-in-out infinite;
   isolation: isolate;
   overflow: visible;
-  position: relative;
 }
 .md-ai-fab::before {
   content: '';
