@@ -82,7 +82,26 @@ const UserProfile = ({ onViewChange, onLogout, onRenew }) => {
 
     const cloudName = process.env.REACT_APP_CLOUDINARY_CLOUD_NAME;
     const uploadPreset = process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET;
+    const reportCloudinaryDebug = (details = {}) => {
+      fetch('/api/debug/cloudinary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stage: details.stage || 'unknown',
+          cloudNameConfigured: Boolean(cloudName),
+          uploadPresetConfigured: Boolean(uploadPreset),
+          fileType: file.type,
+          fileSize: file.size,
+          httpStatus: details.httpStatus || 0,
+          errorCode: details.errorCode || '',
+          errorMessage: details.errorMessage || '',
+          browser: navigator.userAgent
+        })
+      }).catch(() => {});
+    };
+
     if (!cloudName || !uploadPreset) {
+      reportCloudinaryDebug({ stage: 'client_configuration_missing', errorMessage: 'Cloudinary client configuration missing' });
       setMessage({ type: 'error', text: 'Profile photo storage is not configured yet.' });
       return;
     }
@@ -95,16 +114,32 @@ const UserProfile = ({ onViewChange, onLogout, onRenew }) => {
       formData.append('upload_preset', uploadPreset);
       formData.append('folder', `medidocs/profile-images/${currentUser.uid}`);
 
+      console.info('[CLOUDINARY DEBUG] Starting profile photo upload', {
+        cloudNameConfigured: Boolean(cloudName),
+        uploadPresetConfigured: Boolean(uploadPreset),
+        fileType: file.type,
+        fileSize: file.size
+      });
+
       const response = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/image/upload`, {
         method: 'POST',
         body: formData
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.secure_url) {
-        throw new Error(data.error?.message || 'Cloudinary upload failed.');
+        const errorMessage = data.error?.message || `Cloudinary upload failed with HTTP ${response.status}.`;
+        const errorCode = data.error?.code || '';
+        reportCloudinaryDebug({
+          stage: 'cloudinary_response_error',
+          httpStatus: response.status,
+          errorCode,
+          errorMessage
+        });
+        throw new Error(errorMessage);
       }
 
+      console.info('[CLOUDINARY DEBUG] Cloudinary upload succeeded');
       await updateProfile(currentUser, { photoURL: data.secure_url });
       await updateDoc(doc(db, 'users', currentUser.uid), {
         photoURL: data.secure_url,
@@ -113,6 +148,10 @@ const UserProfile = ({ onViewChange, onLogout, onRenew }) => {
       await refreshUserProfile();
       setMessage({ type: 'success', text: 'Profile photo updated successfully.' });
     } catch (error) {
+      reportCloudinaryDebug({
+        stage: 'client_upload_exception',
+        errorMessage: error?.message || 'Unknown profile photo upload error'
+      });
       setMessage({ type: 'error', text: error.message || 'Unable to upload your profile photo.' });
     } finally {
       setUploadingPhoto(false);
@@ -166,7 +205,6 @@ const UserProfile = ({ onViewChange, onLogout, onRenew }) => {
               <UserAvatar photoURL={photoURL} initials={initials} uploading={uploadingPhoto} onChange={handlePhotoChange} />
               <div className="min-w-0"><h2 className="text-xl font-bold text-gray-900 dark:text-dark-text truncate">{name || 'MediDocs User'}</h2><p className="text-sm text-gray-500 dark:text-dark-muted truncate">{currentUser.email}</p><p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Tap your avatar to upload a photo</p></div>
             </div>
-
             {editing ? (
               <form onSubmit={saveProfile} className="space-y-4">
                 <label className="block"><span className="text-sm font-semibold text-gray-700 dark:text-dark-text">Username / full name</span><input value={name} onChange={(e) => setName(e.target.value)} required className="mt-1 w-full touch-target rounded-xl border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-bg text-gray-900 dark:text-dark-text px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500" /></label>
@@ -177,7 +215,6 @@ const UserProfile = ({ onViewChange, onLogout, onRenew }) => {
               <div><ProfileRow label="Username" value={name} /><ProfileRow label="Registered email" value={currentUser.email} /><ProfileRow label="Phone number" value={phone} /><ProfileRow label="Account created" value={formatDate(userProfile?.createdAt)} /><ProfileRow label="Account role" value={effectiveAdmin ? 'Administrator' : 'Student'} />{effectiveAdmin && <ProfileRow label="Access level"><span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 px-3 py-1 text-emerald-800 dark:text-emerald-300">Permanent access</span></ProfileRow>}<button onClick={() => setEditing(true)} className="touch-target mt-5 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">Edit profile</button></div>
             )}
           </div>
-
           <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm border border-gray-100 dark:border-dark-border p-5 sm:p-6" aria-labelledby="learning-status-title">
             <div className="flex items-start justify-between gap-3 mb-5"><div><h2 id="learning-status-title" className="text-xl font-bold text-gray-900 dark:text-dark-text">Learning progress & status</h2><p className="text-sm text-gray-500 dark:text-dark-muted mt-1">Your personal study tracker lives here, keeping the dashboard focused on learning.</p></div><span className="text-2xl" aria-hidden="true">📈</span></div>
             <div className="mb-5"><div className="flex items-center justify-between gap-3 mb-2"><span className="text-sm font-semibold text-gray-700 dark:text-dark-text">Course progress</span><strong className="text-sm text-emerald-700 dark:text-emerald-400">{Math.round(progress)}%</strong></div><ProgressBar value={progress} /></div>
@@ -190,29 +227,16 @@ const UserProfile = ({ onViewChange, onLogout, onRenew }) => {
             <div className="grid grid-cols-2 gap-3 mt-3"><div className="rounded-xl border border-gray-100 dark:border-dark-border p-4"><p className="text-xs text-gray-500 dark:text-dark-muted">Courses completed</p><p className="text-lg font-bold text-gray-900 dark:text-dark-text mt-1">{completedCourses}</p></div><div className="rounded-xl border border-gray-100 dark:border-dark-border p-4"><p className="text-xs text-gray-500 dark:text-dark-muted">Units completed</p><p className="text-lg font-bold text-gray-900 dark:text-dark-text mt-1">{completedUnits}</p></div></div>
             <p className="text-xs text-gray-500 dark:text-dark-muted mt-4">Last study activity: {formatDate(streak.lastStudyDate)}</p>
           </div>
-
           <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm border border-gray-100 dark:border-dark-border p-5 sm:p-6">
             <div className="flex items-center justify-between gap-3 mb-4"><div><h2 className="text-xl font-bold text-gray-900 dark:text-dark-text">Security</h2><p className="text-sm text-gray-500 dark:text-dark-muted mt-1">Your password is never displayed here. Humans have invented enough ways to leak secrets.</p></div><span className="text-2xl" aria-hidden="true">🔐</span></div>
-            <ProfileRow label="Password" value="••••••••••••" /><ProfileRow label="Email verification" value={currentUser.emailVerified ? 'Verified' : 'Not verified'} />
-            <button onClick={sendPasswordReset} disabled={passwordLoading} className="touch-target mt-4 px-5 py-3 rounded-xl border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-semibold hover:bg-emerald-50 dark:hover:bg-emerald-900/20 disabled:opacity-60">{passwordLoading ? 'Sending…' : 'Change password by email'}</button>
+            <ProfileRow label="Password"><span className="text-gray-500 dark:text-dark-muted">••••••••</span></ProfileRow>
+            <button onClick={sendPasswordReset} disabled={passwordLoading} className="touch-target mt-5 px-5 py-3 rounded-xl bg-gray-900 dark:bg-gray-700 text-white font-semibold disabled:opacity-60">{passwordLoading ? 'Sending…' : 'Send password reset email'}</button>
           </div>
         </div>
-
         <aside className="space-y-6">
-          <div className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl shadow-lg p-6 text-white">
-            <div className="flex items-center justify-between gap-3"><p className="text-emerald-100 text-sm font-semibold">Account status</p>{effectiveAdmin && <span className="text-xs font-bold bg-white/15 rounded-full px-2.5 py-1">ADMIN</span>}</div>
-            <h2 className="text-2xl font-extrabold mt-1 capitalize">{String(plan).replace(/[-_]/g, ' ')}</h2>
-            <div className="mt-4 space-y-2 text-sm"><div className="flex justify-between gap-3"><span className="text-emerald-100">Subscription</span><strong className="capitalize">{String(status).replace(/[-_]/g, ' ')}</strong></div><div className="flex justify-between gap-3"><span className="text-emerald-100">Expires</span><strong>{expiry ? formatDate(expiry) : (effectiveAdmin ? 'Never' : 'No expiry')}</strong></div></div>
-            {effectiveAdmin && <div className="mt-4 rounded-xl bg-white/10 border border-white/15 p-3 text-sm"><strong>Lifetime administrator access</strong><p className="text-emerald-100 mt-1">This access is restored from the server after every sign-in and hard refresh.</p></div>}
-            <button onClick={() => effectiveAdmin ? onViewChange('admin') : onRenew()} className="touch-target w-full mt-5 px-4 py-3 rounded-xl bg-white text-emerald-700 font-bold hover:bg-emerald-50">{effectiveAdmin ? 'Open Admin Control Center' : 'Manage subscription'}</button>
-          </div>
-
-          <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm border border-gray-100 dark:border-dark-border p-5">
-            <h2 className="font-bold text-gray-900 dark:text-dark-text mb-3">Account shortcuts</h2>
-            <div className="space-y-2"><button onClick={() => onViewChange('courses')} className="touch-target w-full text-left px-4 py-3 rounded-xl hover:bg-emerald-50 dark:hover:bg-gray-700 text-gray-700 dark:text-dark-text font-medium">📚 My learning</button><button onClick={() => effectiveAdmin ? onViewChange('admin') : onRenew()} className="touch-target w-full text-left px-4 py-3 rounded-xl hover:bg-emerald-50 dark:hover:bg-gray-700 text-gray-700 dark:text-dark-text font-medium">💳 {effectiveAdmin ? 'Admin control center' : 'Subscription & payments'}</button><button onClick={() => onViewChange('contact')} className="touch-target w-full text-left px-4 py-3 rounded-xl hover:bg-emerald-50 dark:hover:bg-gray-700 text-gray-700 dark:text-dark-text font-medium">💬 Contact support</button></div>
-          </div>
-
-          <button onClick={onLogout} className="touch-target w-full px-5 py-3 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 font-bold border border-red-100 dark:border-red-900/40 hover:bg-red-100 dark:hover:bg-red-900/30">Log out of MediDocs</button>
+          <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm border border-gray-100 dark:border-dark-border p-5 sm:p-6"><h2 className="text-xl font-bold text-gray-900 dark:text-dark-text">Subscription</h2><div className="mt-4"><ProfileRow label="Plan" value={plan} /><ProfileRow label="Status" value={status} />{!effectiveAdmin && <ProfileRow label="Expiry" value={formatDate(expiry)} />}</div>{!effectiveAdmin && <button onClick={onRenew} className="touch-target mt-5 w-full px-5 py-3 rounded-xl bg-emerald-600 text-white font-semibold">Renew subscription</button>}</div>
+          <div className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl shadow-lg p-5 sm:p-6 text-white"><p className="text-sm font-semibold text-emerald-100">Keep learning</p><h2 className="text-2xl font-extrabold mt-1">Your next milestone is waiting.</h2><button onClick={() => onViewChange?.('dashboard')} className="touch-target mt-5 px-5 py-3 rounded-xl bg-white text-emerald-700 font-semibold">Back to dashboard</button></div>
+          <button onClick={onLogout} className="touch-target w-full px-5 py-3 rounded-xl border border-gray-200 dark:border-dark-border text-gray-700 dark:text-dark-text font-semibold">Log out</button>
         </aside>
       </div>
     </section>
