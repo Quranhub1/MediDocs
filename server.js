@@ -14,9 +14,9 @@ app.set('trust proxy', 1);
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 const GROQ_API_KEY = process.env.REACT_APP_OPENAI_API_KEY || process.env.GROQ_API_KEY;
 const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const GOOGLE_APPS_SCRIPT_URL = (process.env.GOOGLE_APPS_SCRIPT_URL || '').trim();
+const GOOGLE_APPS_SCRIPT_SECRET = process.env.GOOGLE_APPS_SCRIPT_SECRET || '';
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
-const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
 
 let paystackConfig = {
   publicKey: process.env.REACT_APP_PAYSTACK_PUBLIC_KEY || '',
@@ -41,6 +41,7 @@ try {
     });
     adminDb = admin.firestore();
     adminAuth = admin.auth();
+    console.log('Firebase Admin initialized successfully');
   } else {
     console.warn('Firebase Admin not initialized: FIREBASE_SERVICE_ACCOUNT missing');
   }
@@ -180,7 +181,7 @@ const toDate = (value) => {
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
-// Aggregated, non-sensitive statistics used by the existing Google Apps Script.
+// Aggregated, non-sensitive statistics used by Google Apps Script for daily reports.
 // No names, email addresses, passwords, or authentication data are returned.
 app.get('/api/daily-report-data', async (req, res) => {
   try {
@@ -306,7 +307,6 @@ app.post('/api/paystack/verify', paystackLimiter, async (req, res) => {
 });
 
 app.post('/api/paystack/webhook', paystackLimiter, (req, res) => {
-  const signature = req.headers['x-paystack-signature'];
   const payload = req.body;
   console.log('Paystack webhook received:', payload);
   if (payload.event === 'charge.success') {
@@ -418,6 +418,8 @@ app.post('/api/ai/chat', aiLimiter, async (req, res) => {
   }
 });
 
+// Email delivery is handled by Google Apps Script, not Resend.
+// The Apps Script URL and shared secret stay server-side in Render environment variables.
 app.post('/api/notify/email', generalLimiter, async (req, res) => {
   try {
     const { to, subject, message, eventType, userEmail, userName } = req.body;
@@ -431,52 +433,39 @@ app.post('/api/notify/email', generalLimiter, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Recipient not allowed' });
     }
 
-    if (!RESEND_API_KEY) {
-      console.warn('Email skipped: RESEND_API_KEY is not configured.');
-      return res.status(500).json({ success: false, error: 'Email service is not configured on the server.' });
+    if (!GOOGLE_APPS_SCRIPT_URL || !GOOGLE_APPS_SCRIPT_SECRET) {
+      console.warn('Email skipped: Google Apps Script email service is not configured.');
+      return res.status(503).json({ success: false, error: 'Google email service is not configured on the server.' });
     }
 
-    const htmlContent = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-        <div style="background: linear-gradient(to right, #059669, #10b981); padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">MediDocs Notification</h1>
-        </div>
-        <div style="background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb;">
-          <h2 style="color: #059669; margin-top: 0;">${escapeHtml(subject)}</h2>
-          <p style="font-size: 16px; line-height: 1.6; white-space: pre-wrap;">${escapeHtml(message)}</p>
-          ${eventType ? `<div style="background: #ecfdf5; border-left: 4px solid #10b981; padding: 10px; margin: 15px 0; border-radius: 4px;"><strong>Event:</strong> ${escapeHtml(eventType)}</div>` : ''}
-          ${userEmail ? `<p style="color: #6b7280; font-size: 14px;"><strong>User Email:</strong> ${escapeHtml(userEmail)}</p>` : ''}
-          ${userName ? `<p style="color: #6b7280; font-size: 14px;"><strong>User Name:</strong> ${escapeHtml(userName)}</p>` : ''}
-          <p style="color: #9ca3af; font-size: 12px; margin-top: 20px;">Sent automatically by MediDocs System</p>
-        </div>
-      </div>
-    `;
-
-    const response = await fetch('https://api.resend.com/emails', {
+    const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${RESEND_API_KEY}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: FROM_EMAIL,
-        to: [to],
-        subject: subject,
-        html: htmlContent
+        action: 'sendEmail',
+        secret: GOOGLE_APPS_SCRIPT_SECRET,
+        to,
+        subject,
+        message,
+        eventType: eventType || '',
+        userEmail: userEmail || '',
+        userName: userName || ''
       })
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('Resend API error:', response.status, errorData);
-      return res.status(500).json({ success: false, error: errorData.message || 'Failed to send email via Resend' });
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok || data.success !== true) {
+      console.error('Google Apps Script email error:', response.status, data);
+      return res.status(502).json({ success: false, error: data.error || 'Failed to send email via Google Apps Script' });
     }
 
-    const data = await response.json();
     res.json({ success: true, message: 'Email sent successfully', data });
   } catch (error) {
     console.error('Email send error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(502).json({ success: false, error: 'Unable to reach Google email service' });
   }
 });
 
