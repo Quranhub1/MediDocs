@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut, 
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
   onAuthStateChanged,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  setPersistence,
+  browserLocalPersistence
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
@@ -19,11 +21,38 @@ export const useAuth = () => {
   return context;
 };
 
+const restoreAdminState = async (user) => {
+  if (!user) return { isAdmin: false };
+
+  try {
+    const token = await user.getIdToken();
+    const response = await fetch('/api/admin/status', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (!response.ok) {
+      console.warn('Admin status check failed:', response.status);
+      return { isAdmin: false };
+    }
+
+    const data = await response.json();
+    return {
+      isAdmin: data.isAdmin === true,
+      profile: data.profile || null
+    };
+  } catch (error) {
+    console.warn('Unable to restore admin state:', error);
+    return { isAdmin: false };
+  }
+};
+
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState(null);
   const [isBanned, setIsBanned] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     if (!auth || !db) {
@@ -32,37 +61,69 @@ export const AuthProvider = ({ children }) => {
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
-      setIsBanned(false);
+    let active = true;
 
-      if (user) {
-        try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists()) {
-            const profile = userDoc.data();
-            setUserProfile(profile);
-            if (profile.banned) {
-              setIsBanned(true);
+    const initializeAuth = async () => {
+      try {
+        // Explicitly persist the Firebase session across hard refreshes and browser restarts.
+        await setPersistence(auth, browserLocalPersistence);
+      } catch (error) {
+        console.warn('Could not enable local Firebase auth persistence:', error);
+      }
+
+      const unsubscribe = onAuthStateChanged(auth, async (user) => {
+        if (!active) return;
+        setCurrentUser(user);
+        setIsBanned(false);
+        setIsAdmin(false);
+
+        if (user) {
+          try {
+            // The server is authoritative for admin identity. It re-applies lifetime
+            // admin fields in Firestore, so a hard refresh cannot downgrade the account.
+            const adminState = await restoreAdminState(user);
+            if (!active) return;
+            setIsAdmin(adminState.isAdmin);
+
+            const userDoc = await getDoc(doc(db, 'users', user.uid));
+            if (!active) return;
+            if (userDoc.exists()) {
+              const profile = userDoc.data();
+              setUserProfile(profile);
+              setIsBanned(!!profile.banned);
+            } else if (adminState.profile) {
+              setUserProfile(adminState.profile);
+              setIsBanned(!!adminState.profile.banned);
+            } else {
+              setUserProfile(null);
+              setIsBanned(false);
             }
-          } else {
+          } catch (error) {
+            console.error('Error fetching user profile:', error);
+            if (!active) return;
             setUserProfile(null);
             setIsBanned(false);
           }
-        } catch (error) {
-          console.error('Error fetching user profile:', error);
+        } else {
           setUserProfile(null);
           setIsBanned(false);
         }
-      } else {
-        setUserProfile(null);
-        setIsBanned(false);
-      }
 
-      setLoading(false);
+        if (active) setLoading(false);
+      });
+
+      return unsubscribe;
+    };
+
+    let unsubscribe;
+    initializeAuth().then((cleanup) => {
+      unsubscribe = cleanup;
     });
 
-    return unsubscribe;
+    return () => {
+      active = false;
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   const register = async (email, password, name, phone = '') => {
@@ -146,6 +207,7 @@ export const AuthProvider = ({ children }) => {
       await signOut(auth);
       setUserProfile(null);
       setIsBanned(false);
+      setIsAdmin(false);
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
@@ -208,12 +270,20 @@ export const AuthProvider = ({ children }) => {
   const refreshUserProfile = async () => {
     if (!auth || !db || !currentUser) return null;
     try {
+      const adminState = await restoreAdminState(currentUser);
+      setIsAdmin(adminState.isAdmin);
+
       const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
       if (userDoc.exists()) {
         const profile = userDoc.data();
         setUserProfile(profile);
         setIsBanned(!!profile.banned);
         return profile;
+      }
+      if (adminState.profile) {
+        setUserProfile(adminState.profile);
+        setIsBanned(!!adminState.profile.banned);
+        return adminState.profile;
       }
     } catch (error) {
       console.error('Error refreshing user profile:', error);
@@ -225,6 +295,7 @@ export const AuthProvider = ({ children }) => {
     currentUser,
     userProfile,
     isBanned,
+    isAdmin,
     refreshUserProfile,
     register,
     login,
