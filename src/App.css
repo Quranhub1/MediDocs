@@ -41,12 +41,43 @@ button, a, input, select, textarea { touch-action: manipulation; }
 .md-course-card:focus-within { outline: 3px solid rgba(16,185,129,.25); outline-offset: 2px; }
 .md-empty-state { min-height: 190px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 
-/* Floating controls */
-.md-ai-fab { bottom: calc(5.5rem + env(safe-area-inset-bottom)); right: 1rem; }
+/* Floating AI assistant */
+.md-ai-fab {
+  bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  right: 1rem;
+  width: 3.75rem;
+  height: 3.75rem;
+  border: 1px solid rgba(255,255,255,.35);
+  box-shadow: 0 14px 35px rgba(15,23,42,.22), 0 0 0 1px rgba(16,185,129,.12);
+  background: linear-gradient(135deg, #059669 0%, #0d9488 48%, #06b6d4 100%);
+  transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
+  isolation: isolate;
+}
+.md-ai-fab::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, rgba(16,185,129,.35), rgba(6,182,212,.25));
+  z-index: -1;
+  opacity: .7;
+  filter: blur(5px);
+  transition: opacity .2s ease, transform .2s ease;
+}
+.md-ai-fab::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255,255,255,.2);
+  pointer-events: none;
+}
+.md-ai-fab:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 18px 40px rgba(15,23,42,.28), 0 0 22px rgba(16,185,129,.2); filter: saturate(1.08); }
+.md-ai-fab:hover::before { opacity: 1; transform: scale(1.04); }
+.md-ai-fab:active { transform: scale(.96); }
+.md-ai-fab:focus-visible { outline: 3px solid rgba(6,182,212,.45); outline-offset: 4px; }
+.md-ai-fab svg { position: relative; z-index: 1; filter: drop-shadow(0 2px 3px rgba(0,0,0,.16)); }
 .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
-
-/* Keep the AI assistant and accessibility control in separate lanes. */
-.md-accessibility-fab { bottom: calc(10rem + env(safe-area-inset-bottom)); right: 1rem; }
 
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
 .force-reduced-motion *, .force-reduced-motion *::before, .force-reduced-motion *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
@@ -56,8 +87,7 @@ button, a, input, select, textarea { touch-action: manipulation; }
   .md-course-card { min-height: 0; }
   .md-courses-section { padding-top: 2.25rem !important; padding-bottom: 2.5rem !important; }
   .md-section-heading { margin-bottom: 1.5rem !important; }
-  .md-ai-fab { right: .75rem; bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
-  .md-accessibility-fab { right: .75rem; bottom: calc(10.5rem + env(safe-area-inset-bottom)); }
+  .md-ai-fab { right: .75rem; bottom: calc(5.5rem + env(safe-area-inset-bottom)); width: 3.5rem; height: 3.5rem; }
   #sidebar { width: 85% !important; max-width: 300px !important; }
   #login-modal > div, #register-modal > div, #payment-modal > div, #contact-modal > div, #ai-chat-modal > div, #ai-response-modal > div { max-width: 95% !important; width: 95% !important; max-height: 90vh !important; margin: .5rem !important; overflow-y: auto !important; }
   #login-modal input, #register-modal input, #payment-modal input, #contact-modal input, #ai-chat-modal input { font-size: 1rem !important; min-height: 44px; }
