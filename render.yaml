@@ -21,6 +21,10 @@ services:
         value: your_app_id
       - key: REACT_APP_FIREBASE_MEASUREMENT_ID
         value: your_measurement_id
+      - key: REACT_APP_CLOUDINARY_CLOUD_NAME
+        value: nasvtpxr
+      - key: REACT_APP_CLOUDINARY_UPLOAD_PRESET
+        value: medidocs_profile_photos
       - key: REACT_APP_OPENAI_API_KEY
         value: your_groq_api_key
       - key: GROQ_MODEL
