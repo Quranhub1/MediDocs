@@ -98,6 +98,10 @@ const UserProfile = ({ onViewChange, onLogout, onRenew }) => {
           httpStatus: details.httpStatus || 0,
           errorCode: details.errorCode || '',
           errorMessage: details.errorMessage || '',
+          responseKeys: details.responseKeys || '',
+          responseContentType: details.responseContentType || '',
+          responseLength: details.responseLength || 0,
+          asyncStatus: details.asyncStatus || '',
           browser: navigator.userAgent
         })
       }).catch(() => {});
@@ -111,6 +115,7 @@ const UserProfile = ({ onViewChange, onLogout, onRenew }) => {
 
     setUploadingPhoto(true);
     setMessage(null);
+    let cloudinaryFailureReported = false;
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -131,32 +136,56 @@ const UserProfile = ({ onViewChange, onLogout, onRenew }) => {
         body: formData
       });
 
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.secure_url) {
+      const responseText = await response.text();
+      let data = {};
+      try {
+        data = responseText ? JSON.parse(responseText) : {};
+      } catch (parseError) {
+        reportCloudinaryDebug({ stage: 'cloudinary_response_parse_error', httpStatus: response.status, responseContentType: response.headers.get('content-type') || '', responseLength: responseText.length, errorMessage: 'Cloudinary returned a non-JSON response.' });
+        cloudinaryFailureReported = true;
+        throw new Error('Cloudinary returned an unexpected response. Please try again.');
+      }
+
+      const responseKeys = Object.keys(data).sort();
+      const responseContentType = response.headers.get('content-type') || '';
+      const asyncStatus = data.status || '';
+      const secureUrl = data.secure_url || data.url || '';
+
+      console.info('[CLOUDINARY DEBUG] Cloudinary response received', {
+        httpStatus: response.status,
+        responseKeys,
+        responseContentType,
+        responseLength: responseText.length,
+        asyncStatus
+      });
+
+      if (!response.ok) {
         const errorMessage = data.error?.message || `Cloudinary upload failed with HTTP ${response.status}.`;
         const errorCode = data.error?.code || '';
-        reportCloudinaryDebug({
-          stage: 'cloudinary_response_error',
-          httpStatus: response.status,
-          errorCode,
-          errorMessage
-        });
+        reportCloudinaryDebug({ stage: 'cloudinary_response_error', httpStatus: response.status, errorCode, errorMessage, responseKeys: responseKeys.join(','), responseContentType, responseLength: responseText.length, asyncStatus });
+        cloudinaryFailureReported = true;
         throw new Error(errorMessage);
       }
 
-      console.info('[CLOUDINARY DEBUG] Cloudinary upload succeeded');
-      await updateProfile(currentUser, { photoURL: data.secure_url });
-      await updateDoc(doc(db, 'users', currentUser.uid), {
-        photoURL: data.secure_url,
-        photoUpdatedAt: new Date()
-      });
+      if (!secureUrl) {
+        const errorMessage = asyncStatus
+          ? `Cloudinary accepted the upload but returned an asynchronous status (${asyncStatus}) without an image URL.`
+          : 'Cloudinary accepted the upload but returned no image URL.';
+        reportCloudinaryDebug({ stage: 'cloudinary_response_missing_url', httpStatus: response.status, errorMessage, responseKeys: responseKeys.join(','), responseContentType, responseLength: responseText.length, asyncStatus });
+        cloudinaryFailureReported = true;
+        throw new Error(errorMessage);
+      }
+
+      console.info('[CLOUDINARY DEBUG] Cloudinary upload succeeded', { httpStatus: response.status, responseKeys });
+      await updateProfile(currentUser, { photoURL: secureUrl });
+      await updateDoc(doc(db, 'users', currentUser.uid), { photoURL: secureUrl, photoUpdatedAt: new Date() });
       await refreshUserProfile();
       setMessage({ type: 'success', text: 'Profile photo updated successfully.' });
     } catch (error) {
-      reportCloudinaryDebug({
-        stage: 'client_upload_exception',
-        errorMessage: error?.message || 'Unknown profile photo upload error'
-      });
+      if (!cloudinaryFailureReported) {
+        reportCloudinaryDebug({ stage: 'client_upload_exception', errorMessage: error?.message || 'Unknown profile photo upload error' });
+      }
+      console.error('[CLOUDINARY DEBUG] Profile photo upload failed', error);
       setMessage({ type: 'error', text: error.message || 'Unable to upload your profile photo.' });
     } finally {
       setUploadingPhoto(false);
