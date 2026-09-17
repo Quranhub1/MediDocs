@@ -24,7 +24,7 @@ const ContactSection = ({ onContactClick }) => {
     e.preventDefault();
     setIsSubmitting(true);
     setSubmitStatus(null);
-    
+
     try {
       const result = await submitContactForm(formState);
       if (result.success) {
@@ -52,14 +52,14 @@ const ContactSection = ({ onContactClick }) => {
           <h2 className="text-2xl font-bold text-gray-800 mb-4">
             Contact Us
           </h2>
-          
+
           {submitStatus === 'success' && (
             <div className="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 mb-6" role="alert">
               <p className="font-medium">Thank you for your message!</p>
               <p className="text-sm">We'll get back to you within 24 hours.</p>
             </div>
           )}
-          
+
           {submitStatus === 'error' && (
             <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
               <p className="font-medium">Oops! Something went wrong.</p>
@@ -81,7 +81,12 @@ const ContactSection = ({ onContactClick }) => {
                   className="flex items-center gap-4 p-4 rounded-2xl bg-green-50 border border-green-200 hover:bg-green-100 hover:border-green-300 transition-all duration-200 shadow-sm"
                   aria-label="Chat with MediDocs on WhatsApp"
                 >
-                  <span className="w-11 h-11 rounded-full bg-green-500 text-white flex items-center justify-center text-xl shadow-sm" aria-hidden="true">💬</span>
+                  <span className="w-11 h-11 rounded-full bg-green-500 text-white flex items-center justify-center shadow-sm" aria-hidden="true">
+                    <svg className="w-7 h-7" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M16 3.5C9.1 3.5 3.5 9.1 3.5 16c0 2.2.6 4.3 1.7 6.1L3.4 28.5l6.5-1.7c1.8 1.1 3.9 1.7 6.1 1.7 6.9 0 12.5-5.6 12.5-12.5S22.9 3.5 16 3.5Z" fill="white"/>
+                      <path d="M11.9 9.5c-.3-.6-.6-.6-.9-.6h-.8c-.3 0-.7.1-.9.4-.3.3-1.2 1.1-1.2 2.7s1.2 3.1 1.4 3.3c.2.2 2.3 3.6 5.7 4.9 2.8 1.1 3.4.9 4 .9.6-.1 1.9-.8 2.2-1.5.3-.7.3-1.3.2-1.5-.1-.2-.3-.3-.7-.5l-2.1-1c-.3-.2-.6-.1-.8.2l-.8 1c-.2.2-.4.3-.7.1-1-.5-1.9-1.1-2.7-1.8-.8-.8-1.4-1.6-1.8-2.6-.1-.3 0-.5.2-.7l.6-.7c.2-.2.2-.4.1-.7l-.9-2.1Z" fill="#25D366"/>
+                    </svg>
+                  </span>
                   <div>
                     <p className="text-sm font-semibold text-green-800">WhatsApp</p>
                     <p className="text-green-700">0756 454 646</p>
@@ -145,7 +150,7 @@ const ContactSection = ({ onContactClick }) => {
                     placeholder="Enter your full name"
                   />
                 </div>
-                
+
                 <div>
                   <label htmlFor="contact-email" className="block text-sm font-medium text-gray-700 mb-2">
                     Email Address
@@ -162,11 +167,11 @@ const ContactSection = ({ onContactClick }) => {
                   />
                 </div>
               </div>
-              
+
               <div>
                 <label htmlFor="contact-subject" className="block text-sm font-medium text-gray-700 mb-2">
                   Subject
-n                </label>
+                </label>
                 <input
                   type="text"
                   id="contact-subject"
@@ -178,7 +183,7 @@ n                </label>
                   placeholder="Enter subject"
                 />
               </div>
-              
+
               <div>
                 <label htmlFor="contact-message" className="block text-sm font-medium text-gray-700 mb-2">
                   Message
@@ -194,7 +199,7 @@ n                </label>
                   placeholder="Enter your message"
                 />
               </div>
-              
+
               <button
                 type="submit"
                 disabled={isSubmitting}
