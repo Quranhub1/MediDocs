@@ -1,8 +1,21 @@
 // Shared helpers for "Read Online" and "Download" actions on documents.
 
 export const getDocumentUrl = (doc) => {
-  if (!doc) return null;
-  return doc.filePath || doc.fileUrl || doc.url || null;
+  if (!doc || typeof doc !== 'object') return null;
+  const candidates = [doc.fileUrl, doc.filePath, doc.url];
+  const url = candidates.find((value) => typeof value === 'string' && value.trim());
+  return url ? url.trim() : null;
+};
+
+export const isValidDocumentUrl = (doc) => {
+  const url = getDocumentUrl(doc);
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
 };
 
 /**
@@ -38,7 +51,13 @@ export const getDocumentFileName = (doc) => {
 // without navigating away from the application.
 export const readOnline = (doc) => {
   const url = getDocumentUrl(doc);
-  if (!url) {
+  console.info('[DocumentActions] readOnline', {
+    id: doc?.id || null,
+    title: doc?.title || null,
+    url,
+    urlType: typeof url
+  });
+  if (!url || !isValidDocumentUrl(doc)) {
     alert('No read online link available for this document');
     return;
   }
@@ -50,7 +69,13 @@ export const readOnline = (doc) => {
 // origin blocks the cross-origin fetch.
 export const downloadDocument = async (doc) => {
   const url = getDocumentUrl(doc);
-  if (!url) {
+  console.info('[DocumentActions] download', {
+    id: doc?.id || null,
+    title: doc?.title || null,
+    url,
+    urlType: typeof url
+  });
+  if (!url || !isValidDocumentUrl(doc)) {
     alert('No download link available for this document');
     return;
   }
@@ -70,6 +95,11 @@ export const downloadDocument = async (doc) => {
     a.remove();
     window.URL.revokeObjectURL(blobUrl);
   } catch (error) {
+    console.error('[DocumentActions] download fetch failed, opening source URL', {
+      id: doc?.id || null,
+      url,
+      error: error?.message || String(error)
+    });
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 };
