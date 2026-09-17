@@ -70,7 +70,9 @@ const CourseGrid = ({ courses, onBrowseClick }) => {
                       course.id === 'dip1' ? 'bg-cyan-500 hover:bg-cyan-600 text-white' :
                       'bg-blue-500 hover:bg-blue-600 text-white'
                     }`}
-                    onClick={() => onBrowseClick?.(course)}
+                    onClick={() => {
+                      if (typeof onBrowseClick === 'function') onBrowseClick(course);
+                    }}
                   >
                     Browse materials
                     <span aria-hidden="true" className="ml-1">→</span>
