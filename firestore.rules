@@ -21,13 +21,13 @@ service cloud.firestore {
         allow delete: if request.auth != null && (request.auth.token.email == 'kaigwaakram123@gmail.com' || request.auth.token.email == 'sshipher@gmail.com');
       }
 
-      match /studyNotes/{noteId} {
-        allow read, create, update, delete: if request.auth != null && request.auth.uid == userId;
-      }
-
       match /flashcards/{cardId} {
         allow read, create, update: if request.auth != null && request.auth.uid == userId;
         allow delete: if request.auth != null && (request.auth.token.email == 'kaigwaakram123@gmail.com' || request.auth.token.email == 'sshipher@gmail.com');
+      }
+
+      match /studyNotes/{noteId} {
+        allow read, create, update, delete: if request.auth != null && request.auth.uid == userId;
       }
 
       match /badges/{badgeId} {
