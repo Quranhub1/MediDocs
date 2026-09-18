@@ -72,6 +72,13 @@ service cloud.firestore {
         request.auth.uid == userId;
     }
 
+    // User document analytics and reading progress
+    match /users/{userId}/documentStats/{documentId} {
+      allow read, create, update, delete:
+        if request.auth != null &&
+        request.auth.uid == userId;
+    }
+
     // Adaptive-learning / spaced-repetition review records
     match /users/{userId}/learningReviews/{reviewId} {
       allow read, create, update, delete:
