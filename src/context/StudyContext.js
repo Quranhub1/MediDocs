@@ -5,6 +5,7 @@ import {
   setDoc,
   getDoc,
   updateDoc,
+  increment,
   serverTimestamp,
   query,
   orderBy,
@@ -256,23 +257,43 @@ export const StudyProvider = ({ children }) => {
 
     try {
       const studyRef = doc(db, 'userStudyData', currentUser.uid);
-      const snapshot = await getDoc(studyRef);
-      const existing = snapshot.exists() ? snapshot.data() : {};
-      const documentsViewed = Number(existing.documentsViewed) || 0;
-
       await setDoc(studyRef, {
-        documentsViewed: documentsViewed + 1,
+        documentsViewed: increment(1),
+        lastDocumentViewedId: String(documentId),
+        lastDocumentViewedAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       }, { merge: true });
 
-      console.info('[ANALYTICS] Document view recorded:', {
+      console.info('[ANALYTICS] Document view recorded immediately:', {
         uid: currentUser.uid,
-        documentId,
-        documentsViewed: documentsViewed + 1
+        documentId
       });
       return true;
     } catch (error) {
       console.error('[ANALYTICS] Failed to record document view:', error);
+      return false;
+    }
+  };
+
+  const recordDocumentDownload = async (documentId) => {
+    if (!currentUser || !db || !documentId) return false;
+
+    try {
+      const studyRef = doc(db, 'userStudyData', currentUser.uid);
+      await setDoc(studyRef, {
+        documentsDownloaded: increment(1),
+        lastDocumentDownloadedId: String(documentId),
+        lastDocumentDownloadedAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
+      console.info('[ANALYTICS] Document download recorded immediately:', {
+        uid: currentUser.uid,
+        documentId
+      });
+      return true;
+    } catch (error) {
+      console.error('[ANALYTICS] Failed to record document download:', error);
       return false;
     }
   };
@@ -596,6 +617,7 @@ export const StudyProvider = ({ children }) => {
     loading,
     recordStudySession,
     recordDocumentView,
+    recordDocumentDownload,
     createFlashcard,
     updateFlashcardReview,
     createQuiz,
