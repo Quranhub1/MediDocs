@@ -386,6 +386,8 @@ export const StudyProvider = ({ children }) => {
         interval,
         repetitions: cleanRating === 'again' ? 0 : (Number(previousData.repetitions) || 0) + 1,
         nextReview,
+        correct: typeof metadata.correct === 'boolean' ? metadata.correct : null,
+        course: metadata.course || previousData.course || null,
         ...metadata,
         reviewedAt: serverTimestamp(),
         updatedAt: serverTimestamp()
