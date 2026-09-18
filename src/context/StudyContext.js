@@ -28,7 +28,9 @@ const emptyStreak = {
   longest: 0,
   lastStudyDate: null,
   totalStudyTime: 0,
-  totalStudySeconds: 0
+  totalStudySeconds: 0,
+  documentsViewed: 0,
+  documentsDownloaded: 0
 };
 
 const normalizeDate = (value) => {
@@ -71,7 +73,9 @@ export const StudyProvider = ({ children }) => {
         longest: Number(data.longestStreak) || 0,
         lastStudyDate: normalizeDate(data.lastStudyDate),
         totalStudyTime: Math.floor(totalStudySeconds / 60),
-        totalStudySeconds
+        totalStudySeconds,
+        documentsViewed: Number(data.documentsViewed) || 0,
+        documentsDownloaded: Number(data.documentsDownloaded) || 0
       });
     } catch (error) {
       console.error('[STUDY] Failed to load streak:', error);
