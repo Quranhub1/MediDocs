@@ -31,7 +31,31 @@ const convertTimestamp = (timestamp) => {
 };
 
 // Fetch all documents from the RESOURCES_STUDYPEDIA collection
+let resourceIndexCache = null;
+let resourceIndexCacheAt = 0;
+const RESOURCE_INDEX_CACHE_MS = 60 * 1000;
+
+const fetchResourceIndexFromApi = async (maxItems = 50, forceRefresh = false) => {
+  if (!forceRefresh && resourceIndexCache && Date.now() - resourceIndexCacheAt < RESOURCE_INDEX_CACHE_MS) {
+    return { ...resourceIndexCache, data: resourceIndexCache.data.slice(0, maxItems) };
+  }
+  try {
+    const response = await fetch('/api/resources/index');
+    if (!response.ok) throw new Error(`Resource index request failed: ${response.status}`);
+    const result = await response.json();
+    if (!result.success) throw new Error(result.error || 'Resource index unavailable');
+    resourceIndexCache = result;
+    resourceIndexCacheAt = Date.now();
+    return { ...result, data: (result.data || []).slice(0, maxItems) };
+  } catch (error) {
+    console.warn('[RESOURCES] Server index unavailable, using direct Firestore fallback:', error.message);
+    return null;
+  }
+};
+
 export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => {
+  const apiResult = await fetchResourceIndexFromApi(maxItems, forceRefresh);
+  if (apiResult) return apiResult;
   try {
     const allDocuments = [];
     const coursesRef = collection(db, 'RESOURCES_STUDYPEDIA');
