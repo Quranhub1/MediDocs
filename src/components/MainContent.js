@@ -15,6 +15,7 @@ import CollaborativeNotes from './CollaborativeNotes';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import AdvancedSearch from './AdvancedSearch';
 import LearningHub from './LearningHub';
+import StudyGroups from './StudyGroups';
 import { useTheme } from '../context/ThemeContext';
 import { useStudy } from '../context/StudyContext';
 import { useBookmarks } from '../context/BookmarkContext';
@@ -44,6 +45,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
   const [showLearningHub, setShowLearningHub] = useState(false);
+  const [showStudyGroups, setShowStudyGroups] = useState(false);
   const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
@@ -200,6 +202,9 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
                   <button onClick={() => setShowLearningHub(true)} className="group rounded-2xl p-4 md:p-5 text-left bg-emerald-700 text-white shadow-md hover:shadow-xl hover:-translate-y-1 transition-all">
                     <div className="text-2xl mb-2">🧠</div><div className="font-bold">Learning Hub</div><div className="text-xs text-emerald-100 mt-1">Daily 20, cases, labs & calculators</div>
                   </button>
+<button onClick={() => setShowStudyGroups(true)} className="group rounded-2xl p-4 md:p-5 text-left bg-emerald-700 text-white shadow-md hover:shadow-xl hover:-translate-y-1 transition-all">
+                    <div className="text-2xl mb-2">🧠</div><div className="font-bold">Study Groups</div><div className="text-xs text-emerald-100 mt-1">Collaborate, share resources & discuss</div>
+                  </button>
                 </div>
               </div>
 
@@ -241,6 +246,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
       {showNotes && <CollaborativeNotes courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowNotes(false)} />}
       {showAnalytics && <AnalyticsDashboard onClose={() => setShowAnalytics(false)} />}
       {showAdvancedSearch && <AdvancedSearch onClose={() => setShowAdvancedSearch(false)} onViewChange={setView} />}
+      {showStudyGroups && <StudyGroups onClose={() => setShowStudyGroups(false)} user={user} />}
       {showLearningHub && <LearningHub onClose={() => setShowLearningHub(false)} onOpenQuiz={() => { setShowLearningHub(false); setShowQuiz(true); }} onOpenAIChat={(prompt) => { setShowLearningHub(false); onAIChatClick?.(prompt); }} />}
     </>
   );
