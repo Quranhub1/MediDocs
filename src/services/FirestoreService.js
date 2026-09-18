@@ -40,7 +40,7 @@ const fetchResourceIndexFromApi = async (maxItems = 50, forceRefresh = false) =>
     return { ...resourceIndexCache, data: resourceIndexCache.data.slice(0, maxItems) };
   }
   try {
-    const response = await fetch('/api/resources/index');
+    const response = await fetch(`/api/resources/index?limit=${Math.max(1, Math.min(10000, Number(maxItems) || 50))}`);
     if (!response.ok) throw new Error(`Resource index request failed: ${response.status}`);
     const result = await response.json();
     if (!result.success) throw new Error(result.error || 'Resource index unavailable');
