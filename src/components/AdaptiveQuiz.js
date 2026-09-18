@@ -72,7 +72,7 @@ const AdaptiveQuiz = ({ onClose }) => {
         ? [...progress.completed, currentQuiz.id]
         : progress.completed;
       const scores = { ...progress.scores, [currentQuiz.id]: percentage };
-      await setDoc(doc(db, 'userQuizProgress', user.uid), {
+      await setDoc(doc(db, 'userQuizProgress', currentUser.uid), {
         completedQuizIds: completed,
         scores,
         lastQuizId: currentQuiz.id,
@@ -100,7 +100,7 @@ const AdaptiveQuiz = ({ onClose }) => {
   };
 
   if (loading) return <div className="card"><p>Loading your quiz...</p></div>;
-  if (!user) return <div className="card"><p>Sign in to track your quiz progress.</p></div>;
+  if (!currentUser) return <div className="card"><p>Sign in to track your quiz progress.</p></div>;
   if (!currentQuiz) return <div className="card"><h3>Quiz complete</h3><p>You have completed every quiz currently in the bank. New weekly content can be added without changing the tracking system.</p></div>;
 
   return (
