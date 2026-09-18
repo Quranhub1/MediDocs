@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useStudy } from '../context/StudyContext';
 import quizBank from '../data/quizBank';
 
 const STORAGE_KEY = 'medidocs_learning_hub_v1';
@@ -51,6 +52,7 @@ const calculate = (tool, v) => {
 const inputLabel = (name) => ({ weight:'Weight (kg)', height:'Height (cm)', age:'Age (years)', creatinine:'Creatinine (mg/dL)', sodium:'Na', chloride:'Cl', bicarbonate:'HCO₃', calcium:'Calcium', albumin:'Albumin (g/dL)', eye:'Eye (1-4)', verbal:'Verbal (1-5)', motor:'Motor (1-6)', sex:'Female adjustment' }[name] || name);
 
 export default function LearningHub({ onClose, onOpenQuiz }) {
+  const { recordLearningReview } = useStudy();
   const [tab, setTab] = useState('daily');
   const [caseIndex, setCaseIndex] = useState(0);
   const [caseAnswer, setCaseAnswer] = useState(null);
@@ -62,21 +64,23 @@ export default function LearningHub({ onClose, onOpenQuiz }) {
 
   const daily20 = useMemo(() => {
     const all = quizBank.flatMap(q => q.questions.map(x => ({...x, course:q.course, difficulty:q.difficulty || 1})));
-    const day = new Date().toISOString().slice(0,10);
+    const now = new Date();
+    const day = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
     let seed = [...day].reduce((a,c)=>((a*31)+c.charCodeAt(0))>>>0,0);
     const arr = [...all];
     for (let i=arr.length-1;i>0;i-=1){ seed=(seed*1664525+1013904223)>>>0; const j=seed%(i+1); [arr[i],arr[j]]=[arr[j],arr[i]]; }
     return arr.slice(0,20);
   }, []);
 
-  const markDailyAnswer = (id, option, answer) => {
-    setDailyAnswers(prev => ({ ...prev, [id]: option }));
-    markReview(id, option === answer ? 'easy' : 'again');
-  };
-
   const markReview = (id, rating) => {
     const next = {...review, [id]: {rating, reviewedAt:new Date().toISOString()}};
     setReview(next); writeStore({...readStore(), review:next});
+    void recordLearningReview(id, rating, { source: 'learning-hub' });
+  };
+
+  const markDailyAnswer = (id, option, answer) => {
+    setDailyAnswers(prev => ({ ...prev, [id]: option }));
+    markReview(id, option === answer ? 'easy' : 'again');
   };
 
   const currentCase = cases[caseIndex];
