@@ -55,7 +55,7 @@ const calculate = (tool, v) => {
 const inputLabel = (name) => ({ weight:'Weight (kg)', height:'Height (cm)', age:'Age (years)', creatinine:'Creatinine (mg/dL)', sodium:'Na', chloride:'Cl', bicarbonate:'HCO₃', calcium:'Calcium', albumin:'Albumin (g/dL)', eye:'Eye (1-4)', verbal:'Verbal (1-5)', motor:'Motor (1-6)', sex:'Female adjustment' }[name] || name);
 
 export default function LearningHub({ onClose, onOpenQuiz }) {
-  const { recordLearningReview, learningReviews } = useStudy();
+  const { recordLearningReview, learningReviews, learningStatsByCourse } = useStudy();
   const [tab, setTab] = useState('daily');
   const [caseIndex, setCaseIndex] = useState(0);
   const [caseAnswer, setCaseAnswer] = useState(null);
@@ -99,13 +99,23 @@ export default function LearningHub({ onClose, onOpenQuiz }) {
     return Number.isNaN(due.getTime()) || due <= new Date();
   });
   const scheduledReviews = learningReviews.length;
-  const performanceByCourse = useMemo(() => learningReviews.reduce((stats, item) => {
-    const course = item.course || 'General';
-    if (!stats[course]) stats[course] = { attempts: 0, correct: 0 };
-    stats[course].attempts += 1;
-    if (item.correct) stats[course].correct += 1;
-    return stats;
-  }, {}), [learningReviews]);
+  const performanceByCourse = useMemo(() => {
+    const aggregate = { ...learningStatsByCourse };
+    // Older accounts may not have the aggregate yet. Fall back to the review
+    // records so the adaptive engine remains backward compatible.
+    if (!Object.keys(aggregate).length) {
+      return learningReviews.reduce((stats, item) => {
+        const course = item.course || 'General';
+        if (!stats[course]) stats[course] = { attempts: 0, correct: 0 };
+        if (typeof item.correct === 'boolean') {
+          stats[course].attempts += 1;
+          if (item.correct) stats[course].correct += 1;
+        }
+        return stats;
+      }, {});
+    }
+    return aggregate;
+  }, [learningReviews, learningStatsByCourse]);
   const reviewById = useMemo(() => Object.fromEntries(learningReviews.map(item => [String(item.itemId || item.id), item])), [learningReviews]);
   const adaptiveQuestions = useMemo(() => {
     const all = quizBank.flatMap(q => q.questions.map(x => ({ ...x, course: q.course, difficulty: q.difficulty || 1 })));
