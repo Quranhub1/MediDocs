@@ -382,9 +382,9 @@ export const StudyProvider = ({ children }) => {
       const reviewRef = doc(db, 'users', currentUser.uid, 'learningReviews', String(itemId));
       const studyRef = doc(db, 'userStudyData', currentUser.uid);
       const courseKey = String(metadata.courseId || metadata.course || 'General')
-        .replace(/[.#]/g, '_')
-        .replace(/\\\\/g, '_')
-        .replace(/\\//g, '_')
+        .replaceAll('.', '_')
+        .replaceAll('/', '_')
+        .replaceAll('\\\\', '_')
         .slice(0, 120) || 'General';
 
       const result = await runTransaction(db, async (transaction) => {
