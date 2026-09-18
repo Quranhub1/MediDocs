@@ -16,7 +16,7 @@ const getNextQuiz = (completedIds, currentId) => {
   return ordered.find((quiz) => !completed.has(quiz.id)) || null;
 };
 
-const AdaptiveQuiz = () => {
+const AdaptiveQuiz = ({ onClose }) => {
   const { user } = useAuth();
   const [progress, setProgress] = useState({ completed: [], scores: {} });
   const [currentQuiz, setCurrentQuiz] = useState(null);
@@ -104,8 +104,10 @@ const AdaptiveQuiz = () => {
   if (!currentQuiz) return <div className="card"><h3>Quiz complete</h3><p>You have completed every quiz currently in the bank. New weekly content can be added without changing the tracking system.</p></div>;
 
   return (
-    <section className="card adaptive-quiz">
-      <div className="quiz-header">
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+      <section className="card adaptive-quiz max-w-3xl w-full max-h-[92vh] overflow-y-auto relative">
+      <button type="button" onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 dark:hover:text-white text-xl" aria-label="Close quiz">✕</button>
+      <div className="quiz-header pr-8">
         <div><span className="badge">Week {key.split('-W')[1]}</span><h2>{currentQuiz.title}</h2><p>{currentQuiz.course} · Difficulty {currentQuiz.difficulty}</p></div>
         <strong>{progress.completed.length}/{quizBank.length} completed</strong>
       </div>
@@ -128,7 +130,8 @@ const AdaptiveQuiz = () => {
           {score >= QUIZ_PASS_PERCENT ? <button type="button" className="primary-btn" onClick={next}>Unlock Next Quiz</button> : <button type="button" className="primary-btn" onClick={() => { setAnswers({}); setScore(null); setSubmitted(false); }}>Retry with this quiz</button>}
         </div>
       )}
-    </section>
+      </section>
+    </div>
   );
 };
 
