@@ -61,7 +61,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
           const result = await fetchAllDocuments(10, false);
           if (!cancelled && result.success) setLatestDocuments(result.data || []);
         }
-        if (user && view === 'courses') {
+        if (user && (view === 'home' || view === 'courses')) {
           const coursesResult = await fetchCourses(false);
           if (!cancelled && coursesResult.success) setCourses(coursesResult.data);
           else if (!cancelled && coursesResult.error) setLoadError(coursesResult.error);
