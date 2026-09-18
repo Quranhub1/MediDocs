@@ -124,11 +124,30 @@ export default function LearningHub({ onClose, onOpenQuiz }) {
       const due = saved?.nextReview?.toDate ? saved.nextReview.toDate() : new Date(saved?.nextReview || 0);
       const isDue = !saved || Number.isNaN(due.getTime()) || due <= new Date();
       const rating = saved?.rating || 'new';
-      const courseStats = performanceByCourse[q.course || 'General'] || { attempts: 0, correct: 0 }; const accuracy = courseStats.attempts ? courseStats.correct / courseStats.attempts : 0.5; const weaknessBoost = Math.max(0, 1 - accuracy); const priority = (isDue ? (rating === 'again' ? 30 : rating === 'hard' ? 20 : 10) : 0) + weaknessBoost * 10 + (saved ? 0 : 2);
+      const courseStats = performanceByCourse[q.course || 'General'] || { attempts: 0, correct: 0 };
+      const accuracy = courseStats.attempts ? courseStats.correct / courseStats.attempts : 0.5;
+      const weaknessBoost = Math.max(0, 1 - accuracy);
+      const priority =
+        (isDue ? (rating === 'again' ? 30 : rating === 'hard' ? 20 : 10) : 0) +
+        weaknessBoost * 10 +
+        (saved ? 0 : 2);
       return { q, priority };
-    }).sort((a,b) => b.priority - a.priority);
+    }).sort((a, b) => b.priority - a.priority);
     return ranked.slice(0, 20).map(item => item.q);
   }, [reviewById, performanceByCourse]);
+
+  const adaptiveReviewList = useMemo(() => {
+    const candidates = [
+      ...dueReviews
+        .map(item => adaptiveQuestions.find(q => q.id === item.itemId))
+        .filter(Boolean),
+      ...adaptiveQuestions
+    ];
+
+    return candidates
+      .filter((q, index, list) => list.findIndex(item => item.id === q.id) === index)
+      .slice(0, 10);
+  }, [dueReviews, adaptiveQuestions]);
 
   const markReview = (id, rating, metadata = {}) => {
     const next = {...review, [id]: {rating, reviewedAt:new Date().toISOString()}};
