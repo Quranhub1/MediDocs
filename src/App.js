@@ -59,6 +59,7 @@ function AppContent() {
   const [selectedPaymentPlan, setSelectedPaymentPlan] = useState(null);
   const [showContactModal, setShowContactModal] = useState(false);
   const [showAIChatModal, setShowAIChatModal] = useState(false);
+  const [aiInitialPrompt, setAiInitialPrompt] = useState('');
   const [pwaInstallPrompt, setPwaInstallPrompt] = useState(null);
   const [showInstallHelp, setShowInstallHelp] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
@@ -304,7 +305,7 @@ function AppContent() {
                   onLoginClick={() => setShowLoginModal(true)}
                   onRegisterClick={() => setShowRegisterModal(true)}
                   onContactClick={() => setShowContactModal(true)}
-                  onAIChatClick={() => setShowAIChatModal(true)}
+                  onAIChatClick={(prompt = '') => { setAiInitialPrompt(prompt); setShowAIChatModal(true); }}
                 />
               )}
             </div>
@@ -411,6 +412,7 @@ function AppContent() {
           userProfile={userProfile}
           learningStatsByCourse={learningStatsByCourse}
           learningReviews={learningReviews}
+          initialPrompt={aiInitialPrompt}
         />
 
         <button
