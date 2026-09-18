@@ -50,6 +50,7 @@ const getInitialView = () => {
 function AppContent() {
   const { currentUser, userProfile, isBanned, logout, refreshUserProfile } = useAuth();
   const { checkLoginAnomaly } = useAnomaly();
+  const { learningStatsByCourse, learningReviews } = useStudy();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentView, setCurrentView] = useState(getInitialView);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -408,6 +409,8 @@ function AppContent() {
           onClose={() => setShowAIChatModal(false)}
           user={currentUser}
           userProfile={userProfile}
+          learningStatsByCourse={learningStatsByCourse}
+          learningReviews={learningReviews}
         />
 
         <button
