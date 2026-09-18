@@ -28,6 +28,7 @@ export const StudyProvider = ({ children }) => {
     if (user && db) {
       loadStreak();
       loadBadges();
+      loadStudyNotes();
     }
   }, [user]);
 
@@ -178,6 +179,29 @@ export const StudyProvider = ({ children }) => {
     }
   };
 
+  const loadStudyNotes = async () => {
+    if (!user || !db) {
+      setStudyNotes([]);
+      return;
+    }
+    try {
+      const notesRef = collection(db, 'users', user.uid, 'studyNotes');
+      const snapshot = await getDocs(notesRef);
+      const notes = snapshot.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => {
+          const aTime = a.createdAt?.toMillis?.() || 0;
+          const bTime = b.createdAt?.toMillis?.() || 0;
+          return bTime - aTime;
+        });
+      setStudyNotes(notes);
+    } catch (error) {
+      console.error('[NOTES] Failed to load saved notes:', error);
+      setStudyNotes([]);
+      addToast('Could not load your saved notes', 'error');
+    }
+  };
+
   const createFlashcard = async (front, back, courseId, unitId) => {
     if (!user) return;
     try {
@@ -261,11 +285,13 @@ export const StudyProvider = ({ children }) => {
   const addStudyNote = async (content, courseId, unitId, documentId) => {
     if (!user) return;
     try {
-      const note = { content, courseId, unitId, documentId, createdAt: serverTimestamp(), shared: false };
-      const docRef = await setDoc(doc(collection(db, 'users', user.uid, 'studyNotes')), note);
-      setStudyNotes(prev => [...prev, { id: docRef.id, ...note }]);
-      addToast('Note saved!', 'success');
-      return docRef;
+      const noteRef = doc(collection(db, 'users', user.uid, 'studyNotes'));
+      const note = { content: content.trim(), courseId: courseId || null, unitId: unitId || null, documentId: documentId || null, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), shared: false };
+      await setDoc(noteRef, note);
+      const savedNote = { id: noteRef.id, ...note, createdAt: new Date(), updatedAt: new Date() };
+      setStudyNotes(prev => [savedNote, ...prev]);
+      addToast('Note saved to your account!', 'success');
+      return savedNote;
     } catch (error) {
       console.error('Error adding note:', error);
       addToast('Failed to save note', 'error');
@@ -283,7 +309,7 @@ export const StudyProvider = ({ children }) => {
     }
   };
 
-  const value = { streak, badges, flashcards, quizzes, studyNotes, loading, recordStudySession, createFlashcard, updateFlashcardReview, createQuiz, submitQuizResult, addStudyNote, shareStudyNote, loadStreak, loadBadges };
+  const value = { streak, badges, flashcards, quizzes, studyNotes, loading, recordStudySession, createFlashcard, updateFlashcardReview, createQuiz, submitQuizResult, addStudyNote, shareStudyNote, loadStreak, loadBadges, loadStudyNotes };
 
   return <StudyContext.Provider value={value}>{children}</StudyContext.Provider>;
 };
