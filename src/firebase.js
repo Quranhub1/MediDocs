@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 
 // Firebase configuration - must be set in environment variables
 const firebaseConfig = {
@@ -35,6 +35,19 @@ if (isConfigValid && getApps().length === 0) {
 
 // Initialize Firebase services (may be null if initialization failed)
 export const auth = app ? getAuth(app) : null;
-export const db = app ? getFirestore(app) : null;
+export const db = (() => {
+  if (!app) return null;
+  try {
+    // Keep Firestore data available through short connectivity gaps and across
+    // multiple tabs. If the browser cannot use persistent storage, fall back
+    // to the normal Firestore client instead of blocking app startup.
+    return initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    });
+  } catch (error) {
+    console.warn("Firestore persistence unavailable; using standard cache:", error?.message || error);
+    return getFirestore(app);
+  }
+})();
 
 export default app;
