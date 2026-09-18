@@ -28,6 +28,9 @@ export const StudyProvider = ({ children }) => {
     if (user && db) {
       loadStreak();
       loadBadges();
+      loadFlashcards();
+      loadQuizzes();
+      loadStudyNotes();
     }
   }, [user]);
 
@@ -60,6 +63,39 @@ export const StudyProvider = ({ children }) => {
       setBadges(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (error) {
       console.error('Error loading badges:', error);
+    }
+  };
+
+  const loadFlashcards = async () => {
+    if (!user || !db) return;
+    try {
+      const q = query(collection(db, 'users', user.uid, 'flashcards'), orderBy('createdAt', 'desc'));
+      const snapshot = await getDocs(q);
+      setFlashcards(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (error) {
+      console.error('Error loading flashcards:', error);
+    }
+  };
+
+  const loadQuizzes = async () => {
+    if (!user || !db) return;
+    try {
+      const q = query(collection(db, 'users', user.uid, 'quizzes'), orderBy('createdAt', 'desc'));
+      const snapshot = await getDocs(q);
+      setQuizzes(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (error) {
+      console.error('Error loading quizzes:', error);
+    }
+  };
+
+  const loadStudyNotes = async () => {
+    if (!user || !db) return;
+    try {
+      const q = query(collection(db, 'users', user.uid, 'studyNotes'), orderBy('createdAt', 'desc'));
+      const snapshot = await getDocs(q);
+      setStudyNotes(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (error) {
+      console.error('Error loading study notes:', error);
     }
   };
 
