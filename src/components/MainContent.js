@@ -277,7 +277,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
       {showReader && selectedDocument && <DocumentReader
         document={selectedDocument}
         onProgress={(seconds, progressPercent) => recordDocumentProgress(
-          selectedDocument?.id || selectedDocument?.filePath || selectedDocument?.fileUrl || selectedDocument?.title || 'unknown',
+          getAnalyticsDocumentId(selectedDocument),
           seconds,
           progressPercent,
           { title: selectedDocument?.title || null }
