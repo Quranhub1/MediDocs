@@ -14,6 +14,7 @@ import AdaptiveQuiz from './AdaptiveQuiz';
 import CollaborativeNotes from './CollaborativeNotes';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import AdvancedSearch from './AdvancedSearch';
+import LearningHub from './LearningHub';
 import { useTheme } from '../context/ThemeContext';
 import { useStudy } from '../context/StudyContext';
 import { useBookmarks } from '../context/BookmarkContext';
@@ -42,6 +43,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   const [showNotes, setShowNotes] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+  const [showLearningHub, setShowLearningHub] = useState(false);
   const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
@@ -179,7 +181,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
                     <p className="text-sm text-gray-500 dark:text-gray-300">Quizzes, flashcards, notes, analytics and search are all here now.</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
                   <button onClick={() => setShowQuiz(true)} className="group rounded-2xl p-4 md:p-5 text-left bg-purple-600 text-white shadow-md hover:shadow-xl hover:-translate-y-1 transition-all">
                     <div className="text-2xl mb-2">📝</div><div className="font-bold">Quizzes</div><div className="text-xs text-purple-100 mt-1">Test your knowledge</div>
                   </button>
@@ -194,7 +196,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
                   </button>
                   <button onClick={() => setShowAdvancedSearch(true)} className="group rounded-2xl p-4 md:p-5 text-left bg-indigo-600 text-white shadow-md hover:shadow-xl hover:-translate-y-1 transition-all">
                     <div className="text-2xl mb-2">🔎</div><div className="font-bold">Search</div><div className="text-xs text-indigo-100 mt-1">Find resources fast</div>
-                  </button>
+                  </button>\n                  <button onClick={() => setShowLearningHub(true)} className="group rounded-2xl p-4 md:p-5 text-left bg-emerald-700 text-white shadow-md hover:shadow-xl hover:-translate-y-1 transition-all">\n                    <div className="text-2xl mb-2">🧠</div><div className="font-bold">Learning Hub</div><div className="text-xs text-emerald-100 mt-1">Daily 20, cases, labs & calculators</div>\n                  </button>
                 </div>
               </div>
 
@@ -235,7 +237,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
       {showQuiz && <AdaptiveQuiz courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowQuiz(false)} />}
       {showNotes && <CollaborativeNotes courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowNotes(false)} />}
       {showAnalytics && <AnalyticsDashboard onClose={() => setShowAnalytics(false)} />}
-      {showAdvancedSearch && <AdvancedSearch onClose={() => setShowAdvancedSearch(false)} onViewChange={setView} />}
+      {showAdvancedSearch && <AdvancedSearch onClose={() => setShowAdvancedSearch(false)} onViewChange={setView} />}\n      {showLearningHub && <LearningHub onClose={() => setShowLearningHub(false)} onOpenQuiz={() => { setShowLearningHub(false); setShowQuiz(true); }} />}
     </>
   );
 };
