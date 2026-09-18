@@ -127,34 +127,29 @@ const RESOURCE_COUNT_CACHE_KEY = 'medidocs_resource_count_v1';
 const RESOURCE_COUNT_CACHE_MS = 30 * 60 * 1000;
 
 export const fetchTotalResourceCount = async (forceRefresh = false) => {
-  if (!db) return { success: false, totalDocuments: 0, error: 'Firestore is not configured' };
   if (!forceRefresh) {
     try {
-      const storedCount = JSON.parse(localStorage.getItem(RESOURCE_COUNT_CACHE_KEY) || 'null');
-      if (storedCount?.cachedAt && Date.now() - storedCount.cachedAt < RESOURCE_COUNT_CACHE_MS) {
-        return { success: true, totalDocuments: Number(storedCount.totalDocuments) || 0, cached: true };
-      }
-      const storedIndex = JSON.parse(localStorage.getItem('medidocs_resource_index_v1') || 'null');
-      const indexedTotal = Number(storedIndex?.data?.totalDocuments);
-      if (indexedTotal > 0) {
-        localStorage.setItem(RESOURCE_COUNT_CACHE_KEY, JSON.stringify({ cachedAt: Date.now(), totalDocuments: indexedTotal }));
-        return { success: true, totalDocuments: indexedTotal, cached: true, source: 'resource-index' };
+      const stored = JSON.parse(localStorage.getItem(RESOURCE_COUNT_CACHE_KEY) || 'null');
+      if (stored?.cachedAt && Date.now() - stored.cachedAt < RESOURCE_COUNT_CACHE_MS) {
+        return { success: true, totalDocuments: Number(stored.totalDocuments) || 0, cached: true };
       }
     } catch {}
   }
   try {
-    const snapshot = await getCountFromServer(collectionGroup(db, 'documents'));
-    const totalDocuments = Number(snapshot.data().count) || 0;
+    const response = await fetch('/api/resources/count');
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.success) {
+      return { success: false, totalDocuments: 0, quotaExceeded: Boolean(result.quotaExceeded), error: result.error || 'Resource count unavailable' };
+    }
+    const totalDocuments = Number(result.totalDocuments) || 0;
     try {
       localStorage.setItem(RESOURCE_COUNT_CACHE_KEY, JSON.stringify({ cachedAt: Date.now(), totalDocuments }));
     } catch {}
     return { success: true, totalDocuments };
   } catch (error) {
-    console.warn('[RESOURCES] Total resource count unavailable:', error?.message || error);
-    return { success: false, totalDocuments: 0, error: error?.message || 'Resource count unavailable', quotaExceeded: error?.code === 8 };
+    return { success: false, totalDocuments: 0, error: error?.message || 'Resource count unavailable' };
   }
 };
-
 export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => {
   const apiResult = await fetchResourceIndexFromApi(maxItems, forceRefresh);
   if (apiResult) {
