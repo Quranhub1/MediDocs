@@ -31,7 +31,8 @@ const emptyStreak = {
   totalStudyTime: 0,
   totalStudySeconds: 0,
   documentsViewed: 0,
-  documentsDownloaded: 0
+  documentsDownloaded: 0,
+  activityByCourse: {}
 };
 
 const normalizeDate = (value) => {
@@ -81,7 +82,8 @@ export const StudyProvider = ({ children }) => {
         totalStudyTime: Math.floor(totalStudySeconds / 60),
         totalStudySeconds,
         documentsViewed: Number(data.documentsViewed) || 0,
-        documentsDownloaded: Number(data.documentsDownloaded) || 0
+        documentsDownloaded: Number(data.documentsDownloaded) || 0,
+        activityByCourse: data.activityByCourse || {}
       });
     } catch (error) {
       console.error('[STUDY] Failed to load streak:', error);
