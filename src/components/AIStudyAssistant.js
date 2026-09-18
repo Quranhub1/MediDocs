@@ -175,7 +175,7 @@ const formatAIResponse = (text) => {
   return finalHtml;
 };
 
-const AIStudyAssistant = ({ show, onClose, user, userProfile }) => {
+const AIStudyAssistant = ({ show, onClose, user, userProfile, learningStatsByCourse = {}, learningReviews = [] }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -261,7 +261,11 @@ const AIStudyAssistant = ({ show, onClose, user, userProfile }) => {
     if (relevantDocs.length > 0) {
       contextInfo = `\n\nHere are some relevant documents from our database:\n${relevantDocs.map(d => `- ${d.title} (${d.courseId?.toUpperCase()} - ${d.semesterId?.toUpperCase()}${d.unitName ? ' - ' + d.unitName : ''}): ${d.description || 'No description'}`).join('\n')}`;
     }
-    return `You are MediDocs AI, a knowledgeable and friendly medical study assistant for students in Uganda. You have access to a database of medical study documents. When a student asks about a topic, recommend the most relevant documents and guide them to where they can find the resource in our platform. If they ask for a page or section, tell them which course > semester > unit > document to navigate to.${contextInfo}\n\nProvide accurate, educational, and easy-to-understand explanations. Use examples relevant to the Ugandan healthcare context when possible. Keep responses concise but informative. Format your responses using clear paragraphs, bullet points, and tables where appropriate. Avoid excessive markdown symbols.`;
+    const performanceSummary = Object.entries(learningStatsByCourse).map(([course, stats]) => `${course}: ${Math.round(((Number(stats.correct) || 0) / Math.max(1, Number(stats.attempts) || 0)) * 100)}% accuracy over ${Number(stats.attempts) || 0} attempts`).join('; ');
+    const dueCount = learningReviews.filter(item => { const due = item.nextReview?.toDate ? item.nextReview.toDate() : new Date(item.nextReview || 0); return Number.isNaN(due.getTime()) || due <= new Date(); }).length;
+    return `You are MediDocs AI, a knowledgeable and friendly medical study assistant for students in Uganda. You have access to a database of medical study documents. When a student asks about a topic, recommend the most relevant documents and guide them to where they can find the resource in our platform. If they ask for a page or section, tell them which course > semester > unit > document to navigate to.${contextInfo}\n\nProvide accurate, educational, and easy-to-understand explanations. Use examples relevant to the Ugandan healthcare context when possible. Keep responses concise but informative. Format your responses using clear paragraphs, bullet points, and tables where appropriate. Avoid excessive markdown symbols.
+
+The learner's current adaptive-learning context is: ${performanceSummary || 'No performance history yet'}. There are ${dueCount} review items due. Use this only to personalize study advice, not to diagnose patients or replace clinical supervision.`;
   };
 
   const speakText = (text) => {
