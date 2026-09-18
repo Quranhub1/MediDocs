@@ -49,25 +49,34 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
+    let cancelled = false;
     const initData = async () => {
       setLoading(true);
       setLoadError(null);
       try {
-        const result = await fetchAllDocuments(50, false);
-        if (result.success) setLatestDocuments(result.data || []);
-        if (user) {
+        // Do not load the entire resource hierarchy during application startup.
+        // The homepage asks for latest resources; course navigation loads only
+        // the selected course/semester/unit on demand.
+        if (view === 'home') {
+          const result = await fetchAllDocuments(10, false);
+          if (!cancelled && result.success) setLatestDocuments(result.data || []);
+        }
+        if (user && view === 'courses') {
           const coursesResult = await fetchCourses(false);
-          if (coursesResult.success) setCourses(coursesResult.data);
-          else if (coursesResult.error) setLoadError(coursesResult.error);
+          if (!cancelled && coursesResult.success) setCourses(coursesResult.data);
+          else if (!cancelled && coursesResult.error) setLoadError(coursesResult.error);
         }
       } catch (error) {
-        console.error('Error initializing data:', error);
-        setLoadError(error.message);
+        if (!cancelled) {
+          console.error('Error initializing requested data:', error);
+          setLoadError(error.message);
+        }
       }
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     };
     initData();
-  }, [user]);
+    return () => { cancelled = true; };
+  }, [user, view]);
 
   const handleCourseClick = async (course) => {
     setSelectedCourse(course);
