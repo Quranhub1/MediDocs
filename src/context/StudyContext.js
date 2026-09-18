@@ -381,7 +381,10 @@ export const StudyProvider = ({ children }) => {
     try {
       const reviewRef = doc(db, 'users', currentUser.uid, 'learningReviews', String(itemId));
       const studyRef = doc(db, 'userStudyData', currentUser.uid);
-      const courseKey = String(metadata.courseId || metadata.course || 'General')
+      // Keep performance aggregates keyed by the human-readable course name.
+      // Quiz records may also carry courseId, but LearningHub ranks questions by
+      // course name. Using one canonical key keeps adaptive prioritisation aligned.
+      const courseKey = String(metadata.course || metadata.courseId || 'General')
         .replaceAll('.', '_')
         .replaceAll('/', '_')
         .replaceAll('\\\\', '_')
