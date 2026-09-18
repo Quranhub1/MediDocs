@@ -107,7 +107,7 @@ const AnalyticsDashboard = ({ onClose }) => {
       } catch (error) {
         console.error('[ANALYTICS] Failed to load user analytics:', error);
         if (!cancelled) {
-          setStats({ documentsViewed: 0, studyTimeSeconds: 0, quizzesTaken: 0, averageScore: null, streak: 0, badges: 0 });
+          setStats({ documentsViewed: 0, documentsDownloaded: 0, studyTimeSeconds: 0, quizzesTaken: 0, averageScore: null, streak: 0, badges: 0 });
           setWeeklyActivity(getLastSevenDays().map(day => ({ ...day, seconds: 0 })));
         }
       } finally {
