@@ -190,7 +190,6 @@ export const fetchCourses = async (forceRefresh = false) => {
     return { success: true, data: courses };
   }
   try {
-  try {
     const coursesRef = collection(db, 'RESOURCES_STUDYPEDIA');
     const snapshot = await getDocs(coursesRef);
     const courses = snapshot.docs.map(doc => ({
