@@ -189,8 +189,8 @@ export default function LearningHub({ onClose, onOpenQuiz }) {
     const dueCount = dueReviews.length;
     const minutes = Math.max(20, Math.min(240, Number(plannerMinutes) || 60));
     const blocks = [
-      { title: 'Spaced review', minutes: Math.min(20, Math.max(10, Math.round(minutes * 0.25))), detail: dueCount ? \`Review \${Math.min(dueCount, 10)} due items\` : 'No overdue reviews. Preview upcoming material.' },
-      { title: 'Weak-area practice', minutes: Math.min(30, Math.max(15, Math.round(minutes * 0.35))), detail: \`Practice \${weakest}\` },
+      { title: 'Spaced review', minutes: Math.min(20, Math.max(10, Math.round(minutes * 0.25))), detail: dueCount ? `Review ${Math.min(dueCount, 10)} due items` : 'No overdue reviews. Preview upcoming material.' },
+      { title: 'Weak-area practice', minutes: Math.min(30, Math.max(15, Math.round(minutes * 0.35))), detail: `Practice ${weakest}` },
       { title: 'New learning', minutes: Math.max(10, minutes - Math.min(20, Math.max(10, Math.round(minutes * 0.25))) - Math.min(30, Math.max(15, Math.round(minutes * 0.35)))), detail: 'Study one focused topic, then self-test.' }
     ];
     return { minutes, weakest, dueCount, rankedCourses, blocks };
