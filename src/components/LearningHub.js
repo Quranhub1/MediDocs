@@ -61,8 +61,6 @@ export default function LearningHub({ onClose, onOpenQuiz }) {
   const [review, setReview] = useState(() => readStore().review || {});
   const [selectedLab, setSelectedLab] = useState(labs[0]);
   const [dailyAnswers, setDailyAnswers] = useState({});
-  const dailyAnswered = Object.keys(dailyAnswers).length;
-  const dailyCorrect = daily20.reduce((total, q) => total + (dailyAnswers[q.id] === q.answer ? 1 : 0), 0);
 
   const daily20 = useMemo(() => {
     const all = quizBank.flatMap(q => q.questions.map(x => ({...x, course:q.course, difficulty:q.difficulty || 1})));
@@ -73,6 +71,9 @@ export default function LearningHub({ onClose, onOpenQuiz }) {
     for (let i=arr.length-1;i>0;i-=1){ seed=(seed*1664525+1013904223)>>>0; const j=seed%(i+1); [arr[i],arr[j]]=[arr[j],arr[i]]; }
     return arr.slice(0,20);
   }, []);
+
+  const dailyAnswered = Object.keys(dailyAnswers).length;
+  const dailyCorrect = daily20.reduce((total, q) => total + (dailyAnswers[q.id] === q.answer ? 1 : 0), 0);
 
   const markReview = (id, rating) => {
     const next = {...review, [id]: {rating, reviewedAt:new Date().toISOString()}};
