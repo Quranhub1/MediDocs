@@ -298,6 +298,20 @@ async function buildResourceIndex() {
   return { success: true, data, courseCounts, totalDocuments: data.length, generatedAt: new Date().toISOString() };
 }
 
+app.get('/api/resources/count', async (req, res) => {
+  try {
+    if (!adminDb) return res.status(503).json({ success: false, error: 'Reporting database is not available', totalDocuments: 0 });
+    const snapshot = await adminDb.collectionGroup('documents').count().get();
+    const totalDocuments = Number(snapshot.data().count) || 0;
+    console.info('[RESOURCES] Aggregate resource count:', totalDocuments);
+    return res.json({ success: true, totalDocuments });
+  } catch (error) {
+    const quotaExceeded = error?.code === 8 || String(error?.message || '').includes('RESOURCE_EXHAUSTED') || String(error?.message || '').includes('Quota exceeded');
+    console.error('[RESOURCES] Aggregate resource count failed:', { code: error?.code, message: error?.message });
+    return res.status(quotaExceeded ? 503 : 500).json({ success: false, quotaExceeded, totalDocuments: 0, error: quotaExceeded ? 'Firestore quota temporarily exceeded' : 'Resource count unavailable' });
+  }
+});
+
 app.get('/api/resources/index', async (req, res) => {
   const limit = Math.max(1, Math.min(10000, Number(req.query.limit) || 50));
   try {
