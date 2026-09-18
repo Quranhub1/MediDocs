@@ -54,10 +54,12 @@ export const StudyProvider = ({ children }) => {
   const [studyNotes, setStudyNotes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [learningReviews, setLearningReviews] = useState([]);
+  const [learningStatsByCourse, setLearningStatsByCourse] = useState({});
 
   const loadStreak = useCallback(async () => {
     if (!currentUser || !db) {
       setStreak(emptyStreak);
+      setLearningStatsByCourse({});
       return;
     }
     try {
@@ -70,6 +72,7 @@ export const StudyProvider = ({ children }) => {
       const totalStudySeconds =
         Number(data.totalStudySeconds) ||
         Math.round((Number(data.totalStudyTime) || 0) * 60);
+      setLearningStatsByCourse(data.learningStatsByCourse || {});
       setStreak({
         current: Number(data.currentStreak) || 0,
         longest: Number(data.longestStreak) || 0,
@@ -188,6 +191,7 @@ export const StudyProvider = ({ children }) => {
   useEffect(() => {
     if (!currentUser || !db) {
       setStreak(emptyStreak);
+      setLearningStatsByCourse({});
       setBadges([]);
       setFlashcards([]);
       setQuizzes([]);
@@ -734,6 +738,7 @@ export const StudyProvider = ({ children }) => {
     quizzes,
     studyNotes,
     learningReviews,
+    learningStatsByCourse,
     loading,
     recordStudySession,
     recordDocumentView,
