@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { fetchAllDocuments, fetchCourses } from '../services/FirestoreService';
+import { fetchAllDocuments, fetchCourses, fetchTotalResourceCount } from '../services/FirestoreService';
 import { useStudy } from '../context/StudyContext';
 
 const SETTINGS_KEY = 'medidocs_ui_settings_v1';
@@ -17,13 +17,28 @@ const DashboardEnhancements = ({ courses: suppliedCourses = [], documents: suppl
   const [documents, setDocuments] = useState(suppliedDocuments);
   const [courseCounts, setCourseCounts] = useState([]);
   const [totalResources, setTotalResources] = useState(0);
-  useEffect(() => { let active = true; if (!suppliedCourses.length) fetchCourses(false).then((r) => active && r.success && setCourses(r.data || [])); if (!suppliedDocuments.length) fetchAllDocuments(50, false).then((r) => { if (!active || !r.success) return; setDocuments(r.data || []); setCourseCounts(r.courseCounts || []);
-      setTotalResources(Number(r.totalDocuments) || 0); }); return () => { active = false; }; }, [suppliedCourses.length, suppliedDocuments.length]);
+  useEffect(() => {
+    let active = true;
+    if (!suppliedCourses.length) fetchCourses(false).then((r) => active && r.success && setCourses(r.data || []));
+    if (!suppliedDocuments.length) {
+      fetchAllDocuments(50, false).then((r) => {
+        if (!active || !r.success) return;
+        setDocuments(r.data || []);
+        setCourseCounts(r.courseCounts || []);
+        setTotalResources(Number(r.totalDocuments) || 0);
+      });
+    }
+    fetchTotalResourceCount(false).then((r) => {
+      if (active && r.success && Number(r.totalDocuments) > 0) setTotalResources(Number(r.totalDocuments));
+    });
+    return () => { active = false; };
+  }, [suppliedCourses.length, suppliedDocuments.length]);
   const { streak } = useStudy();
   const documentsViewed = Number(streak?.documentsViewed) || 0;
   const totalStudySeconds = Number(streak?.totalStudySeconds) || 0;
-  const totalResourceCount = totalResources || documents.length;
-  const progress = totalResourceCount ? Math.min(100, (documentsViewed / totalResourceCount) * 100) : 0;
+  const totalResourceCount = Math.max(Number(totalResources) || 0, documentsViewed);
+  const progress = totalResourceCount > 0 ? Math.min(100, (documentsViewed / totalResourceCount) * 100) : 0;
+
   const formatStudyTime = (seconds) => { const safe = Math.max(0, Math.floor(Number(seconds) || 0)); const h = Math.floor(safe / 3600); const m = Math.floor((safe % 3600) / 60); const s = safe % 60; if (h) return `${h}h ${m}m`; if (m) return `${m}m ${s}s`; return `${s}s`; };
   const grouped = useMemo(() => courseCounts.map((item) => [item.courseName || item.courseId || 'Other', Number(item.count) || 0]).filter(([, count]) => count > 0), [courseCounts]);
   const maxCount = Math.max(1, ...grouped.map(([, count]) => count));
