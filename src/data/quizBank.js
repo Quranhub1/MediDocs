@@ -115,11 +115,14 @@ export const generateWeeklyQuizzes = (weekKey, sourceBank = quizBank) => {
       difficulty,
       weekKey,
       questions: batch.map((question, questionIndex) => ({
-        id: `${weekKey}-q-${generated.length + 1}-${questionIndex + 1}`,
+        // Keep the learning identity stable across weeks so performance history
+        // follows the concept rather than creating a brand-new learner record every Monday.
+        id: question.sourceQuizId ? `question-${question.sourceQuizId}-${question.id}` : String(question.id),
         question: question.question,
         options: question.options,
-        answer: question.answer
-      }))
+        answer: question.answer,
+        sourceQuestionId: String(question.id),
+        sourceQuizId: question.sourceQuizId      }))
     });
   }
 
