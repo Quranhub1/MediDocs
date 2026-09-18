@@ -186,7 +186,6 @@ const AIStudyAssistant = ({ show, onClose, user, userProfile, learningStatsByCou
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
-  const openAIApiKey = process.env.REACT_APP_OPENAI_API_KEY;
 
   const loadChatHistory = useCallback(async () => {
     if (!show || !user) return;
@@ -220,14 +219,14 @@ const AIStudyAssistant = ({ show, onClose, user, userProfile, learningStatsByCou
       loadChatHistory();
       if (initialPrompt) setInput(initialPrompt);
       inputRef.current?.focus();
-      setApiMissing(!openAIApiKey || openAIApiKey.includes('your_groq'));
+      setApiMissing(false);
     }
     return () => {
       if (window.speechSynthesis) {
         window.speechSynthesis.cancel();
       }
     };
-  }, [show, loadChatHistory, openAIApiKey, initialPrompt]);
+  }, [show, loadChatHistory, initialPrompt]);
 
   useEffect(() => {
     scrollToBottom();
@@ -305,10 +304,8 @@ The learner's current adaptive-learning context is: ${performanceSummary || 'No 
     try {
       let botResponse;
 
-      if (!openAIApiKey || openAIApiKey.includes('your_groq')) {
-        botResponse = 'The AI assistant is not configured. Please add your Groq API key in the environment variables to enable real AI responses.';
-      } else {
-        const cacheKey = `ai:${openAIApiKey}:${input.trim().toLowerCase()}`;
+      {
+        const cacheKey = `ai:${input.trim().toLowerCase()}`;
         try {
           const cached = await openAIDBCache.get(cacheKey);
           if (cached && cached.response) {
@@ -330,8 +327,7 @@ The learner's current adaptive-learning context is: ${performanceSummary || 'No 
                     content: m.text
                   })),
                   { role: 'user', content: input }
-                ],
-                apiKey: openAIApiKey
+                ]
               })
             });
 
