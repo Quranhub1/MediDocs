@@ -55,7 +55,7 @@ const calculate = (tool, v) => {
 const inputLabel = (name) => ({ weight:'Weight (kg)', height:'Height (cm)', age:'Age (years)', creatinine:'Creatinine (mg/dL)', sodium:'Na', chloride:'Cl', bicarbonate:'HCO₃', calcium:'Calcium', albumin:'Albumin (g/dL)', eye:'Eye (1-4)', verbal:'Verbal (1-5)', motor:'Motor (1-6)', sex:'Female adjustment' }[name] || name);
 
 export default function LearningHub({ onClose, onOpenQuiz }) {
-  const { recordLearningReview } = useStudy();
+  const { recordLearningReview, learningReviews } = useStudy();
   const [tab, setTab] = useState('daily');
   const [caseIndex, setCaseIndex] = useState(0);
   const [caseAnswer, setCaseAnswer] = useState(null);
@@ -89,6 +89,11 @@ export default function LearningHub({ onClose, onOpenQuiz }) {
   const weakestTopic = Object.entries(topicStats)
     .filter(([, stats]) => stats.answered > 0)
     .sort((a, b) => (a[1].correct / a[1].answered) - (b[1].correct / b[1].answered))[0];
+  const dueReviews = learningReviews.filter((item) => {
+    const due = item.nextReview?.toDate ? item.nextReview.toDate() : new Date(item.nextReview || 0);
+    return Number.isNaN(due.getTime()) || due <= new Date();
+  });
+  const scheduledReviews = learningReviews.length;
 
   const markReview = (id, rating) => {
     const next = {...review, [id]: {rating, reviewedAt:new Date().toISOString()}};
