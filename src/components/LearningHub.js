@@ -37,14 +37,14 @@ const calculate = (tool, v) => {
   const n = Object.fromEntries(Object.entries(v).map(([k,x]) => [k, Number(x)]));
   if (tool === 'bmi') return n.height > 0 ? (n.weight / ((n.height / 100) ** 2)).toFixed(1) : '';
   if (tool === 'bsa') return n.weight > 0 && n.height > 0 ? Math.sqrt((n.height * n.weight) / 3600).toFixed(2) : '';
-  if (tool === 'gcs') return n.eye + n.verbal + n.motor;
+  if (tool === 'gcs') return n.eye >= 1 && n.eye <= 4 && n.verbal >= 1 && n.verbal <= 5 && n.motor >= 1 && n.motor <= 6 ? n.eye + n.verbal + n.motor : '';
   if (tool === 'crcl') {
-    if (!n.age || !n.weight || !n.creatinine) return '';
+    if (!n.age || n.age < 18 || n.age > 120 || !n.weight || n.weight <= 0 || !n.creatinine || n.creatinine <= 0) return '';
     const base = ((140 - n.age) * n.weight) / (72 * n.creatinine);
     return (n.sex === 1 ? base * 0.85 : base).toFixed(1) + ' mL/min';
   }
-  if (tool === 'anion') return n.sodium - (n.chloride + n.bicarbonate);
-  if (tool === 'calcium') return n.calcium + 0.8 * (4 - n.albumin);
+  if (tool === 'anion') return Number.isFinite(n.sodium) && Number.isFinite(n.chloride) && Number.isFinite(n.bicarbonate) ? n.sodium - (n.chloride + n.bicarbonate) : '';
+  if (tool === 'calcium') return Number.isFinite(n.calcium) && Number.isFinite(n.albumin) ? (n.calcium + 0.8 * (4 - n.albumin)).toFixed(2) : '';
   return '';
 };
 
@@ -58,6 +58,7 @@ export default function LearningHub({ onClose, onOpenQuiz }) {
   const [values, setValues] = useState({});
   const [review, setReview] = useState(() => readStore().review || {});
   const [selectedLab, setSelectedLab] = useState(labs[0]);
+  const [dailyAnswers, setDailyAnswers] = useState({});
 
   const daily20 = useMemo(() => {
     const all = quizBank.flatMap(q => q.questions.map(x => ({...x, course:q.course, difficulty:q.difficulty || 1})));
@@ -68,6 +69,11 @@ export default function LearningHub({ onClose, onOpenQuiz }) {
     return arr.slice(0,20);
   }, []);
 
+  const markDailyAnswer = (id, option, answer) => {
+    setDailyAnswers(prev => ({ ...prev, [id]: option }));
+    markReview(id, option === answer ? 'easy' : 'again');
+  };
+
   const markReview = (id, rating) => {
     const next = {...review, [id]: {rating, reviewedAt:new Date().toISOString()}};
     setReview(next); writeStore({...readStore(), review:next});
@@ -76,7 +82,7 @@ export default function LearningHub({ onClose, onOpenQuiz }) {
   const currentCase = cases[caseIndex];
   const result = calculate(tool.id, values);
 
-  return <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 sm:p-5" role="dialog" aria-modal="true" aria-label="MediDocs Learning Hub">
+  return <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 flex items-center justify-center p-3 sm:p-5" role="dialog" aria-modal="true" aria-label="MediDocs Learning Hub">
     <div className="w-full max-w-6xl max-h-[94vh] overflow-y-auto rounded-3xl bg-white dark:bg-slate-900 shadow-2xl">
       <header className="sticky top-0 z-10 flex items-center justify-between gap-4 p-4 sm:p-6 border-b border-gray-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 backdrop-blur">
         <div><h2 className="text-2xl font-extrabold text-gray-900 dark:text-white">MediDocs Learning Hub</h2><p className="text-sm text-gray-500 dark:text-slate-400">Daily practice, clinical reasoning, calculators and review tools.</p></div>
@@ -90,7 +96,7 @@ export default function LearningHub({ onClose, onOpenQuiz }) {
       <main className="p-4 sm:p-6">
         {tab==='daily' && <section>
           <div className="flex flex-wrap justify-between gap-3 mb-5"><div><h3 className="text-xl font-bold text-gray-900 dark:text-white">Daily 20</h3><p className="text-sm text-gray-500 dark:text-slate-400">A short daily set. Humanity apparently needed another way to procrastinate productively.</p></div><button onClick={onOpenQuiz} className="px-4 py-2 rounded-xl bg-purple-600 text-white font-semibold">Open full quiz</button></div>
-          <div className="grid gap-3">{daily20.map((q,i)=><article key={q.id+i} className="rounded-2xl border border-gray-200 dark:border-slate-700 p-4"><div className="flex justify-between gap-3"><span className="text-xs font-bold text-emerald-600">{i+1}/20 · {q.course}</span><span className="text-xs text-gray-500">Level {q.difficulty}</span></div><p className="mt-2 font-semibold text-gray-900 dark:text-white">{q.question}</p><div className="grid sm:grid-cols-2 gap-2 mt-3">{q.options.map(o=><button key={o} onClick={()=>markReview(q.id, o===q.answer?'easy':'again')} className="text-left px-3 py-2 rounded-lg bg-gray-50 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-slate-700 text-sm">{o}</button>)}</div></article>)}</div>
+          <div className="grid gap-3">{daily20.map((q,i)=><article key={q.id+i} className="rounded-2xl border border-gray-200 dark:border-slate-700 p-4"><div className="flex justify-between gap-3"><span className="text-xs font-bold text-emerald-600">{i+1}/20 · {q.course}</span><span className="text-xs text-gray-500">Level {q.difficulty}</span></div><p className="mt-2 font-semibold text-gray-900 dark:text-white">{q.question}</p><div className="grid sm:grid-cols-2 gap-2 mt-3">{q.options.map(o=><button key={o} onClick={()=>markDailyAnswer(q.id, o, q.answer)} className={`text-left px-3 py-2 rounded-lg text-sm ${dailyAnswers[q.id] === o ? (o === q.answer ? 'bg-emerald-100 dark:bg-emerald-900/40' : 'bg-red-100 dark:bg-red-900/40') : 'bg-gray-50 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-slate-700'}`}>{o}</button>)}</div></article>)}</div>
         </section>}
 
         {tab==='cases' && <section><h3 className="text-xl font-bold text-gray-900 dark:text-white">{currentCase.title}</h3><p className="text-sm text-emerald-600 mt-1">{currentCase.focus}</p><div className="mt-5 rounded-2xl bg-gray-50 dark:bg-slate-800 p-5"><p className="font-semibold text-gray-900 dark:text-white">{currentCase.prompt}</p><div className="grid gap-2 mt-4">{currentCase.options.map((o,i)=><button key={o} onClick={()=>setCaseAnswer(i)} className={`text-left p-3 rounded-xl border ${caseAnswer===i?(i===currentCase.answer?'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40':'border-red-500 bg-red-50 dark:bg-red-950/30'):'border-gray-200 dark:border-slate-700'}`}>{o}</button>)}</div>{caseAnswer!==null&&<div className="mt-4 p-4 rounded-xl bg-white dark:bg-slate-900"><strong>{caseAnswer===currentCase.answer?'Correct':'Review this'}</strong><p className="text-sm mt-1 text-gray-600 dark:text-slate-300">{currentCase.explanation}</p></div>}</div><div className="flex justify-between mt-4"><button disabled={caseIndex===0} onClick={()=>{setCaseIndex(i=>i-1);setCaseAnswer(null)}} className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-slate-800">Previous</button><button onClick={()=>{setCaseIndex(i=>(i+1)%cases.length);setCaseAnswer(null)}} className="px-4 py-2 rounded-xl bg-emerald-600 text-white">Next case</button></div></section>}
