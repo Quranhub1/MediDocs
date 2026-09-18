@@ -312,6 +312,8 @@ export const StudyProvider = ({ children }) => {
         }, { merge: true });
         return { uniqueViewed, views };
       });
+      setStreak((prev) => ({ ...prev, documentsViewed: result.uniqueViewed }));
+      window.dispatchEvent(new CustomEvent('medidocs:document-activity-updated', { detail: { type: 'view', documentId: cleanId, uniqueViewed: result.uniqueViewed } }));
       console.info('[ANALYTICS] Document view recorded:', { documentId: cleanId, ...result });
       return true;
     } catch (error) {
@@ -342,6 +344,8 @@ export const StudyProvider = ({ children }) => {
           updatedAt: serverTimestamp()
         }, { merge: true });
       });
+      setStreak((prev) => ({ ...prev, documentsDownloaded: (Number(prev.documentsDownloaded) || 0) + 1 }));
+      window.dispatchEvent(new CustomEvent('medidocs:document-activity-updated', { detail: { type: 'download', documentId: cleanId } }));
       console.info('[ANALYTICS] Document download recorded:', { documentId: cleanId });
       return true;
     } catch (error) {
