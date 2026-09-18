@@ -214,6 +214,93 @@ const toDate = (value) => {
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
+const resourceIndexCache = { data: null, cachedAt: 0 };
+const RESOURCE_INDEX_CACHE_MS = 10 * 60 * 1000;
+
+async function buildResourceIndex() {
+  if (!adminDb) throw new Error('Firebase Admin SDK is not initialized');
+  const coursesSnapshot = await adminDb.collection('RESOURCES_STUDYPEDIA').get();
+  const allDocuments = [];
+
+  for (const courseDoc of coursesSnapshot.docs) {
+    const courseId = courseDoc.id;
+    const courseData = courseDoc.data() || {};
+    const courseName = courseData.name || courseId;
+    const semestersSnapshot = await courseDoc.ref.collection('semesters').get();
+
+    for (const semesterDoc of semestersSnapshot.docs) {
+      const semesterId = semesterDoc.id;
+      const semesterData = semesterDoc.data() || {};
+      const semesterName = semesterData.name || semesterId;
+      const semesterDocsSnapshot = await semesterDoc.ref.collection('documents').get();
+
+      for (const document of semesterDocsSnapshot.docs) {
+        const data = document.data() || {};
+        allDocuments.push({
+          id: document.id, ...data,
+          courseId, courseName, semesterId, semesterName,
+          unitId: null, unitName: null
+        });
+      }
+
+      const unitsSnapshot = await semesterDoc.ref.collection('courseunits').get();
+      for (const unitDoc of unitsSnapshot.docs) {
+        const unitId = unitDoc.id;
+        const unitData = unitDoc.data() || {};
+        const unitName = unitData.name || unitId;
+        const documentsSnapshot = await unitDoc.ref.collection('documents').get();
+        for (const document of documentsSnapshot.docs) {
+          const data = document.data() || {};
+          allDocuments.push({
+            id: document.id, ...data,
+            courseId, courseName, semesterId, semesterName,
+            unitId, unitName
+          });
+        }
+      }
+    }
+  }
+
+  const toMillis = (value) => {
+    if (!value) return 0;
+    if (typeof value.toMillis === 'function') return value.toMillis();
+    if (typeof value.toDate === 'function') return value.toDate().getTime();
+    const parsed = new Date(value).getTime();
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  allDocuments.sort((a, b) => {
+    if (a.time === 'latest' && b.time !== 'latest') return -1;
+    if (a.time !== 'latest' && b.time === 'latest') return 1;
+    return toMillis(b.createdAt) - toMillis(a.createdAt);
+  });
+
+  const courseCounts = Object.values(allDocuments.reduce((counts, item) => {
+    const key = item.courseId || item.courseName || 'Other';
+    if (!counts[key]) counts[key] = { courseId: key, courseName: item.courseName || key, count: 0 };
+    counts[key].count += 1;
+    return counts;
+  }, {})).sort((a, b) => b.count - a.count);
+
+  return { success: true, data: allDocuments, courseCounts, totalDocuments: allDocuments.length, generatedAt: new Date().toISOString() };
+}
+
+app.get('/api/resources/index', async (req, res) => {
+  try {
+    if (resourceIndexCache.data && Date.now() - resourceIndexCache.cachedAt < RESOURCE_INDEX_CACHE_MS) {
+      return res.json(resourceIndexCache.data);
+    }
+    const result = await buildResourceIndex();
+    resourceIndexCache.data = result;
+    resourceIndexCache.cachedAt = Date.now();
+    console.info('[RESOURCES] Resource index refreshed:', { totalDocuments: result.totalDocuments, courses: result.courseCounts.length });
+    return res.json(result);
+  } catch (error) {
+    console.error('[RESOURCES] Resource index failed:', { code: error?.code, message: error?.message });
+    return res.status(503).json({ success: false, error: 'Resource index temporarily unavailable', data: [], courseCounts: [], totalDocuments: 0 });
+  }
+});
+
 app.get('/api/daily-report-data', async (req, res) => {
   try {
     if (!adminDb) return res.status(503).json({ success: false, error: 'Reporting database is not available' });
