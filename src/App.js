@@ -24,18 +24,34 @@ import { AnomalyProvider, useAnomaly } from './context/AnomalyContext';
 
 const PWA_PROMPT_SHOWN_KEY = 'medidocs_pwa_install_prompt_shown_v1';
 const PWA_INSTALLED_KEY = 'medidocs_pwa_installed_v1';
+const VIEW_STORAGE_KEY = 'medidocs_current_view';
+const VIEW_HASH_PREFIX = '#view=';
+const VALID_VIEWS = new Set(['home', 'courses', 'about', 'contact', 'privacy', 'profile', 'admin', 'semesters', 'courseunits', 'documents']);
+
+const getViewFromHash = () => {
+  if (typeof window === 'undefined') return null;
+  const hash = window.location.hash || '';
+  if (!hash.startsWith(VIEW_HASH_PREFIX)) return null;
+  const view = decodeURIComponent(hash.slice(VIEW_HASH_PREFIX.length));
+  return VALID_VIEWS.has(view) ? view : null;
+};
+
+const getInitialView = () => {
+  const hashView = getViewFromHash();
+  if (hashView) return hashView;
+  try {
+    const storedView = localStorage.getItem(VIEW_STORAGE_KEY);
+    return VALID_VIEWS.has(storedView) ? storedView : 'home';
+  } catch {
+    return 'home';
+  }
+};
 
 function AppContent() {
   const { currentUser, userProfile, isBanned, logout, refreshUserProfile } = useAuth();
   const { checkLoginAnomaly } = useAnomaly();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [currentView, setCurrentView] = useState(() => {
-    try {
-      return localStorage.getItem('medidocs_current_view') || 'home';
-    } catch {
-      return 'home';
-    }
-  });
+  const [currentView, setCurrentView] = useState(getInitialView);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -110,6 +126,31 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
+    const syncViewFromHistory = () => {
+      const view = getViewFromHash();
+      if (!view) return;
+      setCurrentView(view);
+      try {
+        localStorage.setItem(VIEW_STORAGE_KEY, view);
+      } catch {
+        // Ignore storage errors.
+      }
+    };
+
+    window.addEventListener('popstate', syncViewFromHistory);
+    window.addEventListener('hashchange', syncViewFromHistory);
+
+    if (!getViewFromHash()) {
+      window.history.replaceState({ view: currentView }, '', `${VIEW_HASH_PREFIX}${encodeURIComponent(currentView)}`);
+    }
+
+    return () => {
+      window.removeEventListener('popstate', syncViewFromHistory);
+      window.removeEventListener('hashchange', syncViewFromHistory);
+    };
+  }, [currentView]);
+
+  useEffect(() => {
     if (currentUser && checkLoginAnomaly) {
       checkLoginAnomaly(currentUser.email, 'unknown', navigator.userAgent);
     }
@@ -124,18 +165,23 @@ function AppContent() {
     setShowRegisterModal(false);
     setCurrentView('home');
     try {
-      localStorage.setItem('medidocs_current_view', 'home');
+      localStorage.setItem(VIEW_STORAGE_KEY, 'home');
     } catch {
       // Ignore storage errors.
     }
   };
 
   const handleViewChange = (viewId) => {
+    if (!VALID_VIEWS.has(viewId)) return;
     setCurrentView(viewId);
     try {
-      localStorage.setItem('medidocs_current_view', viewId);
+      localStorage.setItem(VIEW_STORAGE_KEY, viewId);
     } catch {
       // Ignore storage errors.
+    }
+    const nextHash = `${VIEW_HASH_PREFIX}${encodeURIComponent(viewId)}`;
+    if (window.location.hash !== nextHash) {
+      window.history.pushState({ view: viewId }, '', nextHash);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
     closeSidebar();
