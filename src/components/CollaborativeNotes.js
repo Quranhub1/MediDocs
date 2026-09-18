@@ -7,6 +7,7 @@ const CollaborativeNotes = ({ courseId, unitId, onClose }) => {
   const { theme } = useTheme();
   const [newNote, setNewNote] = useState('');
   const [isAdding, setIsAdding] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const filteredNotes = studyNotes.filter(note => 
     (!courseId || note.courseId === courseId) && 
@@ -16,9 +17,16 @@ const CollaborativeNotes = ({ courseId, unitId, onClose }) => {
   const handleAdd = async (e) => {
     e.preventDefault();
     if (!newNote.trim()) return;
-    await addStudyNote(newNote, courseId, unitId);
-    setNewNote('');
-    setIsAdding(false);
+    setSaving(true);
+    try {
+      const saved = await addStudyNote(newNote, courseId, unitId);
+      if (saved) {
+        setNewNote('');
+        setIsAdding(false);
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
