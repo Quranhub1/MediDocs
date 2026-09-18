@@ -444,6 +444,7 @@ export const StudyProvider = ({ children }) => {
         return { interval, nextReview, correct, learningStatsByCourse };
       });
 
+      setLearningStatsByCourse(result.learningStatsByCourse || {});
       setLearningReviews((prev) => {
         const next = {
           id: String(itemId),
