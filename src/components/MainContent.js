@@ -23,7 +23,7 @@ import { getDocumentUrl, downloadDocument } from '../utils/documentActions';
 
 const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, onContactClick, onAIChatClick, setView }) => {
   const { theme } = useTheme();
-  const { recordStudySession } = useStudy();
+  const { recordDocumentView } = useStudy();
   const { addToast } = useToast();
   const [courses, setCourses] = useState([]);
   const [latestDocuments, setLatestDocuments] = useState([]);
@@ -65,10 +65,6 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
     initData();
   }, [user]);
 
-  useEffect(() => {
-    if (view !== 'home' && user) recordStudySession(5);
-  }, [view, user]);
-
   const handleCourseClick = async (course) => {
     setSelectedCourse(course);
     setSelectedSemester(null);
@@ -107,6 +103,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
 
   const handleReadOnline = (doc) => {
     setSelectedDocument(doc);
+    void recordDocumentView(doc?.id || doc?.filePath || doc?.fileUrl || doc?.title || 'unknown');
     setShowReader(true);
   };
 
