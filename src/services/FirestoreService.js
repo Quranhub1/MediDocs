@@ -129,7 +129,21 @@ export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => 
       return dateB - dateA;
     });
 
-    const result = { success: true, data: allDocuments.slice(0, maxItems) };
+    // Count every document discovered in Firestore before applying maxItems.
+    // This prevents the dashboard from reporting counts based on only the latest 50 files.
+    const courseCounts = allDocuments.reduce((counts, item) => {
+      const key = item.courseId || item.courseName || 'Other';
+      const label = item.courseName || item.courseId || 'Other';
+      if (!counts[key]) counts[key] = { courseId: key, courseName: label, count: 0 };
+      counts[key].count += 1;
+      return counts;
+    }, {});
+
+    const result = {
+      success: true,
+      data: allDocuments.slice(0, maxItems),
+      courseCounts: Object.values(courseCounts).sort((a, b) => b.count - a.count)
+    };
     return result;
   } catch (error) {
     console.error('Error fetching all documents:', error);
