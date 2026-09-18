@@ -282,22 +282,37 @@ export const StudyProvider = ({ children }) => {
     }
   };
 
-  const recordDocumentView = async (documentId) => {
+  const recordDocumentView = async (documentId, metadata = {}) => {
     if (!currentUser || !db || !documentId) return false;
-
+    const cleanId = String(documentId);
     try {
       const studyRef = doc(db, 'userStudyData', currentUser.uid);
-      await setDoc(studyRef, {
-        documentsViewed: increment(1),
-        lastDocumentViewedId: String(documentId),
-        lastDocumentViewedAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-
-      console.info('[ANALYTICS] Document view recorded immediately:', {
-        uid: currentUser.uid,
-        documentId
+      const statRef = doc(db, 'users', currentUser.uid, 'documentStats', cleanId);
+      const result = await runTransaction(db, async (transaction) => {
+        const statSnap = await transaction.get(statRef);
+        const studySnap = await transaction.get(studyRef);
+        const stat = statSnap.exists() ? statSnap.data() : {};
+        const viewedBefore = Boolean(stat.viewed);
+        const views = (Number(stat.views) || 0) + 1;
+        const study = studySnap.exists() ? studySnap.data() : {};
+        const uniqueViewed = (Number(study.documentsViewed) || 0) + (viewedBefore ? 0 : 1);
+        const update = {
+          viewed: true,
+          views,
+          lastViewedAt: serverTimestamp(),
+          ...metadata
+        };
+        transaction.set(statRef, update, { merge: true });
+        transaction.set(studyRef, {
+          documentsViewed: uniqueViewed,
+          totalDocumentViews: increment(1),
+          lastDocumentViewedId: cleanId,
+          lastDocumentViewedAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+        return { uniqueViewed, views };
       });
+      console.info('[ANALYTICS] Document view recorded:', { documentId: cleanId, ...result });
       return true;
     } catch (error) {
       console.error('[ANALYTICS] Failed to record document view:', error);
@@ -305,25 +320,69 @@ export const StudyProvider = ({ children }) => {
     }
   };
 
-  const recordDocumentDownload = async (documentId) => {
+  const recordDocumentDownload = async (documentId, metadata = {}) => {
     if (!currentUser || !db || !documentId) return false;
-
+    const cleanId = String(documentId);
     try {
       const studyRef = doc(db, 'userStudyData', currentUser.uid);
-      await setDoc(studyRef, {
-        documentsDownloaded: increment(1),
-        lastDocumentDownloadedId: String(documentId),
-        lastDocumentDownloadedAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-
-      console.info('[ANALYTICS] Document download recorded immediately:', {
-        uid: currentUser.uid,
-        documentId
+      const statRef = doc(db, 'users', currentUser.uid, 'documentStats', cleanId);
+      await runTransaction(db, async (transaction) => {
+        const statSnap = await transaction.get(statRef);
+        const stat = statSnap.exists() ? statSnap.data() : {};
+        transaction.set(statRef, {
+          viewed: true,
+          downloads: (Number(stat.downloads) || 0) + 1,
+          lastDownloadedAt: serverTimestamp(),
+          ...metadata
+        }, { merge: true });
+        transaction.set(studyRef, {
+          documentsDownloaded: increment(1),
+          lastDocumentDownloadedId: cleanId,
+          lastDocumentDownloadedAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }, { merge: true });
       });
+      console.info('[ANALYTICS] Document download recorded:', { documentId: cleanId });
       return true;
     } catch (error) {
       console.error('[ANALYTICS] Failed to record document download:', error);
+      return false;
+    }
+  };
+
+  const recordDocumentProgress = async (documentId, seconds = 0, progressPercent = null, metadata = {}) => {
+    if (!currentUser || !db || !documentId) return false;
+    const cleanId = String(documentId);
+    const addedSeconds = Math.max(0, Math.floor(Number(seconds) || 0));
+    if (addedSeconds < 1 && progressPercent == null) return false;
+    try {
+      const statRef = doc(db, 'users', currentUser.uid, 'documentStats', cleanId);
+      const studyRef = doc(db, 'userStudyData', currentUser.uid);
+      await runTransaction(db, async (transaction) => {
+        const statSnap = await transaction.get(statRef);
+        const stat = statSnap.exists() ? statSnap.data() : {};
+        const currentProgress = Number(stat.progressPercent) || 0;
+        const nextProgress = progressPercent == null
+          ? currentProgress
+          : Math.max(currentProgress, Math.min(100, Number(progressPercent) || 0));
+        transaction.set(statRef, {
+          viewed: true,
+          totalSeconds: (Number(stat.totalSeconds) || 0) + addedSeconds,
+          progressPercent: nextProgress,
+          lastProgressAt: serverTimestamp(),
+          ...metadata
+        }, { merge: true });
+        transaction.set(studyRef, {
+          totalDocumentStudySeconds: increment(addedSeconds),
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      });
+      window.dispatchEvent(new CustomEvent('medidocs:document-progress-updated', {
+        detail: { documentId: cleanId, seconds: addedSeconds, progressPercent }
+      }));
+      return true;
+    } catch (error) {
+      console.error('[ANALYTICS] Failed to record document progress:', error);
       return false;
     }
   };
