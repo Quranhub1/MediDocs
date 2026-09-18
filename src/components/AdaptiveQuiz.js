@@ -3,6 +3,7 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import quizBank, { generateWeeklyQuizzes, QUIZ_PASS_PERCENT } from '../data/quizBank';
+import { useStudy } from '../context/StudyContext';
 
 const getWeekKey = (date = new Date()) => {
   const d = new Date(date);
@@ -19,6 +20,7 @@ const getWeekKey = (date = new Date()) => {
 
 const AdaptiveQuiz = ({ courseId, unitId, onClose }) => {
   const { currentUser } = useAuth();
+  const { recordLearningReview } = useStudy();
   const [progress, setProgress] = useState({ completed: [], scores: {} });
   const [currentQuiz, setCurrentQuiz] = useState(null);
   const [answers, setAnswers] = useState({});
@@ -141,6 +143,19 @@ const AdaptiveQuiz = ({ courseId, unitId, onClose }) => {
         weekKey,
         updatedAt: serverTimestamp()
       }, { merge: true });
+
+      for (const question of currentQuiz.questions) {
+        const isCorrect = answers[question.id] === question.answer;
+        void recordLearningReview(question.id, isCorrect ? 'easy' : 'again', {
+          source: 'weekly-quiz',
+          course: currentQuiz.course || 'General',
+          courseId: courseId || null,
+          unitId: unitId || null,
+          correct: isCorrect,
+          quizId: currentQuiz.id,
+          weekKey
+        });
+      }
 
       // Keep a durable history record as well as aggregate progress.
       await setDoc(
