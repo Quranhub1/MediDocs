@@ -23,6 +23,13 @@ import { useToast } from '../context/ToastContext';
 import { fetchCourses, fetchSemesters, fetchCourseUnits, fetchDocuments, fetchAllDocuments } from '../services/FirestoreService';
 import { getDocumentUrl, downloadDocument } from '../utils/documentActions';
 
+const getAnalyticsDocumentId = (doc) => {
+  if (!doc) return 'unknown';
+  if (doc.filePath) return String(doc.filePath);
+  const parts = [doc.courseId, doc.semesterId, doc.unitId, doc.id || doc.title].filter(Boolean);
+  return parts.length ? parts.join('/') : String(doc.id || doc.title || doc.fileUrl || 'unknown');
+};
+
 const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, onContactClick, onAIChatClick, setView }) => {
   const { theme } = useTheme();
   const { recordDocumentView, recordDocumentDownload, recordDocumentProgress } = useStudy();
@@ -115,13 +122,14 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   };
 
   const handleReadOnline = (doc) => {
-    const documentId = doc?.id || doc?.filePath || doc?.fileUrl || doc?.title || 'unknown';
+    const documentId = getAnalyticsDocumentId(doc);
     setSelectedDocument(doc);
     void recordDocumentView(documentId, {
       title: doc?.title || null,
       courseId: doc?.courseId || selectedCourse?.id || null,
       semesterId: doc?.semesterId || selectedSemester?.id || null,
-      unitId: doc?.unitId || selectedUnit?.id || null
+      unitId: doc?.unitId || selectedUnit?.id || null,
+      courseName: doc?.courseName || selectedCourse?.name || null
     });
     setShowReader(true);
   };
