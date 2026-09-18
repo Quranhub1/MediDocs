@@ -17,7 +17,7 @@ const getNextQuiz = (completedIds, currentId) => {
 };
 
 const AdaptiveQuiz = ({ onClose }) => {
-  const { user } = useAuth();
+  const { currentUser } = useAuth();
   const [progress, setProgress] = useState({ completed: [], scores: {} });
   const [currentQuiz, setCurrentQuiz] = useState(null);
   const [answers, setAnswers] = useState({});
@@ -31,9 +31,9 @@ const AdaptiveQuiz = ({ onClose }) => {
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
-      if (!user || !db) { setLoading(false); return; }
+      if (!currentUser || !db) { setLoading(false); return; }
       try {
-        const ref = doc(db, 'userQuizProgress', user.uid);
+        const ref = doc(db, 'userQuizProgress', currentUser.uid);
         const snapshot = await getDoc(ref);
         const data = snapshot.exists() ? snapshot.data() : {};
         const completed = Array.isArray(data.completedQuizIds) ? data.completedQuizIds : [];
@@ -53,7 +53,7 @@ const AdaptiveQuiz = ({ onClose }) => {
     };
     void load();
     return () => { cancelled = true; };
-  }, [user]);
+  }, [currentUser]);
 
   const choose = (questionId, value) => {
     if (!submitted) setAnswers((prev) => ({ ...prev, [questionId]: value }));
