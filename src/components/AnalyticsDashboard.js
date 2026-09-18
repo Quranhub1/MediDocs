@@ -35,7 +35,7 @@ const getLastSevenDays = () => {
 };
 
 const AnalyticsDashboard = ({ onClose }) => {
-  const { user } = useAuth();
+  const { currentUser } = useAuth();
   const [stats, setStats] = useState({
     documentsViewed: 0,
     studyTimeSeconds: 0,
@@ -51,18 +51,18 @@ const AnalyticsDashboard = ({ onClose }) => {
     let cancelled = false;
 
     const loadAnalytics = async () => {
-      if (!user || !db) {
+      if (!currentUser || !db) {
         setLoading(false);
         return;
       }
 
       setLoading(true);
       try {
-        const studyRef = doc(db, 'userStudyData', user.uid);
+        const studyRef = doc(db, 'userStudyData', currentUser.uid);
         const [studySnapshot, quizSnapshot, badgeSnapshot] = await Promise.all([
           getDoc(studyRef),
-          getDocs(collection(db, 'users', user.uid, 'quizzes')),
-          getDocs(collection(db, 'users', user.uid, 'badges'))
+          getDocs(collection(db, 'users', currentUser.uid, 'quizzes')),
+          getDocs(collection(db, 'users', currentUser.uid, 'badges'))
         ]);
 
         const studyData = studySnapshot.exists() ? studySnapshot.data() : {};
@@ -114,7 +114,7 @@ const AnalyticsDashboard = ({ onClose }) => {
       cancelled = true;
       window.removeEventListener('medidocs:study-time-updated', refresh);
     };
-  }, [user]);
+  }, [currentUser]);
 
   if (loading) {
     return (
