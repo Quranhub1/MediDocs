@@ -196,7 +196,10 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
                   </button>
                   <button onClick={() => setShowAdvancedSearch(true)} className="group rounded-2xl p-4 md:p-5 text-left bg-indigo-600 text-white shadow-md hover:shadow-xl hover:-translate-y-1 transition-all">
                     <div className="text-2xl mb-2">🔎</div><div className="font-bold">Search</div><div className="text-xs text-indigo-100 mt-1">Find resources fast</div>
-                  </button>\n                  <button onClick={() => setShowLearningHub(true)} className="group rounded-2xl p-4 md:p-5 text-left bg-emerald-700 text-white shadow-md hover:shadow-xl hover:-translate-y-1 transition-all">\n                    <div className="text-2xl mb-2">🧠</div><div className="font-bold">Learning Hub</div><div className="text-xs text-emerald-100 mt-1">Daily 20, cases, labs & calculators</div>\n                  </button>
+                  </button>
+                  <button onClick={() => setShowLearningHub(true)} className="group rounded-2xl p-4 md:p-5 text-left bg-emerald-700 text-white shadow-md hover:shadow-xl hover:-translate-y-1 transition-all">
+                    <div className="text-2xl mb-2">🧠</div><div className="font-bold">Learning Hub</div><div className="text-xs text-emerald-100 mt-1">Daily 20, cases, labs & calculators</div>
+                  </button>
                 </div>
               </div>
 
@@ -237,7 +240,8 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
       {showQuiz && <AdaptiveQuiz courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowQuiz(false)} />}
       {showNotes && <CollaborativeNotes courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowNotes(false)} />}
       {showAnalytics && <AnalyticsDashboard onClose={() => setShowAnalytics(false)} />}
-      {showAdvancedSearch && <AdvancedSearch onClose={() => setShowAdvancedSearch(false)} onViewChange={setView} />}\n      {showLearningHub && <LearningHub onClose={() => setShowLearningHub(false)} onOpenQuiz={() => { setShowLearningHub(false); setShowQuiz(true); }} />}
+      {showAdvancedSearch && <AdvancedSearch onClose={() => setShowAdvancedSearch(false)} onViewChange={setView} />}
+      {showLearningHub && <LearningHub onClose={() => setShowLearningHub(false)} onOpenQuiz={() => { setShowLearningHub(false); setShowQuiz(true); }} />}
     </>
   );
 };
