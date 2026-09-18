@@ -671,6 +671,7 @@ export const StudyProvider = ({ children }) => {
     flashcards,
     quizzes,
     studyNotes,
+    learningReviews,
     loading,
     recordStudySession,
     recordDocumentView,
