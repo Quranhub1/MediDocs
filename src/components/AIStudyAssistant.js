@@ -359,7 +359,6 @@ The learner's current adaptive-learning context is: ${performanceSummary || 'No 
                 })),
                 { role: 'user', content: input }
               ],
-              apiKey: openAIApiKey
             })
           });
 
