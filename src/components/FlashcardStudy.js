@@ -10,6 +10,7 @@ const FlashcardStudy = ({ courseId, unitId, onClose }) => {
   const [showAnswer, setShowAnswer] = useState(false);
   const [newFlashcard, setNewFlashcard] = useState({ front: '', back: '' });
   const [isCreating, setIsCreating] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const filteredCards = flashcards.filter(card =>
     (!courseId || card.courseId === courseId) &&
@@ -53,9 +54,16 @@ const FlashcardStudy = ({ courseId, unitId, onClose }) => {
   const handleCreate = async (e) => {
     e.preventDefault();
     if (!newFlashcard.front.trim() || !newFlashcard.back.trim()) return;
-    await createFlashcard(newFlashcard.front, newFlashcard.back, courseId, unitId);
-    setNewFlashcard({ front: '', back: '' });
-    setIsCreating(false);
+    setSaving(true);
+    try {
+      const saved = await createFlashcard(newFlashcard.front, newFlashcard.back, courseId, unitId);
+      if (saved) {
+        setNewFlashcard({ front: '', back: '' });
+        setIsCreating(false);
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const themeClass = theme === 'dark' ? 'dark' : '';
@@ -81,7 +89,7 @@ const FlashcardStudy = ({ courseId, unitId, onClose }) => {
                 <textarea value={newFlashcard.back} onChange={(e) => setNewFlashcard({ ...newFlashcard, back: e.target.value })} className="w-full px-4 py-2 border border-gray-200 dark:border-dark-border rounded-lg bg-white dark:bg-dark-bg text-gray-900 dark:text-dark-text" rows="2" placeholder="Answer or definition" required />
               </div>
               <div className="flex gap-2">
-                <button type="submit" className="flex-1 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">Save</button>
+                <button type="submit" className="flex-1 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">{saving ? 'Saving...' : 'Save'}</button>
                 <button type="button" onClick={() => setIsCreating(false)} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-dark-text rounded-lg">Cancel</button>
               </div>
             </form>
