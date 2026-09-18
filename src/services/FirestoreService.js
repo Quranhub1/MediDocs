@@ -34,28 +34,54 @@ const convertTimestamp = (timestamp) => {
 let resourceIndexCache = null;
 let resourceIndexCacheAt = 0;
 const RESOURCE_INDEX_CACHE_MS = 60 * 1000;
+const RESOURCE_INDEX_FAILURE_BACKOFF_MS = 5 * 60 * 1000;
+let resourceIndexFailureAt = 0;
+let resourceIndexFailureError = null;
 
 const fetchResourceIndexFromApi = async (maxItems = 50, forceRefresh = false) => {
   if (!forceRefresh && resourceIndexCache && Date.now() - resourceIndexCacheAt < RESOURCE_INDEX_CACHE_MS) {
     return { ...resourceIndexCache, data: resourceIndexCache.data.slice(0, maxItems) };
   }
+  if (!forceRefresh && resourceIndexFailureAt && Date.now() - resourceIndexFailureAt < RESOURCE_INDEX_FAILURE_BACKOFF_MS) {
+    return resourceIndexCache
+      ? { ...resourceIndexCache, stale: true, data: resourceIndexCache.data.slice(0, maxItems) }
+      : { success: false, quotaExceeded: true, error: resourceIndexFailureError || 'Resource index temporarily unavailable', data: [], courseCounts: [], totalDocuments: 0 };
+  }
   try {
     const response = await fetch(`/api/resources/index?limit=${Math.max(1, Math.min(10000, Number(maxItems) || 50))}`);
-    if (!response.ok) throw new Error(`Resource index request failed: ${response.status}`);
-    const result = await response.json();
-    if (!result.success) throw new Error(result.error || 'Resource index unavailable');
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.success) {
+      const error = new Error(result.error || `Resource index request failed: ${response.status}`);
+      if (response.status === 429 || response.status === 503 || result.quotaExceeded) {
+        resourceIndexFailureAt = Date.now();
+        resourceIndexFailureError = result.error || 'Firestore quota temporarily exceeded';
+        if (resourceIndexCache) return { ...resourceIndexCache, stale: true, data: resourceIndexCache.data.slice(0, maxItems) };
+        return { success: false, quotaExceeded: true, error: resourceIndexFailureError, data: [], courseCounts: [], totalDocuments: 0 };
+      }
+      throw error;
+    }
+    resourceIndexFailureAt = 0;
+    resourceIndexFailureError = null;
     resourceIndexCache = result;
     resourceIndexCacheAt = Date.now();
     return { ...result, data: (result.data || []).slice(0, maxItems) };
   } catch (error) {
-    console.warn('[RESOURCES] Server index unavailable, using direct Firestore fallback:', error.message);
-    return null;
+    console.warn('[RESOURCES] Server index unavailable:', error.message);
+    return resourceIndexCache
+      ? { ...resourceIndexCache, stale: true, data: resourceIndexCache.data.slice(0, maxItems) }
+      : { success: false, error: error.message, data: [], courseCounts: [], totalDocuments: 0 };
   }
 };
 
 export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => {
   const apiResult = await fetchResourceIndexFromApi(maxItems, forceRefresh);
-  if (apiResult) return apiResult;
+  if (apiResult) {
+    // Never fall back to a full client-side hierarchy scan after the server
+    // reports quota exhaustion. That simply moves the same read storm to every
+    // browser and makes the incident worse.
+    if (apiResult.success === false && apiResult.quotaExceeded) return apiResult;
+    return apiResult;
+  }
   try {
     const allDocuments = [];
     const coursesRef = collection(db, 'RESOURCES_STUDYPEDIA');
