@@ -11,6 +11,9 @@ const writeStore = (value) => {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(value)); } catch {}
 };
 
+const answerKey = (question) => String(question?.answer ?? '');
+
+
 const cases = [
   { id:'case-malaria', title:'Febrile illness', focus:'Clinical reasoning', prompt:'A 22-year-old presents with fever, chills and headache after living in a malaria-endemic area. What should be considered early in the assessment?', options:['Malaria testing and severity assessment','Ignore travel and exposure history','Start antibiotics without assessment','Order only a lipid profile'], answer:0, explanation:'In endemic settings, malaria is an important differential. Assess severity and confirm with appropriate testing while considering other causes of fever.' },
   { id:'case-asthma', title:'Acute wheeze', focus:'Respiratory', prompt:'A patient with recurrent episodic wheeze and chest tightness has reduced peak expiratory flow during symptoms. Which diagnosis is most consistent?', options:['Asthma','Appendicitis','Nephrotic syndrome','Iron deficiency'], answer:0, explanation:'Variable respiratory symptoms and variable expiratory airflow limitation are characteristic features of asthma.' },
@@ -60,7 +63,7 @@ export default function LearningHub({ onClose, onOpenQuiz }) {
   const [values, setValues] = useState({});
   const [review, setReview] = useState(() => readStore().review || {});
   const [selectedLab, setSelectedLab] = useState(labs[0]);
-  const [dailyAnswers, setDailyAnswers] = useState({});
+  const [dailyAnswers, setDailyAnswers] = useState(() => readStore().dailyAnswers || {});
 
   const daily20 = useMemo(() => {
     const all = quizBank.flatMap(q => q.questions.map(x => ({...x, course:q.course, difficulty:q.difficulty || 1})));
@@ -73,7 +76,19 @@ export default function LearningHub({ onClose, onOpenQuiz }) {
   }, []);
 
   const dailyAnswered = Object.keys(dailyAnswers).length;
-  const dailyCorrect = daily20.reduce((total, q) => total + (dailyAnswers[q.id] === q.answer ? 1 : 0), 0);
+  const dailyCorrect = daily20.reduce((total, q) => total + (dailyAnswers[q.id] === answerKey(q) ? 1 : 0), 0);
+  const topicStats = daily20.reduce((stats, q) => {
+    const selected = dailyAnswers[q.id];
+    if (!selected) return stats;
+    const course = q.course || 'General';
+    if (!stats[course]) stats[course] = { answered: 0, correct: 0 };
+    stats[course].answered += 1;
+    if (selected === answerKey(q)) stats[course].correct += 1;
+    return stats;
+  }, {});
+  const weakestTopic = Object.entries(topicStats)
+    .filter(([, stats]) => stats.answered > 0)
+    .sort((a, b) => (a[1].correct / a[1].answered) - (b[1].correct / b[1].answered))[0];
 
   const markReview = (id, rating) => {
     const next = {...review, [id]: {rating, reviewedAt:new Date().toISOString()}};
@@ -82,7 +97,11 @@ export default function LearningHub({ onClose, onOpenQuiz }) {
   };
 
   const markDailyAnswer = (id, option, answer) => {
-    setDailyAnswers(prev => ({ ...prev, [id]: option }));
+    setDailyAnswers(prev => {
+      const next = { ...prev, [id]: option };
+      writeStore({ ...readStore(), dailyAnswers: next });
+      return next;
+    });
     markReview(id, option === answer ? 'easy' : 'again');
   };
 
@@ -102,13 +121,13 @@ export default function LearningHub({ onClose, onOpenQuiz }) {
       </nav>
       <main className="p-4 sm:p-6">
         {tab==='daily' && <section>
-          <div className="flex flex-wrap justify-between gap-3 mb-5"><div><h3 className="text-xl font-bold text-gray-900 dark:text-white">Daily 20</h3><p className="text-sm text-gray-500 dark:text-slate-400">{dailyAnswered}/20 answered · {dailyCorrect} correct. A short daily set, because apparently procrastination needs metrics.</p></div><button onClick={onOpenQuiz} className="px-4 py-2 rounded-xl bg-purple-600 text-white font-semibold">Open full quiz</button></div>
-          <div className="grid gap-3">{daily20.map((q,i)=><article key={q.id+i} className="rounded-2xl border border-gray-200 dark:border-slate-700 p-4"><div className="flex justify-between gap-3"><span className="text-xs font-bold text-emerald-600">{i+1}/20 · {q.course}</span><span className="text-xs text-gray-500">Level {q.difficulty}</span></div><p className="mt-2 font-semibold text-gray-900 dark:text-white">{q.question}</p><div className="grid sm:grid-cols-2 gap-2 mt-3">{q.options.map(o=><button key={o} onClick={()=>markDailyAnswer(q.id, o, q.answer)} className={`text-left px-3 py-2 rounded-lg text-sm ${dailyAnswers[q.id] === o ? (o === q.answer ? 'bg-emerald-100 dark:bg-emerald-900/40' : 'bg-red-100 dark:bg-red-900/40') : 'bg-gray-50 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-slate-700'}`}>{o}</button>)}</div></article>)}</div>
+          <div className="flex flex-wrap justify-between gap-3 mb-5"><div><h3 className="text-xl font-bold text-gray-900 dark:text-white">Daily 20</h3><p className="text-sm text-gray-500 dark:text-slate-400">{dailyAnswered}/20 answered · {dailyCorrect} correct. A short daily set, because apparently procrastination needs metrics.</p>{weakestTopic && <div className="mt-2 inline-flex items-center gap-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs font-semibold text-amber-800 dark:text-amber-200">Focus next: {weakestTopic[0]} · {weakestTopic[1].correct}/{weakestTopic[1].answered} correct</div>}</div><button onClick={onOpenQuiz} className="px-4 py-2 rounded-xl bg-purple-600 text-white font-semibold">Open full quiz</button></div>
+          <div className="grid gap-3">{daily20.map((q,i)=><article key={q.id+i} className="rounded-2xl border border-gray-200 dark:border-slate-700 p-4"><div className="flex justify-between gap-3"><span className="text-xs font-bold text-emerald-600">{i+1}/20 · {q.course}</span><span className="text-xs text-gray-500">Level {q.difficulty}</span></div><p className="mt-2 font-semibold text-gray-900 dark:text-white">{q.question}</p><div className="grid sm:grid-cols-2 gap-2 mt-3">{q.options.map(o=><button key={o} onClick={()=>markDailyAnswer(q.id, o, q.answer)} className={`text-left px-3 py-2 rounded-lg text-sm ${dailyAnswers[q.id] === o ? (o === answerKey(q) ? 'bg-emerald-100 dark:bg-emerald-900/40' : 'bg-red-100 dark:bg-red-900/40') : 'bg-gray-50 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-slate-700'}`}>{o}</button>)}</div></article>)}</div>
         </section>}
 
         {tab==='cases' && <section><h3 className="text-xl font-bold text-gray-900 dark:text-white">{currentCase.title}</h3><p className="text-sm text-emerald-600 mt-1">{currentCase.focus}</p><div className="mt-5 rounded-2xl bg-gray-50 dark:bg-slate-800 p-5"><p className="font-semibold text-gray-900 dark:text-white">{currentCase.prompt}</p><div className="grid gap-2 mt-4">{currentCase.options.map((o,i)=><button key={o} onClick={()=>setCaseAnswer(i)} className={`text-left p-3 rounded-xl border ${caseAnswer===i?(i===currentCase.answer?'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40':'border-red-500 bg-red-50 dark:bg-red-950/30'):'border-gray-200 dark:border-slate-700'}`}>{o}</button>)}</div>{caseAnswer!==null&&<div className="mt-4 p-4 rounded-xl bg-white dark:bg-slate-900"><strong>{caseAnswer===currentCase.answer?'Correct':'Review this'}</strong><p className="text-sm mt-1 text-gray-600 dark:text-slate-300">{currentCase.explanation}</p></div>}</div><div className="flex justify-between mt-4"><button disabled={caseIndex===0} onClick={()=>{setCaseIndex(i=>i-1);setCaseAnswer(null)}} className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-slate-800">Previous</button><button onClick={()=>{setCaseIndex(i=>(i+1)%cases.length);setCaseAnswer(null)}} className="px-4 py-2 rounded-xl bg-emerald-600 text-white">Next case</button></div></section>}
 
-        {tab==='review' && <section><h3 className="text-xl font-bold text-gray-900 dark:text-white">Spaced Review</h3><p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Review items with Again, Hard or Easy. Your review state is stored on this device.</p><div className="grid gap-3 mt-5">{daily20.slice(0,10).map(q=><article key={q.id} className="rounded-2xl border border-gray-200 dark:border-slate-700 p-4"><p className="font-semibold text-gray-900 dark:text-white">{q.question}</p><div className="flex gap-2 mt-3">{['again','hard','easy'].map(r=><button key={r} onClick={()=>markReview(q.id,r)} className="px-3 py-2 rounded-lg bg-gray-100 dark:bg-slate-800 capitalize">{r}</button>)}<span className="ml-auto text-xs text-gray-500 self-center">{review[q.id]?.rating || 'Due'}</span></div></article>)}</div></section>}
+        {tab==='review' && <section><h3 className="text-xl font-bold text-gray-900 dark:text-white">Spaced Review</h3><p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Review items with Again, Hard or Easy. Your review state is stored locally and synced to your account when signed in.</p><div className="grid gap-3 mt-5">{daily20.slice(0,10).map(q=><article key={q.id} className="rounded-2xl border border-gray-200 dark:border-slate-700 p-4"><p className="font-semibold text-gray-900 dark:text-white">{q.question}</p><div className="flex gap-2 mt-3">{['again','hard','easy'].map(r=><button key={r} onClick={()=>markReview(q.id,r)} className="px-3 py-2 rounded-lg bg-gray-100 dark:bg-slate-800 capitalize">{r}</button>)}<span className="ml-auto text-xs text-gray-500 self-center">{review[q.id]?.rating || 'Due'}</span></div></article>)}</div></section>}
 
         {tab==='labs' && <section><h3 className="text-xl font-bold text-gray-900 dark:text-white">Lab Interpretation Trainer</h3><div className="grid md:grid-cols-[220px_1fr] gap-4 mt-5"><div className="space-y-2">{labs.map(l=><button key={l.name} onClick={()=>setSelectedLab(l)} className={`w-full text-left p-3 rounded-xl ${selectedLab.name===l.name?'bg-emerald-600 text-white':'bg-gray-100 dark:bg-slate-800'}`}>{l.name}</button>)}</div><div className="rounded-2xl border border-gray-200 dark:border-slate-700 p-5"><p className="text-sm text-gray-500">Reference</p><p className="font-semibold mt-1">{selectedLab.range}</p><div className="grid sm:grid-cols-2 gap-3 mt-5"><div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30"><strong>Low</strong><p className="text-sm mt-1">{selectedLab.low}</p></div><div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30"><strong>High</strong><p className="text-sm mt-1">{selectedLab.high}</p></div></div><p className="text-xs text-gray-500 mt-5">Educational interpretation only. Use the reporting laboratory's reference interval and clinical context.</p></div></div></section>}
 
