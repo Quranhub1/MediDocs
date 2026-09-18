@@ -282,19 +282,28 @@ async function buildResourceIndex() {
     return counts;
   }, {})).sort((a, b) => b.count - a.count);
 
-  return { success: true, data: allDocuments, courseCounts, totalDocuments: allDocuments.length, generatedAt: new Date().toISOString() };
+  const data = allDocuments.map((item) => {
+    const createdAtMillis = toMillis(item.createdAt);
+    return {
+      ...item,
+      createdAtDate: createdAtMillis ? new Date(createdAtMillis).toISOString() : null
+    };
+  });
+  return { success: true, data, courseCounts, totalDocuments: data.length, generatedAt: new Date().toISOString() };
 }
 
 app.get('/api/resources/index', async (req, res) => {
   try {
     if (resourceIndexCache.data && Date.now() - resourceIndexCache.cachedAt < RESOURCE_INDEX_CACHE_MS) {
-      return res.json(resourceIndexCache.data);
+      const limit = Math.max(1, Math.min(10000, Number(req.query.limit) || 50));
+      return res.json({ ...resourceIndexCache.data, data: resourceIndexCache.data.data.slice(0, limit) });
     }
     const result = await buildResourceIndex();
     resourceIndexCache.data = result;
     resourceIndexCache.cachedAt = Date.now();
     console.info('[RESOURCES] Resource index refreshed:', { totalDocuments: result.totalDocuments, courses: result.courseCounts.length });
-    return res.json(result);
+    const limit = Math.max(1, Math.min(10000, Number(req.query.limit) || 50));
+    return res.json({ ...result, data: result.data.slice(0, limit) });
   } catch (error) {
     console.error('[RESOURCES] Resource index failed:', { code: error?.code, message: error?.message });
     return res.status(503).json({ success: false, error: 'Resource index temporarily unavailable', data: [], courseCounts: [], totalDocuments: 0 });
