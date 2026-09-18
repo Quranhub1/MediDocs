@@ -349,6 +349,35 @@ export const StudyProvider = ({ children }) => {
     }
   };
 
+  const recordLearningReview = async (itemId, rating, metadata = {}) => {
+    if (!currentUser || !db || !itemId) return false;
+    const cleanRating = ['again', 'hard', 'easy'].includes(rating) ? rating : 'again';
+    try {
+      const reviewRef = doc(db, 'users', currentUser.uid, 'learningReviews', String(itemId));
+      const previous = await getDoc(reviewRef);
+      const previousData = previous.exists() ? previous.data() : {};
+      const intervals = { again: 1, hard: Math.max(1, Math.round(Number(previousData.interval) || 1)), easy: Math.max(2, Math.round((Number(previousData.interval) || 1) * 2.5)) };
+      const interval = intervals[cleanRating];
+      const nextReview = new Date();
+      nextReview.setDate(nextReview.getDate() + interval);
+      await setDoc(reviewRef, {
+        itemId: String(itemId),
+        rating: cleanRating,
+        interval,
+        repetitions: cleanRating === 'again' ? 0 : (Number(previousData.repetitions) || 0) + 1,
+        nextReview,
+        ...metadata,
+        reviewedAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      console.info('[LEARNING] Review saved:', { itemId: String(itemId), rating: cleanRating, interval });
+      return true;
+    } catch (error) {
+      console.error('[LEARNING] Failed to save review:', error);
+      return false;
+    }
+  };
+
   const createFlashcard = async (front, back, courseId = null, unitId = null) => {
     if (!currentUser || !db) {
       addToast('Please sign in before creating flashcards', 'error');
@@ -624,6 +653,7 @@ export const StudyProvider = ({ children }) => {
     recordDocumentDownload,
     createFlashcard,
     updateFlashcardReview,
+    recordLearningReview,
     createQuiz,
     submitQuizResult,
     addStudyNote,
