@@ -52,6 +52,7 @@ export const StudyProvider = ({ children }) => {
   const [quizzes, setQuizzes] = useState([]);
   const [studyNotes, setStudyNotes] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [learningReviews, setLearningReviews] = useState([]);
 
   const loadStreak = useCallback(async () => {
     if (!currentUser || !db) {
@@ -79,6 +80,22 @@ export const StudyProvider = ({ children }) => {
       });
     } catch (error) {
       console.error('[STUDY] Failed to load streak:', error);
+    }
+  }, [currentUser]);
+
+  const loadLearningReviews = useCallback(async () => {
+    if (!currentUser || !db) {
+      setLearningReviews([]);
+      return;
+    }
+    try {
+      const snapshot = await getDocs(collection(db, 'users', currentUser.uid, 'learningReviews'));
+      const items = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+      setLearningReviews(items);
+      console.info('[LEARNING] Loaded review schedule:', items.length);
+    } catch (error) {
+      console.error('[LEARNING] Failed to load review schedule:', error);
+      setLearningReviews([]);
     }
   }, [currentUser]);
 
@@ -174,6 +191,7 @@ export const StudyProvider = ({ children }) => {
       setFlashcards([]);
       setQuizzes([]);
       setStudyNotes([]);
+      setLearningReviews([]);
       return;
     }
 
@@ -182,7 +200,8 @@ export const StudyProvider = ({ children }) => {
       loadBadges(),
       loadFlashcards(),
       loadQuizzes(),
-      loadStudyNotes()
+      loadStudyNotes(),
+      loadLearningReviews()
     ]).catch((error) => {
       console.error('[STUDY] Failed to initialise study data:', error);
     });
@@ -192,7 +211,8 @@ export const StudyProvider = ({ children }) => {
     loadBadges,
     loadFlashcards,
     loadQuizzes,
-    loadStudyNotes
+    loadStudyNotes,
+    loadLearningReviews
   ]);
 
   useEffect(() => {
@@ -370,6 +390,10 @@ export const StudyProvider = ({ children }) => {
         reviewedAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       }, { merge: true });
+      setLearningReviews((prev) => {
+        const next = { id: String(itemId), itemId: String(itemId), rating: cleanRating, interval, nextReview, ...metadata };
+        return [next, ...prev.filter((item) => item.id !== String(itemId))];
+      });
       console.info('[LEARNING] Review saved:', { itemId: String(itemId), rating: cleanRating, interval });
       return true;
     } catch (error) {
@@ -663,7 +687,8 @@ export const StudyProvider = ({ children }) => {
     loadBadges,
     loadFlashcards,
     loadQuizzes,
-    loadStudyNotes
+    loadStudyNotes,
+    loadLearningReviews
   };
 
   return <StudyContext.Provider value={value}>{children}</StudyContext.Provider>;
