@@ -23,7 +23,7 @@ import { getDocumentUrl, downloadDocument } from '../utils/documentActions';
 
 const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, onContactClick, onAIChatClick, setView }) => {
   const { theme } = useTheme();
-  const { recordDocumentView } = useStudy();
+  const { recordDocumentView, recordDocumentDownload } = useStudy();
   const { addToast } = useToast();
   const [courses, setCourses] = useState([]);
   const [latestDocuments, setLatestDocuments] = useState([]);
@@ -108,6 +108,8 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   };
 
   const handleDownload = async (doc) => {
+    const documentId = doc?.id || doc?.filePath || doc?.fileUrl || doc?.title || 'unknown';
+    void recordDocumentDownload(documentId);
     const url = getDocumentUrl(doc);
     if (!url) {
       addToast('No download link available for this document', 'error');
