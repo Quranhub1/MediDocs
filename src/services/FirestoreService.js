@@ -130,9 +130,15 @@ export const fetchTotalResourceCount = async (forceRefresh = false) => {
   if (!db) return { success: false, totalDocuments: 0, error: 'Firestore is not configured' };
   if (!forceRefresh) {
     try {
-      const stored = JSON.parse(localStorage.getItem(RESOURCE_COUNT_CACHE_KEY) || 'null');
-      if (stored?.cachedAt && Date.now() - stored.cachedAt < RESOURCE_COUNT_CACHE_MS) {
-        return { success: true, totalDocuments: Number(stored.totalDocuments) || 0, cached: true };
+      const storedCount = JSON.parse(localStorage.getItem(RESOURCE_COUNT_CACHE_KEY) || 'null');
+      if (storedCount?.cachedAt && Date.now() - storedCount.cachedAt < RESOURCE_COUNT_CACHE_MS) {
+        return { success: true, totalDocuments: Number(storedCount.totalDocuments) || 0, cached: true };
+      }
+      const storedIndex = JSON.parse(localStorage.getItem('medidocs_resource_index_v1') || 'null');
+      const indexedTotal = Number(storedIndex?.data?.totalDocuments);
+      if (indexedTotal > 0) {
+        localStorage.setItem(RESOURCE_COUNT_CACHE_KEY, JSON.stringify({ cachedAt: Date.now(), totalDocuments: indexedTotal }));
+        return { success: true, totalDocuments: indexedTotal, cached: true, source: 'resource-index' };
       }
     } catch {}
   }
