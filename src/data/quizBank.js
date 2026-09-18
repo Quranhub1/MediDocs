@@ -55,4 +55,75 @@ const quizBank = [
   }
 ];
 
+
+export const generateWeeklyQuizzes = (weekKey, sourceBank = quizBank) => {
+  const seedText = String(weekKey || 'current-week');
+  let seed = 0;
+
+  for (let i = 0; i < seedText.length; i += 1) {
+    seed = (seed * 31 + seedText.charCodeAt(i)) >>> 0;
+  }
+
+  const random = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+
+  const questions = sourceBank.flatMap((quiz) =>
+    quiz.questions.map((question) => ({
+      ...question,
+      sourceQuizId: quiz.id,
+      course: quiz.course,
+      courseId: quiz.courseId,
+      unitId: quiz.unitId,
+      sourceDifficulty: quiz.difficulty || 1
+    }))
+  );
+
+  // Fisher-Yates shuffle with a week-specific seed.
+  for (let i = questions.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(random() * (i + 1));
+    [questions[i], questions[j]] = [questions[j], questions[i]];
+  }
+
+  const questionsPerQuiz = 5;
+  const generated = [];
+
+  for (let index = 0; index < questions.length; index += questionsPerQuiz) {
+    const batch = questions.slice(index, index + questionsPerQuiz);
+    if (!batch.length) continue;
+
+    const course = batch[0].course || 'Medical Studies';
+    const difficulty = Math.max(
+      1,
+      Math.min(
+        4,
+        Math.round(batch.reduce((sum, question) => sum + question.sourceDifficulty, 0) / batch.length)
+      )
+    );
+
+    generated.push({
+      id: `${weekKey}-weekly-${generated.length + 1}`,
+      title: `${course} Weekly Quiz ${generated.length + 1}`,
+      course,
+      courseId: batch.every((question) => question.courseId === batch[0].courseId)
+        ? batch[0].courseId || null
+        : null,
+      unitId: batch.every((question) => question.unitId === batch[0].unitId)
+        ? batch[0].unitId || null
+        : null,
+      difficulty,
+      weekKey,
+      questions: batch.map((question, questionIndex) => ({
+        id: `${weekKey}-q-${generated.length + 1}-${questionIndex + 1}`,
+        question: question.question,
+        options: question.options,
+        answer: question.answer
+      }))
+    });
+  }
+
+  return generated;
+};
+
 export default quizBank;
