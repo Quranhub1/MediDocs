@@ -377,14 +377,14 @@ export const StudyProvider = ({ children }) => {
       const reviewRef = doc(db, 'users', currentUser.uid, 'learningReviews', String(itemId));
       const studyRef = doc(db, 'userStudyData', currentUser.uid);
       const courseKey = String(metadata.courseId || metadata.course || 'General')
-        .replace(/[.\\\\\\/\\\\\\[\\\\]#]/g, '_')
+        .replace(/[.#]/g, '_')
+        .replace(/\\\\/g, '_')
+        .replace(/\\//g, '_')
         .slice(0, 120) || 'General';
 
       const result = await runTransaction(db, async (transaction) => {
-        const [previousSnap, studySnap] = await Promise.all([
-          transaction.get(reviewRef),
-          transaction.get(studyRef)
-        ]);
+        const previousSnap = await transaction.get(reviewRef);
+        const studySnap = await transaction.get(studyRef);
         const previousData = previousSnap.exists() ? previousSnap.data() : {};
         const intervals = {
           again: 1,
