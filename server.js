@@ -216,6 +216,9 @@ const toDate = (value) => {
 
 const resourceIndexCache = { data: null, cachedAt: 0 };
 const RESOURCE_INDEX_CACHE_MS = 10 * 60 * 1000;
+// Prevent several users hitting the first-load cache miss from launching
+// identical Firestore hierarchy scans at the same time.
+let resourceIndexRefreshPromise = null;
 
 async function buildResourceIndex() {
   if (!adminDb) throw new Error('Firebase Admin SDK is not initialized');
@@ -293,20 +296,53 @@ async function buildResourceIndex() {
 }
 
 app.get('/api/resources/index', async (req, res) => {
+  const limit = Math.max(1, Math.min(10000, Number(req.query.limit) || 50));
   try {
     if (resourceIndexCache.data && Date.now() - resourceIndexCache.cachedAt < RESOURCE_INDEX_CACHE_MS) {
-      const limit = Math.max(1, Math.min(10000, Number(req.query.limit) || 50));
       return res.json({ ...resourceIndexCache.data, data: resourceIndexCache.data.data.slice(0, limit) });
     }
-    const result = await buildResourceIndex();
-    resourceIndexCache.data = result;
-    resourceIndexCache.cachedAt = Date.now();
-    console.info('[RESOURCES] Resource index refreshed:', { totalDocuments: result.totalDocuments, courses: result.courseCounts.length });
-    const limit = Math.max(1, Math.min(10000, Number(req.query.limit) || 50));
+
+    if (!resourceIndexRefreshPromise) {
+      resourceIndexRefreshPromise = buildResourceIndex()
+        .then((result) => {
+          resourceIndexCache.data = result;
+          resourceIndexCache.cachedAt = Date.now();
+          console.info('[RESOURCES] Resource index refreshed:', {
+            totalDocuments: result.totalDocuments,
+            courses: result.courseCounts.length
+          });
+          return result;
+        })
+        .finally(() => {
+          resourceIndexRefreshPromise = null;
+        });
+    }
+
+    const result = await resourceIndexRefreshPromise;
     return res.json({ ...result, data: result.data.slice(0, limit) });
   } catch (error) {
-    console.error('[RESOURCES] Resource index failed:', { code: error?.code, message: error?.message });
-    return res.status(503).json({ success: false, error: 'Resource index temporarily unavailable', data: [], courseCounts: [], totalDocuments: 0 });
+    console.error('[RESOURCES] Resource index failed:', {
+      code: error?.code,
+      message: error?.message
+    });
+
+    // Keep serving the last known index during a temporary Firestore quota
+    // incident instead of making every request fail.
+    if (resourceIndexCache.data) {
+      return res.json({
+        ...resourceIndexCache.data,
+        stale: true,
+        data: resourceIndexCache.data.data.slice(0, limit)
+      });
+    }
+
+    return res.status(503).json({
+      success: false,
+      error: 'Resource index temporarily unavailable',
+      data: [],
+      courseCounts: [],
+      totalDocuments: 0
+    });
   }
 });
 
