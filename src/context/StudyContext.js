@@ -251,6 +251,32 @@ export const StudyProvider = ({ children }) => {
     }
   };
 
+  const recordDocumentView = async (documentId) => {
+    if (!currentUser || !db || !documentId) return false;
+
+    try {
+      const studyRef = doc(db, 'userStudyData', currentUser.uid);
+      const snapshot = await getDoc(studyRef);
+      const existing = snapshot.exists() ? snapshot.data() : {};
+      const documentsViewed = Number(existing.documentsViewed) || 0;
+
+      await setDoc(studyRef, {
+        documentsViewed: documentsViewed + 1,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
+      console.info('[ANALYTICS] Document view recorded:', {
+        uid: currentUser.uid,
+        documentId,
+        documentsViewed: documentsViewed + 1
+      });
+      return true;
+    } catch (error) {
+      console.error('[ANALYTICS] Failed to record document view:', error);
+      return false;
+    }
+  };
+
   const checkAndAwardBadges = async (streakDays, studyMinutes) => {
     if (!currentUser || !db) return;
     const newBadges = [];
@@ -569,6 +595,7 @@ export const StudyProvider = ({ children }) => {
     studyNotes,
     loading,
     recordStudySession,
+    recordDocumentView,
     createFlashcard,
     updateFlashcardReview,
     createQuiz,
