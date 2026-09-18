@@ -142,7 +142,8 @@ export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => 
     const result = {
       success: true,
       data: allDocuments.slice(0, maxItems),
-      courseCounts: Object.values(courseCounts).sort((a, b) => b.count - a.count)
+      courseCounts: Object.values(courseCounts).sort((a, b) => b.count - a.count),
+      totalDocuments: allDocuments.length
     };
     return result;
   } catch (error) {
