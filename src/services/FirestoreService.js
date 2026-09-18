@@ -178,6 +178,18 @@ export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => 
 
 // Get all courses
 export const fetchCourses = async (forceRefresh = false) => {
+  // The resource index already contains the canonical course list. Prefer it
+  // so the home page does not issue another Firestore collection read.
+  const indexed = await fetchResourceIndexFromApi(1, forceRefresh);
+  if (indexed?.success && Array.isArray(indexed.courseCounts)) {
+    const courses = indexed.courseCounts.map((item) => ({
+      id: item.courseId,
+      name: item.courseName,
+      resourceCount: item.count
+    }));
+    return { success: true, data: courses };
+  }
+  try {
   try {
     const coursesRef = collection(db, 'RESOURCES_STUDYPEDIA');
     const snapshot = await getDocs(coursesRef);
