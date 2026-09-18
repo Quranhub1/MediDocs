@@ -1,166 +1,281 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    match /RESOURCES_STUDYPEDIA/{courseId} {
+    match /RESOURCES_STUDYPEDIA/{document=**} {
       allow read: if true;
-      allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
-
-      match /semesters/{semesterId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
-
-        match /courseunits/{unitId} {
-          allow read: if request.auth != null;
-          allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
-
-          match /documents/{docId} {
-            allow read: if request.auth != null;
-            allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
-          }
-        }
-
-        match /documents/{docId} {
-          allow read: if request.auth != null;
-          allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
-        }
-      }
+      allow write: if request.auth != null &&
+        (
+          request.auth.token.email == 'kaigwaakram123@gmail.com' ||
+          request.auth.token.email == 'sshipher@gmail.com'
+        );
     }
 
     match /users/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;
-      allow read: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
-      allow update: if request.auth != null && request.auth.uid == userId 
-                   && request.resource.data.keys().hasAll(['name', 'phone']) 
-                   && request.resource.data.size() <= 5;
-      // Allow a signed-in user to change only their own Cloudinary profile photo URL.
-      // This does not change the existing profile-field update rule above.
-      allow update: if request.auth != null && request.auth.uid == userId
-                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['photoURL', 'photoUpdatedAt']);
-      allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+
+      allow read: if request.auth != null &&
+        (
+          request.auth.token.email == 'kaigwaakram123@gmail.com' ||
+          request.auth.token.email == 'sshipher@gmail.com'
+        );
+
+      allow update: if request.auth != null &&
+        request.auth.uid == userId &&
+        request.resource.data.keys().hasAll(['name', 'phone']) &&
+        request.resource.data.size() <= 5;
+
+      allow write: if request.auth != null &&
+        (
+          request.auth.token.email == 'kaigwaakram123@gmail.com' ||
+          request.auth.token.email == 'sshipher@gmail.com'
+        );
+
       allow create: if request.auth != null;
+
+      // Preserve profile photo updates for the signed-in user.
+      allow update: if request.auth != null &&
+        request.auth.uid == userId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['photoURL', 'photoUpdatedAt']);
+    }
+
+    // ============================================================
+    // USER STUDY DATA
+    // ============================================================
+
+    // Study notes
+    match /users/{userId}/studyNotes/{noteId} {
+      allow read, create, update, delete:
+        if request.auth != null &&
+        request.auth.uid == userId;
+    }
+
+    // Flashcards
+    match /users/{userId}/flashcards/{flashcardId} {
+      allow read, create, update, delete:
+        if request.auth != null &&
+        request.auth.uid == userId;
+    }
+
+    // Quiz attempts / quiz history
+    match /users/{userId}/quizzes/{quizId} {
+      allow read, create, update, delete:
+        if request.auth != null &&
+        request.auth.uid == userId;
+    }
+
+    // User badges
+    match /users/{userId}/badges/{badgeId} {
+      allow read, create, update, delete:
+        if request.auth != null &&
+        request.auth.uid == userId;
+    }
+
+    // Adaptive-learning / spaced-repetition review records
+    match /users/{userId}/learningReviews/{reviewId} {
+      allow read, create, update, delete:
+        if request.auth != null &&
+        request.auth.uid == userId;
+    }
+
+    // ============================================================
+    // USER STUDY PROGRESS
+    // ============================================================
+
+    // Study streak, study time and other aggregated study data
+    match /userStudyData/{userId} {
+      allow read, create, update, delete:
+        if request.auth != null &&
+        request.auth.uid == userId;
+    }
+
+    // Aggregate quiz progress
+    match /userQuizProgress/{userId} {
+      allow read, create, update, delete:
+        if request.auth != null &&
+        request.auth.uid == userId;
     }
 
     match /payments/{paymentId} {
-      allow read: if request.auth != null && request.auth.uid == resource.data.userId
-                  || request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+      allow read: if request.auth != null &&
+        (
+          request.auth.uid == resource.data.userId ||
+          request.auth.token.email == 'kaigwaakram123@gmail.com' ||
+          request.auth.token.email == 'sshipher@gmail.com'
+        );
+
       allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+
+      allow update, delete: if request.auth != null &&
+        (
+          request.auth.token.email == 'kaigwaakram123@gmail.com' ||
+          request.auth.token.email == 'sshipher@gmail.com'
+        );
     }
 
     match /user_payments/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId
-                  || request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
-      allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+      allow read: if request.auth != null &&
+        (
+          request.auth.uid == userId ||
+          request.auth.token.email == 'kaigwaakram123@gmail.com' ||
+          request.auth.token.email == 'sshipher@gmail.com'
+        );
+
+      allow write: if request.auth != null &&
+        (
+          request.auth.token.email == 'kaigwaakram123@gmail.com' ||
+          request.auth.token.email == 'sshipher@gmail.com'
+        );
     }
 
     match /chats/{userId}/messages/{msgId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if request.auth != null &&
+        request.auth.uid == userId;
     }
 
     match /contact_submissions/{submissionId} {
       allow create: if request.auth == null || request.auth != null;
-      allow read: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
-      allow update, delete: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+
+      allow read: if request.auth != null &&
+        (
+          request.auth.token.email == 'kaigwaakram123@gmail.com' ||
+          request.auth.token.email == 'sshipher@gmail.com'
+        );
+
+      allow update, delete: if request.auth != null &&
+        (
+          request.auth.token.email == 'kaigwaakram123@gmail.com' ||
+          request.auth.token.email == 'sshipher@gmail.com'
+        );
     }
 
     match /analytics/{document=**} {
-      allow read, write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+      allow read, write: if request.auth != null &&
+        (
+          request.auth.token.email == 'kaigwaakram123@gmail.com' ||
+          request.auth.token.email == 'sshipher@gmail.com'
+        );
     }
 
     match /config/{document=**} {
       allow read: if true;
-      allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+
+      allow write: if request.auth != null &&
+        (
+          request.auth.token.email == 'kaigwaakram123@gmail.com' ||
+          request.auth.token.email == 'sshipher@gmail.com'
+        );
     }
 
     match /course_ratings/{courseId} {
       allow read: if true;
+
       allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId
-                            || request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+
+      allow update, delete: if request.auth != null &&
+        (
+          request.auth.uid == resource.data.userId ||
+          request.auth.token.email == 'kaigwaakram123@gmail.com' ||
+          request.auth.token.email == 'sshipher@gmail.com'
+        );
     }
 
     match /user_bookmarks/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if request.auth != null &&
+        request.auth.uid == userId;
     }
 
     match /study_progress/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // User-owned study data. These rules explicitly cover subcollections under
-    // /users/{uid}; a parent document rule does not automatically grant access
-    // to its subcollections in Firestore.
-    match /users/{userId}/studyNotes/{noteId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    match /users/{userId}/flashcards/{flashcardId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    match /users/{userId}/quizzes/{quizId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    match /users/{userId}/badges/{badgeId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    match /users/{userId}/learningReviews/{reviewId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-
-
-    match /userStudyData/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    match /userQuizProgress/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if request.auth != null &&
+        request.auth.uid == userId;
     }
 
     match /download_history/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId
-                         || request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+      allow read, write: if request.auth != null &&
+        (
+          request.auth.uid == userId ||
+          request.auth.token.email == 'kaigwaakram123@gmail.com' ||
+          request.auth.token.email == 'sshipher@gmail.com'
+        );
+    }
+
+    match /notifications/{userId} {
+      allow read, write: if request.auth != null &&
+        request.auth.uid == userId;
     }
 
     // Private study groups: only members can access the group and its messages.
     match /studyGroups/{groupId} {
-      allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid
-                    && request.resource.data.memberIds.hasAny([request.auth.uid]);
-      allow read: if request.auth != null && resource.data.memberIds.hasAny([request.auth.uid]);
-      allow update: if request.auth != null && resource.data.memberIds.hasAny([request.auth.uid])
-                    && request.resource.data.memberIds.hasAll(resource.data.memberIds);
-      allow delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth != null &&
+        request.resource.data.ownerId == request.auth.uid &&
+        request.resource.data.memberIds.hasAny([request.auth.uid]);
+
+      allow read: if request.auth != null &&
+        resource.data.memberIds.hasAny([request.auth.uid]);
+
+      allow update: if request.auth != null &&
+        resource.data.memberIds.hasAny([request.auth.uid]) &&
+        request.resource.data.memberIds.hasAll(resource.data.memberIds);
+
+      allow delete: if request.auth != null &&
+        resource.data.ownerId == request.auth.uid;
 
       match /messages/{messageId} {
-        allow read: if request.auth != null
-                    && get(/databases/$(database)/documents/studyGroups/$(groupId)).data.memberIds.hasAny([request.auth.uid]);
-        allow create: if request.auth != null
-                      && request.resource.data.userId == request.auth.uid
-                      && get(/databases/$(database)/documents/studyGroups/$(groupId)).data.memberIds.hasAny([request.auth.uid]);
-        allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
-      }
-    }
+        allow read: if request.auth != null &&
+          get(/databases/$(database)/documents/studyGroups/$(groupId)).data.memberIds.hasAny([request.auth.uid]);
 
-    match /notifications/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow create: if request.auth != null &&
+          request.resource.data.userId == request.auth.uid &&
+          get(/databases/$(database)/documents/studyGroups/$(groupId)).data.memberIds.hasAny([request.auth.uid]);
+
+        allow update, delete: if request.auth != null &&
+          resource.data.userId == request.auth.uid;
+      }
     }
 
     match /announcements/{document=**} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+
+      allow write: if request.auth != null &&
+        (
+          request.auth.token.email == 'kaigwaakram123@gmail.com' ||
+          request.auth.token.email == 'sshipher@gmail.com'
+        );
     }
 
     match /documents/{document=**} {
-      allow read: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
-      allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+      allow read: if request.auth != null &&
+        (
+          request.auth.token.email == 'kaigwaakram123@gmail.com' ||
+          request.auth.token.email == 'sshipher@gmail.com'
+        );
+
+      allow write: if request.auth != null &&
+        (
+          request.auth.token.email == 'kaigwaakram123@gmail.com' ||
+          request.auth.token.email == 'sshipher@gmail.com'
+        );
     }
 
     match /trending/{trendId} {
       allow read: if true;
-      allow write: if request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
+
+      allow write: if request.auth != null &&
+        (
+          request.auth.token.email == 'kaigwaakram123@gmail.com' ||
+          request.auth.token.email == 'sshipher@gmail.com'
+        );
+    }
+
+    match /articles/{articleId} {
+      allow read: if true;
+
+      allow write: if request.auth != null &&
+        (
+          request.auth.token.email == 'kaigwaakram123@gmail.com' ||
+          request.auth.token.email == 'sshipher@gmail.com'
+        );
     }
   }
 }
