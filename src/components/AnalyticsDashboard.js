@@ -118,9 +118,13 @@ const AnalyticsDashboard = ({ onClose }) => {
     loadAnalytics();
     const refresh = () => loadAnalytics();
     window.addEventListener('medidocs:study-time-updated', refresh);
+    window.addEventListener('medidocs:document-activity-updated', refresh);
+    window.addEventListener('medidocs:document-progress-updated', refresh);
     return () => {
       cancelled = true;
       window.removeEventListener('medidocs:study-time-updated', refresh);
+      window.removeEventListener('medidocs:document-activity-updated', refresh);
+      window.removeEventListener('medidocs:document-progress-updated', refresh);
     };
   }, [currentUser]);
 
