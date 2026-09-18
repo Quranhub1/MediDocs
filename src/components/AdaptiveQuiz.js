@@ -76,6 +76,7 @@ const AdaptiveQuiz = ({ courseId, unitId, onClose }) => {
           : {};
 
         const unseen = availableQuizzes.filter((quiz) => !completed.includes(quiz.id));
+        const selected = unseen[0] || availableQuizzes[0] || null;
 
         if (!cancelled) {
           setProgress({ completed, scores });
