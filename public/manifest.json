@@ -12,7 +12,7 @@
   "orientation": "any",
   "lang": "en-UG",
   "dir": "ltr",
-  "categories": ["education", "medical", "health"],
+  "categories": ["education", "medical", "health", "productivity"],
   "prefer_related_applications": false,
   "launch_handler": {
     "client_mode": "navigate-existing"
