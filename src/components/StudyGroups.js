@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, addDoc, getDocs, query, orderBy, serverTimestamp, doc, setDoc, limit } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy, serverTimestamp, limit } from 'firebase/firestore';
 import { db } from '../firebase';
 
 const StudyGroups = ({ onClose, user }) => {
