@@ -241,7 +241,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
       {showNotes && <CollaborativeNotes courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowNotes(false)} />}
       {showAnalytics && <AnalyticsDashboard onClose={() => setShowAnalytics(false)} />}
       {showAdvancedSearch && <AdvancedSearch onClose={() => setShowAdvancedSearch(false)} onViewChange={setView} />}
-      {showLearningHub && <LearningHub onClose={() => setShowLearningHub(false)} onOpenQuiz={() => { setShowLearningHub(false); setShowQuiz(true); }} />}
+      {showLearningHub && <LearningHub onClose={() => setShowLearningHub(false)} onOpenQuiz={() => { setShowLearningHub(false); setShowQuiz(true); }} onOpenAIChat={(prompt) => { setShowLearningHub(false); onAIChatClick?.(prompt); }} />}
     </>
   );
 };
