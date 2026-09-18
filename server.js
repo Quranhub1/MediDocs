@@ -216,6 +216,9 @@ const toDate = (value) => {
 
 const resourceIndexCache = { data: null, cachedAt: 0 };
 const RESOURCE_INDEX_CACHE_MS = 10 * 60 * 1000;
+const RESOURCE_INDEX_FAILURE_BACKOFF_MS = 5 * 60 * 1000;
+let resourceIndexFailureAt = 0;
+let resourceIndexFailureError = null;
 // Prevent several users hitting the first-load cache miss from launching
 // identical Firestore hierarchy scans at the same time.
 let resourceIndexRefreshPromise = null;
@@ -302,6 +305,13 @@ app.get('/api/resources/index', async (req, res) => {
       return res.json({ ...resourceIndexCache.data, data: resourceIndexCache.data.data.slice(0, limit) });
     }
 
+    if (resourceIndexFailureAt && Date.now() - resourceIndexFailureAt < RESOURCE_INDEX_FAILURE_BACKOFF_MS) {
+      if (resourceIndexCache.data) {
+        return res.json({ ...resourceIndexCache.data, stale: true, data: resourceIndexCache.data.data.slice(0, limit) });
+      }
+      return res.status(503).json({ success: false, quotaExceeded: true, error: resourceIndexFailureError || 'Resource index temporarily unavailable', data: [], courseCounts: [], totalDocuments: 0 });
+    }
+
     if (!resourceIndexRefreshPromise) {
       resourceIndexRefreshPromise = buildResourceIndex()
         .then((result) => {
@@ -325,6 +335,10 @@ app.get('/api/resources/index', async (req, res) => {
       code: error?.code,
       message: error?.message
     });
+    if (error?.code === 8 || String(error?.message || '').includes('RESOURCE_EXHAUSTED') || String(error?.message || '').includes('Quota exceeded')) {
+      resourceIndexFailureAt = Date.now();
+      resourceIndexFailureError = 'Firestore quota temporarily exceeded';
+    }
 
     // Keep serving the last known index during a temporary Firestore quota
     // incident instead of making every request fail.
