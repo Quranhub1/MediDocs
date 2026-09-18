@@ -175,7 +175,7 @@ const formatAIResponse = (text) => {
   return finalHtml;
 };
 
-const AIStudyAssistant = ({ show, onClose, user, userProfile, learningStatsByCourse = {}, learningReviews = [] }) => {
+const AIStudyAssistant = ({ show, onClose, user, userProfile, learningStatsByCourse = {}, learningReviews = [], initialPrompt = '' }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -218,6 +218,7 @@ const AIStudyAssistant = ({ show, onClose, user, userProfile, learningStatsByCou
   useEffect(() => {
     if (show) {
       loadChatHistory();
+      if (initialPrompt) setInput(initialPrompt);
       inputRef.current?.focus();
       setApiMissing(!openAIApiKey || openAIApiKey.includes('your_groq'));
     }
@@ -226,7 +227,7 @@ const AIStudyAssistant = ({ show, onClose, user, userProfile, learningStatsByCou
         window.speechSynthesis.cancel();
       }
     };
-  }, [show, loadChatHistory, openAIApiKey]);
+  }, [show, loadChatHistory, openAIApiKey, initialPrompt]);
 
   useEffect(() => {
     scrollToBottom();
