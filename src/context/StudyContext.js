@@ -66,6 +66,7 @@ export const StudyProvider = ({ children }) => {
       const snap = await getDoc(doc(db, 'userStudyData', currentUser.uid));
       if (!snap.exists()) {
         setStreak(emptyStreak);
+        setLearningStatsByCourse({});
         return;
       }
       const data = snap.data();
