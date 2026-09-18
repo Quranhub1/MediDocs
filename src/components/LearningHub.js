@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useStudy } from '../context/StudyContext';
 import quizBank from '../data/quizBank';
+import clinicalCases from '../data/clinicalCases';
 
 const STORAGE_KEY = 'medidocs_learning_hub_v1';
 
@@ -13,12 +14,6 @@ const writeStore = (value) => {
 
 const answerKey = (question) => String(question?.answer ?? '');
 
-
-const cases = [
-  { id:'case-malaria', title:'Febrile illness', focus:'Clinical reasoning', prompt:'A 22-year-old presents with fever, chills and headache after living in a malaria-endemic area. What should be considered early in the assessment?', options:['Malaria testing and severity assessment','Ignore travel and exposure history','Start antibiotics without assessment','Order only a lipid profile'], answer:0, explanation:'In endemic settings, malaria is an important differential. Assess severity and confirm with appropriate testing while considering other causes of fever.' },
-  { id:'case-asthma', title:'Acute wheeze', focus:'Respiratory', prompt:'A patient with recurrent episodic wheeze and chest tightness has reduced peak expiratory flow during symptoms. Which diagnosis is most consistent?', options:['Asthma','Appendicitis','Nephrotic syndrome','Iron deficiency'], answer:0, explanation:'Variable respiratory symptoms and variable expiratory airflow limitation are characteristic features of asthma.' },
-  { id:'case-dehydration', title:'Dehydration', focus:'Acute care', prompt:'A patient has thirst, dry mucous membranes and reduced urine output after several days of vomiting. What is the immediate priority?', options:['Assess circulation and fluid status','Give a high-fat meal first','Delay assessment for 24 hours','Restrict all fluids'], answer:0, explanation:'Assess airway, breathing and circulation, vital signs and volume status, then treat the cause and replace fluid appropriately.' }
-];
 
 const labs = [
   { name:'Hemoglobin', low:'Anaemia pattern', high:'Polycythaemia/dehydration pattern', range:'Adult reference ranges vary by laboratory' },
@@ -58,7 +53,8 @@ export default function LearningHub({ onClose, onOpenQuiz }) {
   const { recordLearningReview, learningReviews, learningStatsByCourse } = useStudy();
   const [tab, setTab] = useState('daily');
   const [caseIndex, setCaseIndex] = useState(0);
-  const [caseAnswer, setCaseAnswer] = useState(null);
+  const [caseStageIndex, setCaseStageIndex] = useState(0);
+  const [caseAnswers, setCaseAnswers] = useState(() => readStore().caseAnswers || {});
   const [tool, setTool] = useState(tools[0]);
   const [values, setValues] = useState({});
   const [review, setReview] = useState(() => readStore().review || {});
@@ -172,7 +168,10 @@ export default function LearningHub({ onClose, onOpenQuiz }) {
     markReview(id, option === answer ? 'easy' : 'again', { course: daily20.find(q => q.id === id)?.course || 'General', correct: option === answer });
   };
 
-  const currentCase = cases[caseIndex];
+  const currentCase = clinicalCases[caseIndex];
+  const currentStage = currentCase?.stages?.[caseStageIndex];
+  const currentCaseKey = currentStage ? currentCase.id + ':' + currentStage.id : '';
+  const currentCaseAnswer = currentCaseKey ? caseAnswers[currentCaseKey] : undefined;
   const result = calculate(tool.id, values);
 
   const planner = useMemo(() => {
@@ -242,8 +241,28 @@ export default function LearningHub({ onClose, onOpenQuiz }) {
 
         {tab==='planner' && <section><div className="flex flex-wrap justify-between gap-3"><div><h3 className="text-xl font-bold text-gray-900 dark:text-white">Personal Study Plan</h3><p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Generated from your review queue and course performance. Humans finally get a plan before opening seventeen tabs.</p></div><label className="text-sm font-semibold">Minutes today<input type="number" min="20" max="240" value={plannerMinutes} onChange={e=>{const value=Math.max(20,Math.min(240,Number(e.target.value)||20));setPlannerMinutes(value);writeStore({...readStore(),plannerMinutes:value})}} className="block mt-1 w-28 rounded-xl border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2"/></label></div><div className="grid sm:grid-cols-3 gap-3 mt-5">{planner.blocks.map(b=><article key={b.title} className="rounded-2xl border border-gray-200 dark:border-slate-700 p-4"><p className="text-xs font-bold text-emerald-600">{b.minutes} min</p><h4 className="font-bold mt-1 text-gray-900 dark:text-white">{b.title}</h4><p className="text-sm text-gray-500 dark:text-slate-400 mt-2">{b.detail}</p></article>)}</div><div className="mt-5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 p-5"><p className="font-bold text-emerald-900 dark:text-emerald-200">Today’s focus</p><p className="text-sm text-emerald-800 dark:text-emerald-300 mt-1">{planner.weakest} · {planner.dueCount} due reviews · {planner.minutes} minutes planned</p><div className="mt-4 flex flex-wrap gap-2">{planner.rankedCourses.slice(0,4).map(item=><span key={item.course} className="rounded-full bg-white dark:bg-slate-900 px-3 py-1 text-xs font-semibold">{item.course}: {Math.round(item.accuracy*100)}%</span>)}</div></div></section>}
 
-        {tab==='cases' && <section><div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-xl font-bold text-gray-900 dark:text-white">{currentCase.title}</h3><p className="text-sm text-emerald-600 mt-1">{currentCase.focus}</p></div><span className="rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">Case {caseIndex+1}/{cases.length}</span></div><div className="mt-5 rounded-2xl bg-gray-50 dark:bg-slate-800 p-5"><p className="font-semibold text-gray-900 dark:text-white">{currentCase.prompt}</p><div className="grid gap-2 mt-4">{currentCase.options.map((o,i)=><button key={o} disabled={caseAnswer!==null} onClick={()=>{setCaseAnswer(i);setCaseScores(s=>{const next={...s,[currentCase.id]:i===currentCase.answer};writeStore({...readStore(),caseScores:next});return next;})}} className={`text-left p-3 rounded-xl border disabled:cursor-default ${caseAnswer===i?(i===currentCase.answer?'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40':'border-red-500 bg-red-50 dark:bg-red-950/30'):'border-gray-200 dark:border-slate-700'}`}>{o}</button>)}</div>{caseAnswer!==null&&<div className="mt-4 p-4 rounded-xl bg-white dark:bg-slate-900"><strong>{caseAnswer===currentCase.answer?'Correct':'Review this'}</strong><p className="text-sm mt-1 text-gray-600 dark:text-slate-300">{currentCase.explanation}</p></div>}</div><div className="flex justify-between mt-4"><button disabled={caseIndex===0} onClick={()=>{setCaseIndex(i=>i-1);setCaseAnswer(null)}} className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-slate-800">Previous</button><button onClick={()=>{setCaseIndex(i=>(i+1)%cases.length);setCaseAnswer(null)}} className="px-4 py-2 rounded-xl bg-emerald-600 text-white">Next case</button></div><div className="mt-5 rounded-2xl border border-gray-200 dark:border-slate-700 p-4"><p className="text-sm font-bold">Case progress</p><p className="text-sm text-gray-500 mt-1">{Object.values(caseScores).filter(Boolean).length}/{Object.keys(caseScores).length || 0} correct answered</p></div></section>}
-
+        {tab==='cases' && <section>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div><h3 className="text-xl font-bold text-gray-900 dark:text-white">Clinical Reasoning Simulator</h3><p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Work through presentation, differential, investigation and reassessment instead of merely guessing one answer.</p></div>
+            <span className="rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">Case {caseIndex+1}/{clinicalCases.length}</span>
+          </div>
+          <div className="mt-5 rounded-2xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+            <div className="p-5 bg-gray-50 dark:bg-slate-800">
+              <div className="flex flex-wrap gap-2 items-center"><span className="text-xs font-bold text-emerald-600">{currentCase?.focus}</span><span className="text-xs rounded-full bg-white dark:bg-slate-900 px-2 py-1">{currentCase?.difficulty}</span></div>
+              <h4 className="text-lg font-bold mt-2 text-gray-900 dark:text-white">{currentStage?.title}</h4>
+              <p className="mt-2 font-semibold text-gray-900 dark:text-white">{currentStage?.prompt}</p>
+              <div className="grid gap-2 mt-4">{currentStage?.options.map((option,index)=><button key={option} disabled={currentCaseAnswer!==undefined} onClick={()=>{const correct=index===currentStage.answer;const nextAnswers={...caseAnswers,[currentCaseKey]:index};setCaseAnswers(nextAnswers);writeStore({...readStore(),caseAnswers:nextAnswers});void recordLearningReview(currentCaseKey,correct?'easy':'again',{source:'clinical-case',course:'Clinical Reasoning',caseId:currentCase.id,stageId:currentStage.id,correct});}} className={'text-left p-3 rounded-xl border '+(currentCaseAnswer===index?(index===currentStage.answer?'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40':'border-red-500 bg-red-50 dark:bg-red-950/30'):'border-gray-200 dark:border-slate-700')}>{option}</button>)}</div>
+              {currentCaseAnswer!==undefined&&<div className="mt-4 p-4 rounded-xl bg-white dark:bg-slate-900"><strong>{currentCaseAnswer===currentStage.answer?'Correct':'Review this step'}</strong><p className="text-sm mt-1 text-gray-600 dark:text-slate-300">{currentStage?.explanation}</p></div>}
+            </div>
+            <div className="p-4 border-t border-gray-200 dark:border-slate-700 flex flex-wrap gap-2 justify-between">
+              <button disabled={caseStageIndex===0} onClick={()=>setCaseStageIndex(index=>Math.max(0,index-1))} className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-slate-800 disabled:opacity-40">Previous stage</button>
+              <span className="px-3 py-2 text-xs font-semibold text-gray-500">Stage {caseStageIndex+1}/{currentCase?.stages?.length||0}</span>
+              <button onClick={()=>{if(caseStageIndex<currentCase.stages.length-1)setCaseStageIndex(index=>index+1);else{setCaseIndex(index=>(index+1)%clinicalCases.length);setCaseStageIndex(0);}}} className="px-4 py-2 rounded-xl bg-emerald-600 text-white">{caseStageIndex<currentCase.stages.length-1?'Next stage':'Next case'}</button>
+            </div>
+          </div>
+          <div className="mt-5 rounded-2xl border border-gray-200 dark:border-slate-700 p-4"><p className="text-sm font-bold">Case progress</p><p className="text-sm text-gray-500 mt-1">{currentCase.stages.filter(stage=>caseAnswers[currentCase.id+':'+stage.id]!==undefined).length}/{currentCase.stages.length} stages answered</p></div>
+          <p className="text-xs text-gray-500 mt-4">Educational simulation only. It does not replace supervision, local protocols or clinical judgment.</p>
+        </section>}
         {tab==='review' && <section><h3 className="text-xl font-bold text-gray-900 dark:text-white">Spaced Review</h3><p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Review due items first. Ratings sync to your account when signed in.</p><div className="grid gap-3 mt-5">{adaptiveReviewList.map(q=><article key={q.id} className="rounded-2xl border border-gray-200 dark:border-slate-700 p-4"><p className="font-semibold text-gray-900 dark:text-white">{q.question}</p><div className="flex gap-2 mt-3">{['again','hard','easy'].map(r=><button key={r} onClick={()=>markReview(q.id,r)} className="px-3 py-2 rounded-lg bg-gray-100 dark:bg-slate-800 capitalize">{r}</button>)}<span className="ml-auto text-xs text-gray-500 self-center">{review[q.id]?.rating || 'Due'}</span></div></article>)}</div></section>}
 
         {tab==='labs' && <section><div className="flex flex-wrap justify-between gap-3"><div><h3 className="text-xl font-bold text-gray-900 dark:text-white">Lab Interpretation Trainer</h3><p className="text-sm text-gray-500 mt-1">{labAnswered}/{labQuestions.length} answered · {labCorrect} correct</p></div></div><div className="grid gap-3 mt-5">{labQuestions.map(q=><article key={q.id} className="rounded-2xl border border-gray-200 dark:border-slate-700 p-4"><p className="font-semibold text-gray-900 dark:text-white">{q.prompt}</p><div className="grid sm:grid-cols-2 gap-2 mt-3">{q.options.map((o,i)=><button disabled={labAnswers[q.id]!==undefined} key={o} onClick={()=>setLabAnswers(a=>({...a,[q.id]:i}))} className={`text-left px-3 py-2 rounded-xl ${labAnswers[q.id]===i?(i===q.answer?'bg-emerald-100 dark:bg-emerald-900/40':'bg-red-100 dark:bg-red-900/40'):'bg-gray-50 dark:bg-slate-800'}`}>{o}</button>)}</div></article>)}</div><div className="mt-4 rounded-xl border border-gray-200 dark:border-slate-700 p-4"><p className="text-xs text-gray-500">Reference library</p><div className="flex gap-2 overflow-x-auto mt-2">{labs.map(l=><button key={l.name} onClick={()=>setSelectedLab(l)} className="shrink-0 px-3 py-2 rounded-lg bg-gray-100 dark:bg-slate-800">{l.name}</button>)}</div><p className="text-sm mt-3">{selectedLab.range}. Low: {selectedLab.low}. High: {selectedLab.high}.</p><p className="text-xs text-gray-500 mt-3">Educational interpretation only. Use the reporting laboratory's reference interval and clinical context.</p></div></section>}
