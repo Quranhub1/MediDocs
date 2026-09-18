@@ -6,24 +6,24 @@ import ErrorBoundary from './components/ErrorBoundary';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
-// MediDocs does not require offline caching. Remove any previously installed
-// service worker so stale/corrupt cached app files cannot break navigation.
+// Register the service worker so the app shell, static assets and the cached
+// resource index remain usable when connectivity is intermittent.
 if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.getRegistrations()
-      .then((registrations) => Promise.all(
-        registrations.map((registration) => registration.unregister())
-      ))
-      .then(() => {
-        if ('caches' in window) {
-          return caches.keys().then((keys) => Promise.all(
-            keys.map((key) => caches.delete(key))
-          ));
-        }
-        return undefined;
+    navigator.serviceWorker.register('/sw.js')
+      .then((registration) => {
+        registration.addEventListener('updatefound', () => {
+          const worker = registration.installing;
+          if (!worker) return;
+          worker.addEventListener('statechange', () => {
+            if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+              worker.postMessage({ type: 'SKIP_WAITING' });
+            }
+          });
+        });
       })
       .catch((error) => {
-        console.warn('MediDocs cache cleanup failed:', error);
+        console.warn('MediDocs service worker registration failed:', error);
       });
   });
 }
