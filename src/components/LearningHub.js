@@ -80,7 +80,7 @@ export default function LearningHub({ onClose, onOpenQuiz }) {
     return arr.slice(0,20);
   }, []);
 
-  const dailyAnswered = Object.keys(dailyAnswers).length;
+  const dailyAnswered = daily20.filter(q => dailyAnswers[q.id]).length;
   const dailyCorrect = daily20.reduce((total, q) => total + (dailyAnswers[q.id] === answerKey(q) ? 1 : 0), 0);
   const topicStats = daily20.reduce((stats, q) => {
     const selected = dailyAnswers[q.id];
@@ -99,6 +99,19 @@ export default function LearningHub({ onClose, onOpenQuiz }) {
     return Number.isNaN(due.getTime()) || due <= new Date();
   });
   const scheduledReviews = learningReviews.length;
+  const reviewById = useMemo(() => Object.fromEntries(learningReviews.map(item => [String(item.itemId || item.id), item])), [learningReviews]);
+  const adaptiveQuestions = useMemo(() => {
+    const all = quizBank.flatMap(q => q.questions.map(x => ({ ...x, course: q.course, difficulty: q.difficulty || 1 })));
+    const ranked = all.map(q => {
+      const saved = reviewById[String(q.id)];
+      const due = saved?.nextReview?.toDate ? saved.nextReview.toDate() : new Date(saved?.nextReview || 0);
+      const isDue = !saved || Number.isNaN(due.getTime()) || due <= new Date();
+      const rating = saved?.rating || 'new';
+      const priority = isDue ? (rating === 'again' ? 3 : rating === 'hard' ? 2 : 1) : 0;
+      return { q, priority };
+    }).sort((a,b) => b.priority - a.priority);
+    return ranked.slice(0, 20).map(item => item.q);
+  }, [reviewById]);
 
   const markReview = (id, rating) => {
     const next = {...review, [id]: {rating, reviewedAt:new Date().toISOString()}};
@@ -137,7 +150,7 @@ export default function LearningHub({ onClose, onOpenQuiz }) {
 
         {tab==='cases' && <section><h3 className="text-xl font-bold text-gray-900 dark:text-white">{currentCase.title}</h3><p className="text-sm text-emerald-600 mt-1">{currentCase.focus}</p><div className="mt-5 rounded-2xl bg-gray-50 dark:bg-slate-800 p-5"><p className="font-semibold text-gray-900 dark:text-white">{currentCase.prompt}</p><div className="grid gap-2 mt-4">{currentCase.options.map((o,i)=><button key={o} onClick={()=>setCaseAnswer(i)} className={`text-left p-3 rounded-xl border ${caseAnswer===i?(i===currentCase.answer?'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40':'border-red-500 bg-red-50 dark:bg-red-950/30'):'border-gray-200 dark:border-slate-700'}`}>{o}</button>)}</div>{caseAnswer!==null&&<div className="mt-4 p-4 rounded-xl bg-white dark:bg-slate-900"><strong>{caseAnswer===currentCase.answer?'Correct':'Review this'}</strong><p className="text-sm mt-1 text-gray-600 dark:text-slate-300">{currentCase.explanation}</p></div>}</div><div className="flex justify-between mt-4"><button disabled={caseIndex===0} onClick={()=>{setCaseIndex(i=>i-1);setCaseAnswer(null)}} className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-slate-800">Previous</button><button onClick={()=>{setCaseIndex(i=>(i+1)%cases.length);setCaseAnswer(null)}} className="px-4 py-2 rounded-xl bg-emerald-600 text-white">Next case</button></div></section>}
 
-        {tab==='review' && <section><h3 className="text-xl font-bold text-gray-900 dark:text-white">Spaced Review</h3><p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Review due items first. Ratings sync to your account when signed in.</p><div className="grid gap-3 mt-5">{[...dueReviews.map(item => daily20.find(q => q.id === item.itemId)).filter(Boolean), ...daily20.filter(q => !dueReviews.some(item => item.itemId === q.id))].slice(0,10).map(q=><article key={q.id} className="rounded-2xl border border-gray-200 dark:border-slate-700 p-4"><p className="font-semibold text-gray-900 dark:text-white">{q.question}</p><div className="flex gap-2 mt-3">{['again','hard','easy'].map(r=><button key={r} onClick={()=>markReview(q.id,r)} className="px-3 py-2 rounded-lg bg-gray-100 dark:bg-slate-800 capitalize">{r}</button>)}<span className="ml-auto text-xs text-gray-500 self-center">{review[q.id]?.rating || 'Due'}</span></div></article>)}</div></section>}
+        {tab==='review' && <section><h3 className="text-xl font-bold text-gray-900 dark:text-white">Spaced Review</h3><p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Review due items first. Ratings sync to your account when signed in.</p><div className="grid gap-3 mt-5">{adaptiveReviewList.map(q=><article key={q.id} className="rounded-2xl border border-gray-200 dark:border-slate-700 p-4"><p className="font-semibold text-gray-900 dark:text-white">{q.question}</p><div className="flex gap-2 mt-3">{['again','hard','easy'].map(r=><button key={r} onClick={()=>markReview(q.id,r)} className="px-3 py-2 rounded-lg bg-gray-100 dark:bg-slate-800 capitalize">{r}</button>)}<span className="ml-auto text-xs text-gray-500 self-center">{review[q.id]?.rating || 'Due'}</span></div></article>)}</div></section>}
 
         {tab==='labs' && <section><h3 className="text-xl font-bold text-gray-900 dark:text-white">Lab Interpretation Trainer</h3><div className="grid md:grid-cols-[220px_1fr] gap-4 mt-5"><div className="space-y-2">{labs.map(l=><button key={l.name} onClick={()=>setSelectedLab(l)} className={`w-full text-left p-3 rounded-xl ${selectedLab.name===l.name?'bg-emerald-600 text-white':'bg-gray-100 dark:bg-slate-800'}`}>{l.name}</button>)}</div><div className="rounded-2xl border border-gray-200 dark:border-slate-700 p-5"><p className="text-sm text-gray-500">Reference</p><p className="font-semibold mt-1">{selectedLab.range}</p><div className="grid sm:grid-cols-2 gap-3 mt-5"><div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30"><strong>Low</strong><p className="text-sm mt-1">{selectedLab.low}</p></div><div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30"><strong>High</strong><p className="text-sm mt-1">{selectedLab.high}</p></div></div><p className="text-xs text-gray-500 mt-5">Educational interpretation only. Use the reporting laboratory's reference interval and clinical context.</p></div></div></section>}
 
