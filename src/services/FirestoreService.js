@@ -1,5 +1,7 @@
 import {
   collection,
+  collectionGroup,
+  getCountFromServer,
   getDocs,
   getDocsFromCache,
   addDoc,
@@ -118,6 +120,32 @@ const fetchResourceIndexFromApi = async (maxItems = 50, forceRefresh = false) =>
     return resourceIndexCache
       ? { ...resourceIndexCache, stale: true, data: resourceIndexCache.data.slice(0, maxItems) }
       : { success: false, error: error.message, data: [], courseCounts: [], totalDocuments: 0 };
+  }
+};
+
+const RESOURCE_COUNT_CACHE_KEY = 'medidocs_resource_count_v1';
+const RESOURCE_COUNT_CACHE_MS = 30 * 60 * 1000;
+
+export const fetchTotalResourceCount = async (forceRefresh = false) => {
+  if (!db) return { success: false, totalDocuments: 0, error: 'Firestore is not configured' };
+  if (!forceRefresh) {
+    try {
+      const stored = JSON.parse(localStorage.getItem(RESOURCE_COUNT_CACHE_KEY) || 'null');
+      if (stored?.cachedAt && Date.now() - stored.cachedAt < RESOURCE_COUNT_CACHE_MS) {
+        return { success: true, totalDocuments: Number(stored.totalDocuments) || 0, cached: true };
+      }
+    } catch {}
+  }
+  try {
+    const snapshot = await getCountFromServer(collectionGroup(db, 'documents'));
+    const totalDocuments = Number(snapshot.data().count) || 0;
+    try {
+      localStorage.setItem(RESOURCE_COUNT_CACHE_KEY, JSON.stringify({ cachedAt: Date.now(), totalDocuments }));
+    } catch {}
+    return { success: true, totalDocuments };
+  } catch (error) {
+    console.warn('[RESOURCES] Total resource count unavailable:', error?.message || error);
+    return { success: false, totalDocuments: 0, error: error?.message || 'Resource count unavailable', quotaExceeded: error?.code === 8 };
   }
 };
 
