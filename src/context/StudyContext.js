@@ -296,6 +296,12 @@ export const StudyProvider = ({ children }) => {
         const views = (Number(stat.views) || 0) + 1;
         const study = studySnap.exists() ? studySnap.data() : {};
         const uniqueViewed = (Number(study.documentsViewed) || 0) + (viewedBefore ? 0 : 1);
+        const courseKey = String(metadata.courseName || metadata.course || metadata.courseId || 'Other')
+          .replaceAll('.', '_').replaceAll('/', '_').replaceAll('\\\\', '_').slice(0, 120) || 'Other';
+        const activityByCourse = { ...(study.activityByCourse || {}) };
+        const currentCourse = activityByCourse[courseKey] || { viewed: 0, downloads: 0 };
+        if (!viewedBefore) currentCourse.viewed = (Number(currentCourse.viewed) || 0) + 1;
+        activityByCourse[courseKey] = currentCourse;
         const update = {
           viewed: true,
           views,
@@ -306,6 +312,7 @@ export const StudyProvider = ({ children }) => {
         transaction.set(studyRef, {
           documentsViewed: uniqueViewed,
           totalDocumentViews: increment(1),
+          activityByCourse,
           lastDocumentViewedId: cleanId,
           lastDocumentViewedAt: serverTimestamp(),
           updatedAt: serverTimestamp()
@@ -330,7 +337,15 @@ export const StudyProvider = ({ children }) => {
       const statRef = doc(db, 'users', currentUser.uid, 'documentStats', cleanId);
       await runTransaction(db, async (transaction) => {
         const statSnap = await transaction.get(statRef);
+        const studySnap = await transaction.get(studyRef);
         const stat = statSnap.exists() ? statSnap.data() : {};
+        const study = studySnap.exists() ? studySnap.data() : {};
+        const courseKey = String(metadata.courseName || metadata.course || metadata.courseId || 'Other')
+          .replaceAll('.', '_').replaceAll('/', '_').replaceAll('\\\\', '_').slice(0, 120) || 'Other';
+        const activityByCourse = { ...(study.activityByCourse || {}) };
+        const currentCourse = activityByCourse[courseKey] || { viewed: 0, downloads: 0 };
+        currentCourse.downloads = (Number(currentCourse.downloads) || 0) + 1;
+        activityByCourse[courseKey] = currentCourse;
         transaction.set(statRef, {
           viewed: true,
           downloads: (Number(stat.downloads) || 0) + 1,
@@ -339,6 +354,7 @@ export const StudyProvider = ({ children }) => {
         }, { merge: true });
         transaction.set(studyRef, {
           documentsDownloaded: increment(1),
+          activityByCourse,
           lastDocumentDownloadedId: cleanId,
           lastDocumentDownloadedAt: serverTimestamp(),
           updatedAt: serverTimestamp()
