@@ -61,6 +61,8 @@ export default function LearningHub({ onClose, onOpenQuiz }) {
   const [review, setReview] = useState(() => readStore().review || {});
   const [selectedLab, setSelectedLab] = useState(labs[0]);
   const [dailyAnswers, setDailyAnswers] = useState({});
+  const dailyAnswered = Object.keys(dailyAnswers).length;
+  const dailyCorrect = daily20.reduce((total, q) => total + (dailyAnswers[q.id] === q.answer ? 1 : 0), 0);
 
   const daily20 = useMemo(() => {
     const all = quizBank.flatMap(q => q.questions.map(x => ({...x, course:q.course, difficulty:q.difficulty || 1})));
@@ -99,7 +101,7 @@ export default function LearningHub({ onClose, onOpenQuiz }) {
       </nav>
       <main className="p-4 sm:p-6">
         {tab==='daily' && <section>
-          <div className="flex flex-wrap justify-between gap-3 mb-5"><div><h3 className="text-xl font-bold text-gray-900 dark:text-white">Daily 20</h3><p className="text-sm text-gray-500 dark:text-slate-400">A short daily set. Humanity apparently needed another way to procrastinate productively.</p></div><button onClick={onOpenQuiz} className="px-4 py-2 rounded-xl bg-purple-600 text-white font-semibold">Open full quiz</button></div>
+          <div className="flex flex-wrap justify-between gap-3 mb-5"><div><h3 className="text-xl font-bold text-gray-900 dark:text-white">Daily 20</h3><p className="text-sm text-gray-500 dark:text-slate-400">{dailyAnswered}/20 answered · {dailyCorrect} correct. A short daily set, because apparently procrastination needs metrics.</p></div><button onClick={onOpenQuiz} className="px-4 py-2 rounded-xl bg-purple-600 text-white font-semibold">Open full quiz</button></div>
           <div className="grid gap-3">{daily20.map((q,i)=><article key={q.id+i} className="rounded-2xl border border-gray-200 dark:border-slate-700 p-4"><div className="flex justify-between gap-3"><span className="text-xs font-bold text-emerald-600">{i+1}/20 · {q.course}</span><span className="text-xs text-gray-500">Level {q.difficulty}</span></div><p className="mt-2 font-semibold text-gray-900 dark:text-white">{q.question}</p><div className="grid sm:grid-cols-2 gap-2 mt-3">{q.options.map(o=><button key={o} onClick={()=>markDailyAnswer(q.id, o, q.answer)} className={`text-left px-3 py-2 rounded-lg text-sm ${dailyAnswers[q.id] === o ? (o === q.answer ? 'bg-emerald-100 dark:bg-emerald-900/40' : 'bg-red-100 dark:bg-red-900/40') : 'bg-gray-50 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-slate-700'}`}>{o}</button>)}</div></article>)}</div>
         </section>}
 
