@@ -18,7 +18,7 @@ import DashboardEnhancements, { AccessibilityControls } from './components/UIEnh
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
-import { StudyProvider } from './context/StudyContext';
+import { StudyProvider, useStudy } from './context/StudyContext';
 import { BookmarkProvider } from './context/BookmarkContext';
 import { AnomalyProvider, useAnomaly } from './context/AnomalyContext';
 
