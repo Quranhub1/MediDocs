@@ -88,6 +88,33 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
+    // User-owned study data. These rules explicitly cover subcollections under
+    // /users/{uid}; a parent document rule does not automatically grant access
+    // to its subcollections in Firestore.
+    match /users/{userId}/studyNotes/{noteId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /users/{userId}/flashcards/{flashcardId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /users/{userId}/quizzes/{quizId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /users/{userId}/badges/{badgeId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /userStudyData/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /userQuizProgress/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
     match /download_history/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId
                          || request.auth != null && request.auth.token.email == 'kaigwaakram123@gmail.com';
