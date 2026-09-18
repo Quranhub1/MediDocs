@@ -1,6 +1,7 @@
 import {
   collection,
   getDocs,
+  getDocsFromCache,
   addDoc,
   updateDoc,
   doc as docRef,
@@ -33,14 +34,53 @@ const convertTimestamp = (timestamp) => {
 // Fetch all documents from the RESOURCES_STUDYPEDIA collection
 let resourceIndexCache = null;
 let resourceIndexCacheAt = 0;
-const RESOURCE_INDEX_CACHE_MS = 60 * 1000;
-const RESOURCE_INDEX_FAILURE_BACKOFF_MS = 5 * 60 * 1000;
+const RESOURCE_INDEX_CACHE_MS = 30 * 60 * 1000;
+const RESOURCE_INDEX_FAILURE_BACKOFF_MS = 15 * 60 * 1000;
 let resourceIndexFailureAt = 0;
 let resourceIndexFailureError = null;
 
+const collectionCache = new Map();
+const getCachedCollection = async (path, forceRefresh = false) => {
+  if (!db) return { success: false, error: 'Firestore is not configured', data: [] };
+  const ref = collection(db, path);
+  if (!forceRefresh) {
+    try {
+      const cached = await getDocsFromCache(ref);
+      if (!cached.empty) {
+        const data = cached.docs.map((item) => ({ id: item.id, ...item.data() }));
+        collectionCache.set(path, data);
+        return { success: true, data, fromCache: true };
+      }
+    } catch (error) {
+      console.info('[CACHE] No local cache for', path);
+    }
+    const memory = collectionCache.get(path);
+    if (memory) return { success: true, data: memory, fromCache: true };
+  }
+  const snapshot = await getDocs(ref);
+  const data = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+  collectionCache.set(path, data);
+  return { success: true, data };
+};
+
 const fetchResourceIndexFromApi = async (maxItems = 50, forceRefresh = false) => {
-  if (!forceRefresh && resourceIndexCache && Date.now() - resourceIndexCacheAt < RESOURCE_INDEX_CACHE_MS) {
-    return { ...resourceIndexCache, data: resourceIndexCache.data.slice(0, maxItems) };
+  if (!forceRefresh) {
+    if (resourceIndexCache && Date.now() - resourceIndexCacheAt < RESOURCE_INDEX_CACHE_MS) {
+      return { ...resourceIndexCache, data: resourceIndexCache.data.slice(0, maxItems) };
+    }
+    try {
+      const stored = localStorage.getItem('medidocs_resource_index_v1');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed?.cachedAt && Date.now() - parsed.cachedAt < RESOURCE_INDEX_CACHE_MS && parsed?.data) {
+          resourceIndexCache = parsed.data;
+          resourceIndexCacheAt = parsed.cachedAt;
+          return { ...parsed.data, data: (parsed.data.data || []).slice(0, maxItems), cached: true };
+        }
+      }
+    } catch (error) {
+      console.info('[CACHE] Resource index local cache unavailable');
+    }
   }
   if (!forceRefresh && resourceIndexFailureAt && Date.now() - resourceIndexFailureAt < RESOURCE_INDEX_FAILURE_BACKOFF_MS) {
     return resourceIndexCache
@@ -64,6 +104,14 @@ const fetchResourceIndexFromApi = async (maxItems = 50, forceRefresh = false) =>
     resourceIndexFailureError = null;
     resourceIndexCache = result;
     resourceIndexCacheAt = Date.now();
+    try {
+      localStorage.setItem('medidocs_resource_index_v1', JSON.stringify({
+        cachedAt: resourceIndexCacheAt,
+        data: result
+      }));
+    } catch (error) {
+      console.info('[CACHE] Resource index too large for local storage');
+    }
     return { ...result, data: (result.data || []).slice(0, maxItems) };
   } catch (error) {
     console.warn('[RESOURCES] Server index unavailable:', error.message);
@@ -202,86 +250,61 @@ export const fetchAllDocuments = async (maxItems = 50, forceRefresh = false) => 
   }
 };
 
-// Get all courses
+// Get courses only. No hierarchy-wide document scan.
 export const fetchCourses = async (forceRefresh = false) => {
-  // The resource index already contains the canonical course list. Prefer it
-  // so the home page does not issue another Firestore collection read.
-  const indexed = await fetchResourceIndexFromApi(1, forceRefresh);
-  if (indexed?.success && Array.isArray(indexed.courseCounts)) {
-    const courses = indexed.courseCounts.map((item) => ({
-      id: item.courseId,
-      name: item.courseName,
-      resourceCount: item.count
-    }));
-    return { success: true, data: courses };
-  }
   try {
-    const coursesRef = collection(db, 'RESOURCES_STUDYPEDIA');
-    const snapshot = await getDocs(coursesRef);
-    const courses = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAtDate: convertTimestamp(doc.data().createdAt)
-    }));
-    return { success: true, data: courses };
+    const result = await getCachedCollection('RESOURCES_STUDYPEDIA', forceRefresh);
+    return { success: true, data: result.data.map((item) => ({
+      ...item,
+      createdAtDate: convertTimestamp(item.createdAt),
+      resourceCount: Number(item.resourceCount || item.documentCount || 0)
+    })) };
   } catch (error) {
     console.error('Error fetching courses:', error);
     return { success: false, error: error.message, data: [] };
   }
 };
 
-// Get semesters for a course
+// Get semesters only for the selected course.
 export const fetchSemesters = async (courseId, forceRefresh = false) => {
   try {
     if (!courseId) return { success: false, error: 'Course ID required', data: [] };
-    const semestersRef = collection(db, `RESOURCES_STUDYPEDIA/${courseId}/semesters`);
-    const snapshot = await getDocs(semestersRef);
-    const semesters = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAtDate: convertTimestamp(doc.data().createdAt)
-    }));
-    return { success: true, data: semesters };
+    const result = await getCachedCollection(`RESOURCES_STUDYPEDIA/${courseId}/semesters`, forceRefresh);
+    return { success: true, data: result.data.map((item) => ({
+      ...item,
+      createdAtDate: convertTimestamp(item.createdAt)
+    })) };
   } catch (error) {
     console.error('Error fetching semesters:', error);
     return { success: false, error: error.message, data: [] };
   }
 };
 
-// Get course units for a semester
+// Get units only for the selected semester.
 export const fetchCourseUnits = async (courseId, semesterId, forceRefresh = false) => {
   try {
     if (!courseId || !semesterId) return { success: false, error: 'Course ID and Semester ID required', data: [] };
-    const unitsRef = collection(db, `RESOURCES_STUDYPEDIA/${courseId}/semesters/${semesterId}/courseunits`);
-    const snapshot = await getDocs(unitsRef);
-    const units = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAtDate: convertTimestamp(doc.data().createdAt)
-    }));
-    return { success: true, data: units };
+    const result = await getCachedCollection(`RESOURCES_STUDYPEDIA/${courseId}/semesters/${semesterId}/courseunits`, forceRefresh);
+    return { success: true, data: result.data.map((item) => ({
+      ...item,
+      createdAtDate: convertTimestamp(item.createdAt)
+    })) };
   } catch (error) {
     console.error('Error fetching course units:', error);
     return { success: false, error: error.message, data: [] };
   }
 };
 
-// Get documents for a course unit
+// Get documents only for the selected course unit.
 export const fetchDocuments = async (courseId, semesterId, unitId, forceRefresh = false) => {
   try {
     if (!courseId || !semesterId || !unitId) return { success: false, error: 'Course ID, Semester ID, and Unit ID required', data: [] };
-    const docsRef = collection(db, `RESOURCES_STUDYPEDIA/${courseId}/semesters/${semesterId}/courseunits/${unitId}/documents`);
-    const snapshot = await getDocs(docsRef);
-    const documents = snapshot.docs.map(doc => {
-      const docData = doc.data();
-      return {
-        id: doc.id,
-        ...docData,
-        createdAtDate: convertTimestamp(docData.createdAt),
-        status: docData.status || 'free'
-      };
-    });
-    return { success: true, data: documents };
+    const result = await getCachedCollection(`RESOURCES_STUDYPEDIA/${courseId}/semesters/${semesterId}/courseunits/${unitId}/documents`, forceRefresh);
+    return { success: true, data: result.data.map((docData) => ({
+      ...docData,
+      createdAtDate: convertTimestamp(docData.createdAt),
+      status: docData.status || 'free'
+    })) };
   } catch (error) {
     console.error('Error fetching documents:', error);
     return { success: false, error: error.message, data: [] };
