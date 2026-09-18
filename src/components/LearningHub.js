@@ -99,6 +99,13 @@ export default function LearningHub({ onClose, onOpenQuiz }) {
     return Number.isNaN(due.getTime()) || due <= new Date();
   });
   const scheduledReviews = learningReviews.length;
+  const performanceByCourse = useMemo(() => learningReviews.reduce((stats, item) => {
+    const course = item.course || 'General';
+    if (!stats[course]) stats[course] = { attempts: 0, correct: 0 };
+    stats[course].attempts += 1;
+    if (item.correct) stats[course].correct += 1;
+    return stats;
+  }, {}), [learningReviews]);
   const reviewById = useMemo(() => Object.fromEntries(learningReviews.map(item => [String(item.itemId || item.id), item])), [learningReviews]);
   const adaptiveQuestions = useMemo(() => {
     const all = quizBank.flatMap(q => q.questions.map(x => ({ ...x, course: q.course, difficulty: q.difficulty || 1 })));
@@ -107,16 +114,16 @@ export default function LearningHub({ onClose, onOpenQuiz }) {
       const due = saved?.nextReview?.toDate ? saved.nextReview.toDate() : new Date(saved?.nextReview || 0);
       const isDue = !saved || Number.isNaN(due.getTime()) || due <= new Date();
       const rating = saved?.rating || 'new';
-      const priority = isDue ? (rating === 'again' ? 3 : rating === 'hard' ? 2 : 1) : 0;
+      const courseStats = performanceByCourse[q.course || 'General'] || { attempts: 0, correct: 0 }; const accuracy = courseStats.attempts ? courseStats.correct / courseStats.attempts : 0.5; const weaknessBoost = Math.max(0, 1 - accuracy); const priority = (isDue ? (rating === 'again' ? 30 : rating === 'hard' ? 20 : 10) : 0) + weaknessBoost * 10 + (saved ? 0 : 2);
       return { q, priority };
     }).sort((a,b) => b.priority - a.priority);
     return ranked.slice(0, 20).map(item => item.q);
-  }, [reviewById]);
+  }, [reviewById, performanceByCourse]);
 
-  const markReview = (id, rating) => {
+  const markReview = (id, rating, metadata = {}) => {
     const next = {...review, [id]: {rating, reviewedAt:new Date().toISOString()}};
     setReview(next); writeStore({...readStore(), review:next});
-    void recordLearningReview(id, rating, { source: 'learning-hub' });
+    void recordLearningReview(id, rating, { source: 'learning-hub', ...metadata });
   };
 
   const markDailyAnswer = (id, option, answer) => {
@@ -125,7 +132,7 @@ export default function LearningHub({ onClose, onOpenQuiz }) {
       const store = readStore(); const now = new Date(); const day = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`; writeStore({ ...store, dailyDay: day, dailyAnswers: next });
       return next;
     });
-    markReview(id, option === answer ? 'easy' : 'again');
+    markReview(id, option === answer ? 'easy' : 'again', { course: daily20.find(q => q.id === id)?.course || 'General', correct: option === answer });
   };
 
   const currentCase = cases[caseIndex];
