@@ -25,7 +25,7 @@ import { getDocumentUrl, downloadDocument } from '../utils/documentActions';
 
 const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, onContactClick, onAIChatClick, setView }) => {
   const { theme } = useTheme();
-  const { recordDocumentView, recordDocumentDownload } = useStudy();
+  const { recordDocumentView, recordDocumentDownload, recordDocumentProgress } = useStudy();
   const { addToast } = useToast();
   const [courses, setCourses] = useState([]);
   const [latestDocuments, setLatestDocuments] = useState([]);
@@ -115,14 +115,31 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   };
 
   const handleReadOnline = (doc) => {
+    const documentId = doc?.id || doc?.filePath || doc?.fileUrl || doc?.title || 'unknown';
     setSelectedDocument(doc);
-    void recordDocumentView(doc?.id || doc?.filePath || doc?.fileUrl || doc?.title || 'unknown');
+    void recordDocumentView(documentId, {
+      title: doc?.title || null,
+      courseId: doc?.courseId || selectedCourse?.id || null,
+      semesterId: doc?.semesterId || selectedSemester?.id || null,
+      unitId: doc?.unitId || selectedUnit?.id || null
+    });
     setShowReader(true);
   };
 
   const handleDownload = async (doc) => {
     const documentId = doc?.id || doc?.filePath || doc?.fileUrl || doc?.title || 'unknown';
-    void recordDocumentDownload(documentId);
+    void recordDocumentView(documentId, {
+      title: doc?.title || null,
+      courseId: doc?.courseId || selectedCourse?.id || null,
+      semesterId: doc?.semesterId || selectedSemester?.id || null,
+      unitId: doc?.unitId || selectedUnit?.id || null
+    });
+    void recordDocumentDownload(documentId, {
+      title: doc?.title || null,
+      courseId: doc?.courseId || selectedCourse?.id || null,
+      semesterId: doc?.semesterId || selectedSemester?.id || null,
+      unitId: doc?.unitId || selectedUnit?.id || null
+    });
     const url = getDocumentUrl(doc);
     if (!url) {
       addToast('No download link available for this document', 'error');
@@ -249,7 +266,16 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   return (
     <>
       {content}
-      {showReader && selectedDocument && <DocumentReader document={selectedDocument} onClose={() => setShowReader(false)} />}
+      {showReader && selectedDocument && <DocumentReader
+        document={selectedDocument}
+        onProgress={(seconds, progressPercent) => recordDocumentProgress(
+          selectedDocument?.id || selectedDocument?.filePath || selectedDocument?.fileUrl || selectedDocument?.title || 'unknown',
+          seconds,
+          progressPercent,
+          { title: selectedDocument?.title || null }
+        )}
+        onClose={() => setShowReader(false)}
+      />}
       {showFlashcards && <FlashcardStudy courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowFlashcards(false)} />}
       {showQuiz && <AdaptiveQuiz courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowQuiz(false)} />}
       {showNotes && <CollaborativeNotes courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowNotes(false)} />}
