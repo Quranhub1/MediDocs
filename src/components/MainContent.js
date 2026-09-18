@@ -10,7 +10,7 @@ import BackgroundImages from './BackgroundImages';
 import DocumentCarousel from './DocumentCarousel';
 import DocumentReader from './DocumentReader';
 import FlashcardStudy from './FlashcardStudy';
-import QuizMode from './QuizMode';
+import AdaptiveQuiz from './AdaptiveQuiz';
 import CollaborativeNotes from './CollaborativeNotes';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import AdvancedSearch from './AdvancedSearch';
@@ -233,7 +233,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
       {content}
       {showReader && selectedDocument && <DocumentReader document={selectedDocument} onClose={() => setShowReader(false)} />}
       {showFlashcards && <FlashcardStudy courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowFlashcards(false)} />}
-      {showQuiz && <QuizMode courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowQuiz(false)} />}
+      {showQuiz && <AdaptiveQuiz courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowQuiz(false)} />}
       {showNotes && <CollaborativeNotes courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowNotes(false)} />}
       {showAnalytics && <AnalyticsDashboard onClose={() => setShowAnalytics(false)} />}
       {showAdvancedSearch && <AdvancedSearch onClose={() => setShowAdvancedSearch(false)} onViewChange={setView} />}
