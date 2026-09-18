@@ -62,9 +62,7 @@ export default function LearningHub({ onClose, onOpenQuiz, onOpenAIChat }) {
   const [labAnswers, setLabAnswers] = useState({});
   const [ecgAnswers, setEcgAnswers] = useState({});
   const [osceChecks, setOsceChecks] = useState({});
-  const [caseScores, setCaseScores] = useState(() => readStore().caseScores || {});
   const [plannerMinutes, setPlannerMinutes] = useState(() => readStore().plannerMinutes || 60);
-  const [dailyGoal, setDailyGoal] = useState(() => readStore().dailyGoal || 20);
   const [dailyAnswers, setDailyAnswers] = useState(() => {
     const store = readStore();
     const today = new Date();
@@ -100,7 +98,6 @@ export default function LearningHub({ onClose, onOpenQuiz, onOpenAIChat }) {
     const due = item.nextReview?.toDate ? item.nextReview.toDate() : new Date(item.nextReview || 0);
     return Number.isNaN(due.getTime()) || due <= new Date();
   });
-  const scheduledReviews = learningReviews.length;
   const performanceByCourse = useMemo(() => {
     const aggregate = { ...learningStatsByCourse };
     // Older accounts may not have the aggregate yet. Fall back to the review
