@@ -178,7 +178,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
 
   const loadDocuments = async (forceRefresh = false) => {
     try {
-      const result = await fetchAllDocuments(100, forceRefresh);
+      const result = await fetchAllDocuments(10000, forceRefresh);
       if (result.success && result.data) {
         const allDocs = result.data.map(doc => ({
           ...doc,
