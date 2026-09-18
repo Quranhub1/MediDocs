@@ -170,16 +170,20 @@ const AdaptiveQuiz = ({ courseId, unitId, onClose }) => {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-        <div className="card max-w-md w-full p-6"><p>Loading your quiz...</p></div>
+      <div className="adaptive-quiz-backdrop" role="dialog" aria-modal="true" aria-label="Loading quiz">
+        <div className="adaptive-quiz-loading">
+          <div className="adaptive-quiz-spinner" aria-hidden="true" />
+          <h2>Preparing your quiz</h2>
+          <p>Loading questions and your progress...</p>
+        </div>
       </div>
     );
   }
 
   if (!currentUser) {
     return (
-      <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-        <div className="card max-w-md w-full p-6">
+      <div className="adaptive-quiz-backdrop" role="dialog" aria-modal="true">
+        <div className="adaptive-quiz-loading">
           <h3 className="text-xl font-bold mb-3">Login required</h3>
           <p>Sign in to take quizzes and save your progress.</p>
           <button type="button" onClick={onClose} className="primary-btn mt-5">Close</button>
@@ -190,8 +194,8 @@ const AdaptiveQuiz = ({ courseId, unitId, onClose }) => {
 
   if (!currentQuiz) {
     return (
-      <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-        <div className="card max-w-md w-full p-6">
+      <div className="adaptive-quiz-backdrop" role="dialog" aria-modal="true">
+        <div className="adaptive-quiz-loading">
           <h3 className="text-xl font-bold mb-3">Quiz complete</h3>
           <p>You have completed the available quizzes for this study area.</p>
           <button type="button" onClick={onClose} className="primary-btn mt-5">Close</button>
