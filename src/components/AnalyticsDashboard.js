@@ -139,19 +139,19 @@ const AnalyticsDashboard = ({ onClose }) => {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-dark-card rounded-2xl shadow-2xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Analytics Dashboard">
+      <div className="bg-white dark:bg-dark-card rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center gap-4 mb-6">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-dark-text">Analytics Dashboard</h2>
             <p className="text-sm text-gray-500 dark:text-dark-muted mt-1">Your activity from your MediDocs account</p>
           </div>
-          <button onClick={onClose} className="touch-target text-gray-500 hover:text-gray-700 dark:hover:text-dark-text" aria-label="Close analytics">
+          <button onClick={onClose} className="touch-target shrink-0 min-w-11 min-h-11 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 dark:hover:text-dark-text text-xl" aria-label="Close analytics">
             ✕
           </button>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-6 sm:mb-8">
           {statCards.map((stat) => (
             <div key={stat.label} className={`p-4 rounded-xl ${stat.color}`}>
               <div className="text-2xl mb-1" aria-hidden="true">{stat.icon}</div>
@@ -161,7 +161,7 @@ const AnalyticsDashboard = ({ onClose }) => {
           ))}
         </div>
 
-        <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-6">
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 sm:p-6">
           <div className="flex items-start justify-between gap-4 mb-5">
             <div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-dark-text">Weekly Study Activity</h3>
@@ -170,7 +170,7 @@ const AnalyticsDashboard = ({ onClose }) => {
             <div className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatStudyTime(weeklyActivity.reduce((sum, day) => sum + day.seconds, 0))}</div>
           </div>
 
-          <div className="grid grid-cols-7 gap-2 sm:gap-3 items-end h-48">
+          <div className="grid grid-cols-7 gap-1.5 sm:gap-3 items-end h-48">
             {weeklyActivity.map((day) => {
               const height = day.seconds > 0 ? Math.max(8, (day.seconds / maxWeeklySeconds) * 100) : 3;
               return (
