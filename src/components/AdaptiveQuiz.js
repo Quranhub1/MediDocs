@@ -2,12 +2,19 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
-import quizBank, { QUIZ_PASS_PERCENT } from '../data/quizBank';
+import quizBank, { generateWeeklyQuizzes, QUIZ_PASS_PERCENT } from '../data/quizBank';
 
 const getWeekKey = (date = new Date()) => {
-  const start = new Date(date.getFullYear(), 0, 1);
-  const day = Math.floor((date - start) / 86400000);
-  return `${date.getFullYear()}-W${Math.floor(day / 7) + 1}`;
+  const d = new Date(date);
+  const day = d.getDay();
+  const monday = new Date(d);
+  monday.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+  monday.setHours(0, 0, 0, 0);
+
+  const yearStart = new Date(monday.getFullYear(), 0, 1);
+  const week = Math.ceil((((monday - yearStart) / 86400000) + yearStart.getDay() + 1) / 7);
+
+  return `${monday.getFullYear()}-W${String(week).padStart(2, '0')}`;
 };
 
 const AdaptiveQuiz = ({ courseId, unitId, onClose }) => {
@@ -23,16 +30,26 @@ const AdaptiveQuiz = ({ courseId, unitId, onClose }) => {
 
   const weekKey = useMemo(() => getWeekKey(), []);
 
-  // The bank currently contains general Anatomy content. If future bank entries
-  // carry courseId/unitId, this automatically scopes them to the selected study area.
+  // Generate a new quiz set for the current week. The generator is deterministic
+  // for a given week, so the set is stable during the week and changes next week.
+  const weeklyQuizzes = useMemo(() => {
+    const generated = generateWeeklyQuizzes(weekKey, quizBank);
+    console.info('[QUIZ] Generated weekly quiz set:', {
+      weekKey,
+      quizCount: generated.length,
+      questionCount: generated.reduce((total, quiz) => total + quiz.questions.length, 0)
+    });
+    return generated;
+  }, [weekKey]);
+
   const availableQuizzes = useMemo(() => {
-    const scoped = quizBank.filter((quiz) => {
+    const scoped = weeklyQuizzes.filter((quiz) => {
       const courseMatches = !courseId || !quiz.courseId || quiz.courseId === courseId;
       const unitMatches = !unitId || !quiz.unitId || quiz.unitId === unitId;
       return courseMatches && unitMatches;
     });
-    return scoped.length ? scoped : quizBank;
-  }, [courseId, unitId]);
+    return scoped.length ? scoped : weeklyQuizzes;
+  }, [courseId, unitId, weeklyQuizzes]);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,13 +65,17 @@ const AdaptiveQuiz = ({ courseId, unitId, onClose }) => {
         const ref = doc(db, 'userQuizProgress', currentUser.uid);
         const snapshot = await getDoc(ref);
         const data = snapshot.exists() ? snapshot.data() : {};
-        const completed = Array.isArray(data.completedQuizIds) ? data.completedQuizIds : [];
-        const scores = data.scores && typeof data.scores === 'object' ? data.scores : {};
+        // Completion is scoped to the current generated week. Old results remain
+        // in quiz history but never block a new week's quiz set.
+        const sameWeek = data.weekKey === weekKey;
+        const completed = sameWeek && Array.isArray(data.completedQuizIds)
+          ? data.completedQuizIds.filter((id) => availableQuizzes.some((quiz) => quiz.id === id))
+          : [];
+        const scores = sameWeek && data.scores && typeof data.scores === 'object'
+          ? data.scores
+          : {};
 
-        // Prefer the first unseen quiz. This makes the sequence deterministic
-        // and prevents modulo-by-zero / random repeated selection.
         const unseen = availableQuizzes.filter((quiz) => !completed.includes(quiz.id));
-        const selected = unseen[0] || availableQuizzes[0] || null;
 
         if (!cancelled) {
           setProgress({ completed, scores });
@@ -116,6 +137,7 @@ const AdaptiveQuiz = ({ courseId, unitId, onClose }) => {
         lastScore: percentage,
         lastPassed: passed,
         lastWeekKey: weekKey,
+        weekKey,
         updatedAt: serverTimestamp()
       }, { merge: true });
 
@@ -134,13 +156,14 @@ const AdaptiveQuiz = ({ courseId, unitId, onClose }) => {
           passed,
           completed: true,
           completedAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
+          updatedAt: serverTimestamp(),
+          weekKey
         },
         { merge: true }
       );
 
       setProgress({ completed, scores });
-      console.info('[QUIZ] Saved result:', {
+      console.info('[QUIZ] Saved weekly result:', {
         quizId: currentQuiz.id,
         percentage,
         passed,
@@ -207,7 +230,7 @@ const AdaptiveQuiz = ({ courseId, unitId, onClose }) => {
   const passed = score !== null && score >= QUIZ_PASS_PERCENT;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+    <div className="adaptive-quiz-backdrop">
       <section className="card adaptive-quiz max-w-3xl w-full max-h-[92vh] overflow-y-auto relative">
         <button type="button" onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 dark:hover:text-white text-xl" aria-label="Close quiz">✕</button>
 
