@@ -895,11 +895,15 @@ const AdminDashboard = ({ user, onViewChange }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-emerald-500 border-t-transparent mx-auto mb-6"></div>
-          <p className="text-gray-600 text-lg">Loading admin data...</p>
-          <p className="text-gray-400 text-sm mt-2">Please wait while we fetch the latest information</p>
+      <div className="mobile-admin min-h-screen bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-slate-100 flex items-center justify-center px-4">
+        <div className="text-center w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 shadow-xl px-6 py-8">
+          <div
+            className="animate-spin rounded-full h-16 w-16 border-4 border-emerald-500 border-t-transparent mx-auto mb-6"
+            role="status"
+            aria-label="Loading admin data"
+          ></div>
+          <p className="text-gray-700 dark:text-slate-100 text-lg font-semibold">Loading admin data...</p>
+          <p className="text-gray-400 dark:text-slate-400 text-sm mt-2">Please wait while we fetch the latest information</p>
         </div>
       </div>
     );
@@ -920,7 +924,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
   );
 
   return (
-    <div className="mobile-admin min-h-screen bg-gray-50 overflow-x-hidden">
+    <div className="mobile-admin min-h-screen bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-slate-100 overflow-x-hidden">
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
