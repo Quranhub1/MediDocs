@@ -15,8 +15,9 @@ const formatStudyTime = (seconds) => {
   const safeSeconds = Math.max(0, Math.floor(Number(seconds) || 0));
   const hours = Math.floor(safeSeconds / 3600);
   const minutes = Math.floor((safeSeconds % 3600) / 60);
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  return `${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m ${safeSeconds % 60}s`;
+  if (minutes > 0) return `${minutes}m ${safeSeconds % 60}s`;
+  return `${safeSeconds}s`;
 };
 
 const getLastSevenDays = () => {
@@ -38,6 +39,7 @@ const AnalyticsDashboard = ({ onClose }) => {
   const { currentUser } = useAuth();
   const [stats, setStats] = useState({
     documentsViewed: 0,
+    documentsDownloaded: 0,
     studyTimeSeconds: 0,
     quizzesTaken: 0,
     averageScore: null,
@@ -59,13 +61,19 @@ const AnalyticsDashboard = ({ onClose }) => {
       setLoading(true);
       try {
         const studyRef = doc(db, 'userStudyData', currentUser.uid);
-        const [studySnapshot, quizSnapshot, badgeSnapshot] = await Promise.all([
+        const [studyResult, quizResult, badgeResult] = await Promise.allSettled([
           getDoc(studyRef),
           getDocs(collection(db, 'users', currentUser.uid, 'quizzes')),
           getDocs(collection(db, 'users', currentUser.uid, 'badges'))
         ]);
 
-        const studyData = studySnapshot.exists() ? studySnapshot.data() : {};
+        const studySnapshot = studyResult.status === 'fulfilled' ? studyResult.value : null;
+        const quizSnapshot = quizResult.status === 'fulfilled' ? quizResult.value : { docs: [] };
+        const badgeSnapshot = badgeResult.status === 'fulfilled' ? badgeResult.value : { size: 0 };
+        if (studyResult.status !== 'fulfilled') console.error('[ANALYTICS] Study data read failed:', studyResult.reason);
+        if (quizResult.status !== 'fulfilled') console.error('[ANALYTICS] Quiz data read failed:', quizResult.reason);
+        if (badgeResult.status !== 'fulfilled') console.error('[ANALYTICS] Badge data read failed:', badgeResult.reason);
+        const studyData = studySnapshot?.exists() ? studySnapshot.data() : {};
         const totalStudySeconds = Number(studyData.totalStudySeconds) || Math.round((Number(studyData.totalStudyTime) || 0) * 60);
         const dailyStudySeconds = studyData.dailyStudySeconds && typeof studyData.dailyStudySeconds === 'object'
           ? studyData.dailyStudySeconds
@@ -86,8 +94,8 @@ const AnalyticsDashboard = ({ onClose }) => {
 
         if (!cancelled) {
           setStats({
-            // Document-view tracking is not currently persisted by MediDocs, so do not invent a value.
             documentsViewed: Number(studyData.documentsViewed) || 0,
+            documentsDownloaded: Number(studyData.documentsDownloaded) || 0,
             studyTimeSeconds: totalStudySeconds,
             quizzesTaken: completedQuizzes.length,
             averageScore,
@@ -132,6 +140,7 @@ const AnalyticsDashboard = ({ onClose }) => {
   const statCards = [
     { label: 'Documents Viewed', value: stats.documentsViewed, icon: '📄', color: 'bg-emerald-100 text-emerald-700' },
     { label: 'Study Time', value: formatStudyTime(stats.studyTimeSeconds), icon: '⏱️', color: 'bg-blue-100 text-blue-700' },
+    { label: 'Downloaded', value: stats.documentsDownloaded, icon: '⬇️', color: 'bg-cyan-100 text-cyan-700' },
     { label: 'Quizzes Taken', value: stats.quizzesTaken, icon: '📝', color: 'bg-purple-100 text-purple-700' },
     { label: 'Avg Score', value: stats.averageScore === null ? 'Not tracked' : `${Math.round(stats.averageScore)}%`, icon: '🎯', color: 'bg-amber-100 text-amber-700' },
     { label: 'Current Streak', value: `${stats.streak} days`, icon: '🔥', color: 'bg-red-100 text-red-700' },
@@ -151,7 +160,7 @@ const AnalyticsDashboard = ({ onClose }) => {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-6 sm:mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 sm:gap-4 mb-6 sm:mb-8">
           {statCards.map((stat) => (
             <div key={stat.label} className={`p-4 rounded-xl ${stat.color}`}>
               <div className="text-2xl mb-1" aria-hidden="true">{stat.icon}</div>
@@ -192,9 +201,7 @@ const AnalyticsDashboard = ({ onClose }) => {
           </div>
         </div>
 
-        {stats.documentsViewed === 0 && (
-          <p className="mt-4 text-xs text-gray-500 dark:text-dark-muted">Document-view analytics will appear once document views are recorded by the app.</p>
-        )}
+        
 
         <div className="mt-6 flex justify-end">
           <button onClick={onClose} className="touch-target px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-dark-text rounded-lg hover:bg-gray-300">
