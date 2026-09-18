@@ -35,13 +35,13 @@ const getPreviousDateKey = (date = new Date()) => {
 };
 
 const StudyTimeTracker = () => {
-  const { user } = useAuth();
+  const { currentUser } = useAuth();
   const lastTickRef = useRef(null);
   const pendingSecondsRef = useRef(0);
   const flushingRef = useRef(false);
 
   useEffect(() => {
-    if (!user || !db) return undefined;
+    if (!currentUser || !db) return undefined;
 
     let intervalId = null;
     let active = document.visibilityState === 'visible';
@@ -49,7 +49,7 @@ const StudyTimeTracker = () => {
     pendingSecondsRef.current = 0;
 
     const flush = async (force = false) => {
-      if (flushingRef.current || !user || !db) return;
+      if (flushingRef.current || !currentUser || !db) return;
 
       const now = Date.now();
       if (active && lastTickRef.current) {
@@ -64,7 +64,7 @@ const StudyTimeTracker = () => {
       pendingSecondsRef.current -= seconds;
       flushingRef.current = true;
 
-      const studyRef = doc(db, 'userStudyData', user.uid);
+      const studyRef = doc(db, 'userStudyData', currentUser.uid);
       const dateKey = getDateKey();
       const duration = formatDuration(seconds);
       const recordedAt = new Date();
@@ -125,7 +125,7 @@ const StudyTimeTracker = () => {
         });
 
         console.info('[STUDY TIME]', {
-          uid: user.uid,
+          uid: currentUser.uid,
           recordedSeconds: seconds,
           recordedDuration: `${duration.hours}h ${duration.minutes}m ${duration.seconds}s`,
           totalStudySeconds: result?.totalStudySeconds,
@@ -188,7 +188,7 @@ const StudyTimeTracker = () => {
       window.removeEventListener('blur', handleBlur);
       void flush(true);
     };
-  }, [user]);
+  }, [currentUser]);
 
   return null;
 };
