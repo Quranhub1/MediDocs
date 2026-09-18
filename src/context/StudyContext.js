@@ -9,7 +9,8 @@ import {
   serverTimestamp,
   query,
   orderBy,
-  getDocs
+  getDocs,
+  runTransaction
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from './AuthContext';
@@ -374,29 +375,88 @@ export const StudyProvider = ({ children }) => {
     const cleanRating = ['again', 'hard', 'easy'].includes(rating) ? rating : 'again';
     try {
       const reviewRef = doc(db, 'users', currentUser.uid, 'learningReviews', String(itemId));
-      const previous = await getDoc(reviewRef);
-      const previousData = previous.exists() ? previous.data() : {};
-      const intervals = { again: 1, hard: Math.max(1, Math.round(Number(previousData.interval) || 1)), easy: Math.max(2, Math.round((Number(previousData.interval) || 1) * 2.5)) };
-      const interval = intervals[cleanRating];
-      const nextReview = new Date();
-      nextReview.setDate(nextReview.getDate() + interval);
-      await setDoc(reviewRef, {
-        itemId: String(itemId),
-        rating: cleanRating,
-        interval,
-        repetitions: cleanRating === 'again' ? 0 : (Number(previousData.repetitions) || 0) + 1,
-        nextReview,
-        correct: typeof metadata.correct === 'boolean' ? metadata.correct : null,
-        course: metadata.course || previousData.course || null,
-        ...metadata,
-        reviewedAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      }, { merge: true });
+      const studyRef = doc(db, 'userStudyData', currentUser.uid);
+      const courseKey = String(metadata.courseId || metadata.course || 'General')
+        .replace(/[.\\\\\\/\\\\\\[\\\\]#]/g, '_')
+        .slice(0, 120) || 'General';
+
+      const result = await runTransaction(db, async (transaction) => {
+        const [previousSnap, studySnap] = await Promise.all([
+          transaction.get(reviewRef),
+          transaction.get(studyRef)
+        ]);
+        const previousData = previousSnap.exists() ? previousSnap.data() : {};
+        const intervals = {
+          again: 1,
+          hard: Math.max(1, Math.round(Number(previousData.interval) || 1)),
+          easy: Math.max(2, Math.round((Number(previousData.interval) || 1) * 2.5))
+        };
+        const interval = intervals[cleanRating];
+        const nextReview = new Date();
+        nextReview.setDate(nextReview.getDate() + interval);
+        const hasCorrect = typeof metadata.correct === 'boolean';
+        const correct = hasCorrect ? metadata.correct : null;
+
+        transaction.set(reviewRef, {
+          itemId: String(itemId),
+          rating: cleanRating,
+          interval,
+          repetitions: cleanRating === 'again' ? 0 : (Number(previousData.repetitions) || 0) + 1,
+          nextReview,
+          correct,
+          course: metadata.course || previousData.course || null,
+          ...metadata,
+          reviewedAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+
+        const previousStats = studySnap.exists()
+          ? (studySnap.data().learningStatsByCourse || {})
+          : {};
+        const currentStats = previousStats[courseKey] || { attempts: 0, correct: 0 };
+        const nextStats = {
+          attempts: Number(currentStats.attempts) || 0,
+          correct: Number(currentStats.correct) || 0
+        };
+
+        // Only count an answer as a performance attempt when the caller supplied
+        // an explicit correctness value. Re-rating a review without an answer
+        // must not inflate course accuracy.
+        if (hasCorrect) {
+          nextStats.attempts += 1;
+          if (correct) nextStats.correct += 1;
+        }
+
+        const learningStatsByCourse = {
+          ...previousStats,
+          [courseKey]: nextStats
+        };
+        transaction.set(studyRef, {
+          learningStatsByCourse,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+
+        return { interval, nextReview, correct, learningStatsByCourse };
+      });
+
       setLearningReviews((prev) => {
-        const next = { id: String(itemId), itemId: String(itemId), rating: cleanRating, interval, nextReview, ...metadata };
+        const next = {
+          id: String(itemId),
+          itemId: String(itemId),
+          rating: cleanRating,
+          interval: result.interval,
+          nextReview: result.nextReview,
+          correct: result.correct,
+          ...metadata
+        };
         return [next, ...prev.filter((item) => item.id !== String(itemId))];
       });
-      console.info('[LEARNING] Review saved:', { itemId: String(itemId), rating: cleanRating, interval });
+      console.info('[LEARNING] Review saved:', {
+        itemId: String(itemId),
+        rating: cleanRating,
+        interval: result.interval,
+        course: metadata.course || 'General'
+      });
       return true;
     } catch (error) {
       console.error('[LEARNING] Failed to save review:', error);
