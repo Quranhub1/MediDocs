@@ -17,13 +17,38 @@ const getFileTypeIcon = (fileName) => {
   return '📄';
 };
 
-const DocumentReader = ({ document: doc, onClose }) => {
+const DocumentReader = ({ document: doc, onClose, onProgress }) => {
   const { theme } = useTheme();
   const containerRef = useRef(null);
   const [fontSize, setFontSize] = useState(16);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [embedFailed, setEmbedFailed] = useState(false);
   const [loadStarted, setLoadStarted] = useState(false);
+  const sessionStartedRef = useRef(null);
+  const lastProgressFlushRef = useRef(null);
+  const flushProgress = () => {
+    if (!sessionStartedRef.current || !onProgress) return;
+    const now = Date.now();
+    const seconds = Math.max(0, Math.floor((now - sessionStartedRef.current) / 1000));
+    const last = lastProgressFlushRef.current || 0;
+    const delta = Math.max(0, seconds - last);
+    if (delta < 5) return;
+    lastProgressFlushRef.current = seconds;
+    onProgress(delta, null);
+  };
+
+  useEffect(() => {
+    sessionStartedRef.current = Date.now();
+    lastProgressFlushRef.current = 0;
+    const timer = window.setInterval(flushProgress, 10000);
+    const handleVisibility = () => { if (document.visibilityState === 'visible') sessionStartedRef.current = Date.now() - ((lastProgressFlushRef.current || 0) * 1000); else flushProgress(); };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.clearInterval(timer);
+      flushProgress();
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [doc, onProgress]);
 
   const filePath = getDocumentUrl(doc) || '';
   const validUrl = isValidDocumentUrl(doc);
