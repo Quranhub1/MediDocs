@@ -213,3 +213,32 @@ button,
     scroll-behavior: auto !important;
   }
 }
+
+/* Admin dashboard dark-mode fallback. The dashboard predates the shared dark: utility usage,
+   so keep its existing light utility classes readable when the global theme is dark. */
+.dark .mobile-admin {
+  background-color: #0f172a;
+  color: #f1f5f9;
+}
+.dark .mobile-admin .bg-white { background-color: #1e293b !important; }
+.dark .mobile-admin .bg-gray-50 { background-color: #0f172a !important; }
+.dark .mobile-admin .bg-gray-100 { background-color: #334155 !important; }
+.dark .mobile-admin .bg-gray-200 { background-color: #475569 !important; }
+.dark .mobile-admin .text-gray-900,
+.dark .mobile-admin .text-gray-800,
+.dark .mobile-admin .text-gray-700 { color: #f1f5f9 !important; }
+.dark .mobile-admin .text-gray-600,
+.dark .mobile-admin .text-gray-500 { color: #cbd5e1 !important; }
+.dark .mobile-admin .text-gray-400 { color: #94a3b8 !important; }
+.dark .mobile-admin .border-gray-100,
+.dark .mobile-admin .border-gray-200,
+.dark .mobile-admin .border-gray-300 { border-color: #334155 !important; }
+.dark .mobile-admin input,
+.dark .mobile-admin select,
+.dark .mobile-admin textarea {
+  background-color: #1e293b;
+  color: #f1f5f9;
+  border-color: #475569;
+}
+.dark .mobile-admin input::placeholder,
+.dark .mobile-admin textarea::placeholder { color: #94a3b8; }
