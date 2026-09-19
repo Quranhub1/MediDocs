@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import LimitReachedModal from './LimitReachedModal';
 import PaymentModal from './PaymentModal';
 
-const LatestDocuments = ({ documents, user, userProfile, onViewChange }) => {
+const LatestDocuments = ({ documents, user, userProfile, onViewChange, onReadDocument, onDownloadDocument }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [showLimitModal, setShowLimitModal] = useState(false);
@@ -79,7 +79,7 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange }) => {
       }
       if (!hasViewed(doc.id)) recordView(doc.id);
     }
-    readOnline(doc);
+    if (onReadDocument) onReadDocument(doc); else readOnline(doc);
   };
 
   const handleDownload = (doc) => {
@@ -95,7 +95,7 @@ const LatestDocuments = ({ documents, user, userProfile, onViewChange }) => {
       }
       if (!hasViewed(doc.id)) recordView(doc.id);
     }
-    downloadDocument(doc);
+    if (onDownloadDocument) onDownloadDocument(doc); else downloadDocument(doc);
   };
 
   const handleChoosePlan = (planKey) => {
