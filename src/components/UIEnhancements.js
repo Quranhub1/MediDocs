@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { fetchAllDocuments, fetchCourses, fetchTotalResourceCount } from '../services/FirestoreService';
+import { subscribeToAllResources, subscribeToCourses } from '../services/FirestoreService';
 import { useStudy } from '../context/StudyContext';
 
 const SETTINGS_KEY = 'medidocs_ui_settings_v1';
@@ -18,21 +18,38 @@ const DashboardEnhancements = ({ courses: suppliedCourses = [], documents: suppl
   const [courseCounts, setCourseCounts] = useState([]);
   const [totalResources, setTotalResources] = useState(0);
   useEffect(() => {
-    let active = true;
-    if (!suppliedCourses.length) fetchCourses(false).then((r) => active && r.success && setCourses(r.data || []));
-    if (!suppliedDocuments.length) {
-      fetchAllDocuments(50, false).then((r) => {
-        if (!active || !r.success) return;
-        setDocuments(r.data || []);
-        setCourseCounts(r.courseCounts || []);
-        setTotalResources(Number(r.totalDocuments) || 0);
-      });
-    }
-    fetchTotalResourceCount(false).then((r) => {
-      if (active && r.success && Number(r.totalDocuments) > 0) setTotalResources(Number(r.totalDocuments));
-    });
-    return () => { active = false; };
-  }, [suppliedCourses.length, suppliedDocuments.length]);
+    let mounted = true;
+    const unsubscribeCourses = subscribeToCourses((nextCourses) => {
+      if (!mounted) return;
+      setCourses(nextCourses);
+    }, (error) => console.error('[REALTIME] Dashboard courses:', error));
+
+    const unsubscribeResources = subscribeToAllResources((nextDocuments) => {
+      if (!mounted) return;
+      setDocuments(nextDocuments);
+      setTotalResources(nextDocuments.length);
+
+      const counts = nextDocuments.reduce((acc, item) => {
+        const key = item.courseId || item.courseName || 'Other';
+        if (!acc[key]) {
+          acc[key] = {
+            courseId: key,
+            courseName: item.courseName || item.courseId || 'Other',
+            count: 0
+          };
+        }
+        acc[key].count += 1;
+        return acc;
+      }, {});
+      setCourseCounts(Object.values(counts));
+    }, (error) => console.error('[REALTIME] Dashboard resources:', error));
+
+    return () => {
+      mounted = false;
+      unsubscribeCourses();
+      unsubscribeResources();
+    };
+  }, []);
   const { streak } = useStudy();
   const activityByCourse = streak?.activityByCourse || {};
   const documentsViewed = Number(streak?.documentsViewed) || 0;
@@ -42,22 +59,29 @@ const DashboardEnhancements = ({ courses: suppliedCourses = [], documents: suppl
 
   const formatStudyTime = (seconds) => { const safe = Math.max(0, Math.floor(Number(seconds) || 0)); const h = Math.floor(safe / 3600); const m = Math.floor((safe % 3600) / 60); const s = safe % 60; if (h) return `${h}h ${m}m`; if (m) return `${m}m ${s}s`; return `${s}s`; };
   const grouped = useMemo(() => {
-    const activity = Object.entries(activityByCourse)
-      .map(([name, value]) => [name, {
-        viewed: Number(value?.viewed) || 0,
-        downloads: Number(value?.downloads) || 0,
-      }])
-      .filter(([, item]) => item.viewed > 0 || item.downloads > 0);
-    return activity.length
-      ? activity.sort((a, b) => b[1].viewed - a[1].viewed)
-      : courseCounts
-          .map((item) => [item.courseName || item.courseId || 'Other', {
-            viewed: Number(item.count) || 0,
-            downloads: Number(item.downloads) || 0,
-          }])
-          .filter(([, item]) => item.viewed > 0 || item.downloads > 0);
-  }, [activityByCourse, courseCounts]);
-  const maxCount = Math.max(1, ...grouped.map(([, item]) => item.viewed || 0));
+    const activity = new Map(
+      Object.entries(activityByCourse).map(([name, value]) => [
+        name,
+        {
+          viewed: Number(value?.viewed) || 0,
+          downloads: Number(value?.downloads) || 0,
+        }
+      ])
+    );
+
+    return courses.map((course) => {
+      const name = course.name || course.id || 'Other';
+      const stats = activity.get(name) || activity.get(course.id) || { viewed: 0, downloads: 0 };
+      const resourceCount = Number(
+        courseCounts.find((item) => item.courseId === course.id)?.count
+      ) || 0;
+      return [name, {
+        ...stats,
+        total: resourceCount
+      }];
+    }).sort((a, b) => b[1].viewed - a[1].viewed);
+  }, [activityByCourse, courseCounts, courses]);
+  const maxCount = Math.max(1, ...grouped.map(([, item]) => item.total || item.viewed || 0));
   const cards = [{ label: 'Courses', value: courses.length, icon: '📚', detail: 'Available to you' }, { label: 'Resources', value: totalResourceCount, icon: '📄', detail: 'Files in Firestore' }, { label: 'Documents Viewed', value: documentsViewed, icon: '👀', detail: 'Your study activity' }, { label: 'Study Time', value: formatStudyTime(totalStudySeconds), icon: '⏱️', detail: 'Time spent learning' }];
   return <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6" aria-label="Learning overview"><div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">{cards.map((card, index) => <article key={card.label} className="md-dashboard-card group rounded-2xl border border-gray-200 dark:border-dark-border bg-white/90 dark:bg-dark-card/95 p-4 sm:p-5 shadow-sm hover:shadow-xl" style={{ animationDelay: `${index * 70}ms` }}><div className="flex items-start justify-between gap-2"><div><p className="text-xs sm:text-sm text-gray-500 dark:text-dark-muted">{card.label}</p><p className="mt-1 text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-dark-text">{card.value}</p><p className="mt-1 text-[11px] sm:text-xs text-gray-400 dark:text-gray-500">{card.detail}</p></div><span className="text-2xl md-card-icon" aria-hidden="true">{card.icon}</span></div></article>)}</div><div className="grid lg:grid-cols-[auto_1fr] gap-4 mt-4"><article className="rounded-2xl border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-card p-5 flex items-center gap-4"><ProgressRing value={progress} label="Course progress" /><div><h3 className="font-bold text-gray-900 dark:text-dark-text">Your progress</h3><p className="text-sm text-gray-500 dark:text-dark-muted mt-1">{documentsViewed} of {totalResourceCount} files viewed.</p></div></article><article className="rounded-2xl border border-gray-200 dark:border-dark-border bg-white dark:bg-dark-card p-5"><div className="flex items-center justify-between mb-4"><h3 className="font-bold text-gray-900 dark:text-dark-text">Resource activity</h3><span className="text-xs text-gray-500 dark:text-dark-muted">By course</span></div>{grouped.length ? <div className="space-y-3">{grouped.map(([name, item]) => <div key={name}><div className="flex justify-between text-xs mb-1 text-gray-600 dark:text-dark-muted"><span className="truncate pr-3">{name}</span><span>{item.viewed} viewed · {item.downloads} downloads</span></div><div className="h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden"><div className="md-chart-bar h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500" style={{ width: `${Math.min(100, ((item.viewed || 0) / Math.max(1, item.total || maxCount)) * 100)}%` }} /></div></div>)}</div> : <div className="md-empty-state text-center py-4"><span className="text-2xl" aria-hidden="true">📊</span><p className="text-sm text-gray-500 dark:text-dark-muted mt-2">Open or download resources to see your activity here.</p></div>}</article></div></section>;
 };
