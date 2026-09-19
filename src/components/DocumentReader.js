@@ -17,7 +17,7 @@ const getFileTypeIcon = (fileName) => {
   return '📄';
 };
 
-const DocumentReader = ({ document: doc, onClose, onProgress }) => {
+const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
   const { theme } = useTheme();
   const containerRef = useRef(null);
   const [fontSize, setFontSize] = useState(16);
@@ -116,7 +116,7 @@ const DocumentReader = ({ document: doc, onClose, onProgress }) => {
             <button onClick={() => setFontSize((s) => Math.max(12, s - 1))} className="hidden sm:block px-2 py-1 text-gray-700 dark:text-dark-text" aria-label="Decrease text size">A−</button>
             <span className="hidden sm:block text-xs text-gray-500 min-w-6 text-center">{fontSize}</span>
             <button onClick={() => setFontSize((s) => Math.min(24, s + 1))} className="hidden sm:block px-2 py-1 text-gray-700 dark:text-dark-text" aria-label="Increase text size">A+</button>
-            <button onClick={() => downloadDocument(doc)} className="px-2 sm:px-3 py-1 bg-emerald-600 text-white rounded-lg text-xs sm:text-sm hover:bg-emerald-700">Download</button>
+            <button onClick={() => (onDownload ? onDownload(doc) : downloadDocument(doc))} className="px-2 sm:px-3 py-1 bg-emerald-600 text-white rounded-lg text-xs sm:text-sm hover:bg-emerald-700">Download</button>
             <button onClick={toggleFullscreen} className="px-2 sm:px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded-lg text-xs sm:text-sm">{isFullscreen ? 'Exit' : 'Fullscreen'}</button>
             <button onClick={onClose} className="px-2 sm:px-3 py-1 bg-red-100 text-red-700 rounded-lg text-xs sm:text-sm">Close</button>
           </div>
