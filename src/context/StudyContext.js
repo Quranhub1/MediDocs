@@ -348,8 +348,14 @@ export const StudyProvider = ({ children }) => {
           .replaceAll('.', '_').replaceAll('/', '_').replaceAll('\\\\', '_').slice(0, 120) || 'Other';
         const activityByCourse = { ...(study.activityByCourse || {}) };
         const currentCourse = activityByCourse[courseKey] || { viewed: 0, downloads: 0 };
-        if (!viewedBefore) currentCourse.viewed = (Number(currentCourse.viewed) || 0) + 1;
-        activityByCourse[courseKey] = currentCourse;
+        const nextCourseActivity = {
+          viewed: Number(currentCourse.viewed) || 0,
+          downloads: Number(currentCourse.downloads) || 0,
+          courseId: metadata.courseId || null,
+          courseName: metadata.courseName || metadata.course || null
+        };
+        if (!viewedBefore) nextCourseActivity.viewed += 1;
+        activityByCourse[courseKey] = nextCourseActivity;
         const update = {
           viewed: true,
           views,
@@ -382,7 +388,7 @@ export const StudyProvider = ({ children }) => {
     const cleanId = String(documentId);
     try {
       const studyRef = doc(db, 'userStudyData', currentUser.uid);
-      const statRef = doc(db, 'users', currentUser.uid, 'documentStats', cleanId);
+      const statRef = doc(db, 'users', currentUser.uid, 'documentStats', getSafeStatId(cleanId));
       await runTransaction(db, async (transaction) => {
         const statSnap = await transaction.get(statRef);
         const studySnap = await transaction.get(studyRef);
@@ -392,8 +398,12 @@ export const StudyProvider = ({ children }) => {
           .replaceAll('.', '_').replaceAll('/', '_').replaceAll('\\\\', '_').slice(0, 120) || 'Other';
         const activityByCourse = { ...(study.activityByCourse || {}) };
         const currentCourse = activityByCourse[courseKey] || { viewed: 0, downloads: 0 };
-        currentCourse.downloads = (Number(currentCourse.downloads) || 0) + 1;
-        activityByCourse[courseKey] = currentCourse;
+        activityByCourse[courseKey] = {
+          viewed: Number(currentCourse.viewed) || 0,
+          downloads: (Number(currentCourse.downloads) || 0) + 1,
+          courseId: metadata.courseId || currentCourse.courseId || null,
+          courseName: metadata.courseName || metadata.course || currentCourse.courseName || null
+        };
         transaction.set(statRef, {
           viewed: true,
           downloads: (Number(stat.downloads) || 0) + 1,
@@ -424,7 +434,7 @@ export const StudyProvider = ({ children }) => {
     const addedSeconds = Math.max(0, Math.floor(Number(seconds) || 0));
     if (addedSeconds < 1 && progressPercent == null) return false;
     try {
-      const statRef = doc(db, 'users', currentUser.uid, 'documentStats', cleanId);
+      const statRef = doc(db, 'users', currentUser.uid, 'documentStats', getSafeStatId(cleanId));
       const studyRef = doc(db, 'userStudyData', currentUser.uid);
       await runTransaction(db, async (transaction) => {
         const statSnap = await transaction.get(statRef);
