@@ -9,10 +9,13 @@ const CollaborativeNotes = ({ courseId, unitId, onClose }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const filteredNotes = studyNotes.filter(note => 
-    (!courseId || note.courseId === courseId) && 
-    (!unitId || note.unitId === unitId)
-  );
+  const filteredNotes = studyNotes.filter((note) => {
+    const noteCourse = note.courseId || note.course || null;
+    const noteUnit = note.unitId || note.unit || null;
+    const courseMatches = !courseId || !noteCourse || String(noteCourse) === String(courseId);
+    const unitMatches = !unitId || !noteUnit || String(noteUnit) === String(unitId);
+    return courseMatches && unitMatches;
+  });
 
   const handleAdd = async (e) => {
     e.preventDefault();
