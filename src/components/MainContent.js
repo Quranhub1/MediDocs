@@ -20,7 +20,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useStudy } from '../context/StudyContext';
 import { useBookmarks } from '../context/BookmarkContext';
 import { useToast } from '../context/ToastContext';
-import { subscribeToAllResources, subscribeToCourses, subscribeToSemesters, subscribeToCourseUnits, subscribeToDocuments } from '../services/FirestoreService';
+import { fetchAllDocuments, subscribeToAllResources, subscribeToCourses, subscribeToSemesters, subscribeToCourseUnits, subscribeToDocuments } from '../services/FirestoreService';
 import { getDocumentUrl, downloadDocument } from '../utils/documentActions';
 
 const getAnalyticsDocumentId = (doc) => {
@@ -55,6 +55,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   const [showLearningHub, setShowLearningHub] = useState(false);
   const [showStudyGroups, setShowStudyGroups] = useState(false);
   const [loadError, setLoadError] = useState(null);
+  const [hasLoadedResources, setHasLoadedResources] = useState(false);
 
   // Keep the homepage resource feed live. This intentionally bypasses the
   // legacy resource-index/localStorage cache so newly added documents appear
@@ -71,19 +72,37 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
     setLoadError(null);
     let mounted = true;
 
+    void fetchAllDocuments(10000).then((result) => {
+      if (!mounted || !result?.success) return;
+      const resources = (result.data || []).filter((item) => item?.status !== 'deleted');
+      setAllRealtimeDocuments(resources);
+      setLatestDocuments(resources.slice(0, 10));
+      setHasLoadedResources(true);
+      setLoading(false);
+      setLoadError(null);
+    }).catch((error) => {
+      console.error('[RESOURCES] Initial server index failed:', error);
+    });
+
     const unsubscribeResources = subscribeToAllResources((allResources) => {
       if (!mounted) return;
-      const latest = (allResources || [])
-        .filter((item) => item?.status !== 'deleted')
-        .slice(0, 10);
-      setAllRealtimeDocuments(allResources || []);
-      setLatestDocuments(latest);
+      const resources = (allResources || []).filter((item) => item?.status !== 'deleted');
+      setAllRealtimeDocuments(resources);
+      setLatestDocuments(resources.slice(0, 10));
+      setHasLoadedResources(true);
       setLoading(false);
+      setLoadError(null);
     }, (error) => {
       if (!mounted) return;
-      console.error('[REALTIME] MainContent resources:', error);
-      setLoadError(error?.message || 'Unable to load resources');
-      setLoading(false);
+      console.error('[REALTIME] MainContent resources listener failed:', {
+        code: error?.code || 'unknown',
+        message: error?.message || String(error),
+        name: error?.name || null
+      });
+      if (!hasLoadedResources) {
+        setLoadError(error?.message || 'Unable to load resources');
+        setLoading(false);
+      }
     });
 
     const unsubscribeCourses = subscribeToCourses((nextCourses) => {
@@ -96,7 +115,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
       unsubscribeResources();
       unsubscribeCourses();
     };
-  }, [user]);
+  }, [user, hasLoadedResources]);
 
   useEffect(() => {
     // Preserve the selected hierarchy across browser reloads. The previous
