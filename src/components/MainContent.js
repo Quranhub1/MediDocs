@@ -36,6 +36,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   const { addToast } = useToast();
   const [courses, setCourses] = useState([]);
   const [latestDocuments, setLatestDocuments] = useState([]);
+  const [allRealtimeDocuments, setAllRealtimeDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [subLoading, setSubLoading] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState(null);
@@ -75,6 +76,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
       const latest = (allResources || [])
         .filter((item) => item?.status !== 'deleted')
         .slice(0, 10);
+      setAllRealtimeDocuments(allResources || []);
       setLatestDocuments(latest);
       setLoading(false);
     }, (error) => {
@@ -157,13 +159,46 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
 
   const handleUnitClick = async (unit) => {
     setSelectedUnit(unit);
-    setDocuments([]);
     setSubLoading(true);
     setView('documents');
-    const result = await fetchDocuments(selectedCourse.id, selectedSemester.id, unit.id);
-    if (result.success) setDocuments(result.data);
+
+    const liveDocuments = allRealtimeDocuments.filter((item) =>
+      item.courseId === selectedCourse?.id &&
+      item.semesterId === selectedSemester?.id &&
+      item.unitId === unit.id &&
+      item.status !== 'deleted'
+    );
+
+    if (liveDocuments.length > 0) {
+      setDocuments(liveDocuments);
+      setSubLoading(false);
+      return;
+    }
+
+    // Only fall back to a direct server read when the realtime collection-group
+    // listener has no documents for this unit. Force-refresh prevents stale
+    // Firestore/local-memory cache from hiding a newly added document.
+    const result = await fetchDocuments(
+      selectedCourse.id,
+      selectedSemester.id,
+      unit.id,
+      true
+    );
+    if (result.success) setDocuments(result.data || []);
+    else setDocuments([]);
     setSubLoading(false);
   };
+
+  useEffect(() => {
+    if (!selectedCourse || !selectedSemester || !selectedUnit) return;
+    const liveDocuments = allRealtimeDocuments.filter((item) =>
+      item.courseId === selectedCourse.id &&
+      item.semesterId === selectedSemester.id &&
+      item.unitId === selectedUnit.id &&
+      item.status !== 'deleted'
+    );
+    setDocuments(liveDocuments);
+  }, [allRealtimeDocuments, selectedCourse, selectedSemester, selectedUnit]);
 
   const handleReadOnline = (doc) => {
     const documentId = getAnalyticsDocumentId(doc);
