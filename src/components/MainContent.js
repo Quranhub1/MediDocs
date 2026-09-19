@@ -131,7 +131,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
     }
   }, [selectedCourse, selectedSemester, selectedUnit, semesters, courseUnits, documents]);
 
-  const handleCourseClick = async (course) => {
+  const handleCourseClick = (course) => {
     setSelectedCourse(course);
     setSelectedSemester(null);
     setSelectedUnit(null);
@@ -140,54 +140,80 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
     setDocuments([]);
     setSubLoading(true);
     setView('semesters');
-    const result = await fetchSemesters(course.id);
-    if (result.success) setSemesters(result.data);
-    setSubLoading(false);
   };
 
-  const handleSemesterClick = async (semester) => {
+  useEffect(() => {
+    if (!selectedCourse?.id) return undefined;
+    setSemesters([]);
+    setSubLoading(true);
+    const unsubscribe = subscribeToSemesters(
+      selectedCourse.id,
+      (items) => {
+        setSemesters(items);
+        setSubLoading(false);
+      },
+      (error) => {
+        console.error('[REALTIME] Semesters:', error);
+        setSubLoading(false);
+      }
+    );
+    return unsubscribe;
+  }, [selectedCourse?.id]);
+
+  const handleSemesterClick = (semester) => {
     setSelectedSemester(semester);
     setSelectedUnit(null);
     setCourseUnits([]);
     setDocuments([]);
     setSubLoading(true);
     setView('courseunits');
-    const result = await fetchCourseUnits(selectedCourse.id, semester.id);
-    if (result.success) setCourseUnits(result.data);
-    setSubLoading(false);
   };
 
-  const handleUnitClick = async (unit) => {
-    setSelectedUnit(unit);
+  useEffect(() => {
+    if (!selectedCourse?.id || !selectedSemester?.id) return undefined;
+    setCourseUnits([]);
     setSubLoading(true);
-    setView('documents');
-
-    const liveDocuments = allRealtimeDocuments.filter((item) =>
-      item.courseId === selectedCourse?.id &&
-      item.semesterId === selectedSemester?.id &&
-      item.unitId === unit.id &&
-      item.status !== 'deleted'
-    );
-
-    if (liveDocuments.length > 0) {
-      setDocuments(liveDocuments);
-      setSubLoading(false);
-      return;
-    }
-
-    // Only fall back to a direct server read when the realtime collection-group
-    // listener has no documents for this unit. Force-refresh prevents stale
-    // Firestore/local-memory cache from hiding a newly added document.
-    const result = await fetchDocuments(
+    const unsubscribe = subscribeToCourseUnits(
       selectedCourse.id,
       selectedSemester.id,
-      unit.id,
-      true
+      (items) => {
+        setCourseUnits(items);
+        setSubLoading(false);
+      },
+      (error) => {
+        console.error('[REALTIME] Course units:', error);
+        setSubLoading(false);
+      }
     );
-    if (result.success) setDocuments(result.data || []);
-    else setDocuments([]);
-    setSubLoading(false);
+    return unsubscribe;
+  }, [selectedCourse?.id, selectedSemester?.id]);
+
+  const handleUnitClick = (unit) => {
+    setSelectedUnit(unit);
+    setDocuments([]);
+    setSubLoading(true);
+    setView('documents');
   };
+
+  useEffect(() => {
+    if (!selectedCourse?.id || !selectedSemester?.id || !selectedUnit?.id) return undefined;
+    setDocuments([]);
+    setSubLoading(true);
+    const unsubscribe = subscribeToDocuments(
+      selectedCourse.id,
+      selectedSemester.id,
+      selectedUnit.id,
+      (items) => {
+        setDocuments(items.filter((item) => item.status !== 'deleted'));
+        setSubLoading(false);
+      },
+      (error) => {
+        console.error('[REALTIME] Documents:', error);
+        setSubLoading(false);
+      }
+    );
+    return unsubscribe;
+  }, [selectedCourse?.id, selectedSemester?.id, selectedUnit?.id]);
 
   useEffect(() => {
     if (!selectedCourse || !selectedSemester || !selectedUnit) return;
