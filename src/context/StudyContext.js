@@ -339,7 +339,7 @@ export const StudyProvider = ({ children }) => {
         const views = (Number(stat.views) || 0) + 1;
         const study = studySnap.exists() ? studySnap.data() : {};
         const uniqueViewed = (Number(study.documentsViewed) || 0) + (viewedBefore ? 0 : 1);
-        const courseKey = String(metadata.courseName || metadata.course || metadata.courseId || 'Other')
+        const courseKey = String(metadata.courseId || metadata.courseName || metadata.course || 'Other')
           .replaceAll('.', '_').replaceAll('/', '_').replaceAll('\\\\', '_').slice(0, 120) || 'Other';
         const activityByCourse = { ...(study.activityByCourse || {}) };
         const currentCourse = activityByCourse[courseKey] || { viewed: 0, downloads: 0 };
