@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import LatestDocuments from './LatestDocuments';
 import CourseGrid from './CourseGrid';
 import AboutSection from './AboutSection';
@@ -55,7 +55,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   const [showLearningHub, setShowLearningHub] = useState(false);
   const [showStudyGroups, setShowStudyGroups] = useState(false);
   const [loadError, setLoadError] = useState(null);
-  const [hasLoadedResources, setHasLoadedResources] = useState(false);
+  const hasLoadedResourcesRef = useRef(false);
 
   // Keep the homepage resource feed live. This intentionally bypasses the
   // legacy resource-index/localStorage cache so newly added documents appear
@@ -77,7 +77,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
       const resources = (result.data || []).filter((item) => item?.status !== 'deleted');
       setAllRealtimeDocuments(resources);
       setLatestDocuments(resources.slice(0, 10));
-      setHasLoadedResources(true);
+      hasLoadedResourcesRef.current = true;
       setLoading(false);
       setLoadError(null);
     }).catch((error) => {
@@ -99,7 +99,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
         message: error?.message || String(error),
         name: error?.name || null
       });
-      if (!hasLoadedResources) {
+      if (!hasLoadedResourcesRef.current) {
         setLoadError(error?.message || 'Unable to load resources');
         setLoading(false);
       }
