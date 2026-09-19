@@ -14,12 +14,16 @@ import {
   getExpiringSubscriptions,
   lockExpiredSubscriptions,
   getSubscriptionCountdown,
-  SUBSCRIPTION_PLANS
+  SUBSCRIPTION_PLANS,
+  subscribeToAllResources,
+  subscribeToCourses
 } from '../services/FirestoreService';
 import { generateThumbnail } from '../utils/thumbnailGenerator';
 import {
   collection,
+  collectionGroup,
   getDocs,
+  onSnapshot,
   doc as docRef,
   updateDoc,
   deleteDoc,
@@ -140,41 +144,100 @@ const AdminDashboard = ({ user, onViewChange }) => {
   const isAdmin = user?.phone === ADMIN_PHONE ||
     (user?.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
 
-  const loadData = useCallback(async (forceRefresh = false) => {
-    setLoading(true);
-    try {
-      const [docsResult, usersResult, paymentsResult, coursesList] = await Promise.all([
-        loadDocuments(forceRefresh),
-        loadUsers(forceRefresh),
-        loadPayments(forceRefresh),
-        loadCourses(forceRefresh)
-      ]);
-
-      const latestDocs = (docsResult || []).filter(d => d.time === 'latest').length;
-      const premiumDocs = (docsResult || []).filter(d => d.status === 'premium').length;
-
-      setStats({
-        totalDocuments: (docsResult || []).length,
-        totalUsers: (usersResult || []).length,
-        totalPayments: (paymentsResult || []).length,
-        latestDocuments: latestDocs,
-        premiumDocuments: premiumDocs,
-        totalCourses: coursesList.length,
-        totalSemesters: semesters.length,
-        totalUnits: units.length
-      });
-    } catch (error) {
-      console.error('Error loading admin data:', error);
-    }
-    setLoading(false);
-  }, [semesters.length, units.length]);
+  // Admin data is live. Each listener performs one initial Firestore read and then
+  // receives only changes. No localStorage/API cache is used for dashboard data.
+  const loadData = useCallback(async () => {
+    console.info('[REALTIME] Admin dashboard refresh is listener-driven; no manual reload required.');
+  }, []);
 
   useEffect(() => {
-    if (isAdmin) {
-      loadData();
-      loadSubscriptionCountdowns();
-    }
-  }, [isAdmin, loadData]);
+    if (!isAdmin || !db) return undefined;
+
+    setLoading(true);
+    let mounted = true;
+
+    const unsubscribeResources = subscribeToAllResources((nextDocuments) => {
+      if (!mounted) return;
+      const allDocs = nextDocuments.map((item) => ({
+        ...item,
+        fullPath: item.fullPath || item.ref?.path
+      }));
+      setDocuments(allDocs);
+    }, (error) => console.error('[REALTIME] Admin resources:', error));
+
+    const unsubscribeCourses = subscribeToCourses((nextCourses) => {
+      if (!mounted) return;
+      setCourses(nextCourses.map((item) => ({
+        id: item.id,
+        name: item.name || item.id,
+        ...item
+      })));
+    }, (error) => console.error('[REALTIME] Admin courses:', error));
+
+    const unsubscribeUsers = onSnapshot(
+      collection(db, 'users'),
+      (snapshot) => {
+        if (!mounted) return;
+        setUsers(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
+      },
+      (error) => console.error('[REALTIME] Admin users:', error)
+    );
+
+    const unsubscribePayments = onSnapshot(
+      collection(db, 'payments'),
+      (snapshot) => {
+        if (!mounted) return;
+        setPayments(snapshot.docs.map((item) => ({
+          id: item.id,
+          ...item.data(),
+          createdAtDate: snapshot.docs.find((d) => d.id === item.id)?.data().createdAt?.toDate?.() || null
+        })));
+      },
+      (error) => console.error('[REALTIME] Admin payments:', error)
+    );
+
+    const unsubscribeSemesters = onSnapshot(
+      collectionGroup(db, 'semesters'),
+      (snapshot) => {
+        if (!mounted) return;
+        setSemesters(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
+      },
+      (error) => console.error('[REALTIME] Admin semesters:', error)
+    );
+
+    const unsubscribeUnits = onSnapshot(
+      collectionGroup(db, 'courseunits'),
+      (snapshot) => {
+        if (!mounted) return;
+        setUnits(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
+        setLoading(false);
+      },
+      (error) => {
+        console.error('[REALTIME] Admin units:', error);
+        setLoading(false);
+      }
+    );
+
+    return () => {
+      mounted = false;
+      unsubscribeResources();
+      unsubscribeCourses();
+      unsubscribeUsers();
+      unsubscribePayments();
+      unsubscribeSemesters();
+      unsubscribeUnits();
+    };
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    const countdowns = {};
+    users.forEach((item) => {
+      const countdown = getSubscriptionCountdown(item);
+      if (countdown) countdowns[item.id] = countdown;
+    });
+    setSubscriptionCountdowns(countdowns);
+  }, [isAdmin, users]);
 
   const loadDocuments = async (forceRefresh = false) => {
     try {
@@ -852,6 +915,21 @@ const AdminDashboard = ({ user, onViewChange }) => {
       alert('Failed to update user: ' + error.message);
     }
   };
+
+  useEffect(() => {
+    const latestDocs = documents.filter((item) => item.time === 'latest').length;
+    const premiumDocs = documents.filter((item) => item.status === 'premium').length;
+    setStats({
+      totalDocuments: documents.length,
+      totalUsers: users.length,
+      totalPayments: payments.length,
+      latestDocuments: latestDocs,
+      premiumDocuments: premiumDocs,
+      totalCourses: courses.length,
+      totalSemesters: semesters.length,
+      totalUnits: units.length
+    });
+  }, [documents, users, payments, courses, semesters, units]);
 
   const filteredDocuments = documents.filter(doc =>
     doc.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
