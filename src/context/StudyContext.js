@@ -10,6 +10,7 @@ import {
   query,
   orderBy,
   getDocs,
+  onSnapshot,
   runTransaction
 } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -200,11 +201,37 @@ export const StudyProvider = ({ children }) => {
       setQuizzes([]);
       setStudyNotes([]);
       setLearningReviews([]);
-      return;
+      return undefined;
     }
 
+    const unsubscribeStudy = onSnapshot(
+      doc(db, 'userStudyData', currentUser.uid),
+      (snap) => {
+        if (!snap.exists()) {
+          setStreak(emptyStreak);
+          setLearningStatsByCourse({});
+          return;
+        }
+        const data = snap.data();
+        const totalStudySeconds =
+          Number(data.totalStudySeconds) ||
+          Math.round((Number(data.totalStudyTime) || 0) * 60);
+        setLearningStatsByCourse(data.learningStatsByCourse || {});
+        setStreak({
+          current: Number(data.currentStreak) || 0,
+          longest: Number(data.longestStreak) || 0,
+          lastStudyDate: normalizeDate(data.lastStudyDate),
+          totalStudyTime: Math.floor(totalStudySeconds / 60),
+          totalStudySeconds,
+          documentsViewed: Number(data.documentsViewed) || 0,
+          documentsDownloaded: Number(data.documentsDownloaded) || 0,
+          activityByCourse: data.activityByCourse || {}
+        });
+      },
+      (error) => console.error('[REALTIME] Study data listener failed:', error)
+    );
+
     void Promise.all([
-      loadStreak(),
       loadBadges(),
       loadFlashcards(),
       loadQuizzes(),
@@ -213,9 +240,10 @@ export const StudyProvider = ({ children }) => {
     ]).catch((error) => {
       console.error('[STUDY] Failed to initialise study data:', error);
     });
+
+    return unsubscribeStudy;
   }, [
     currentUser,
-    loadStreak,
     loadBadges,
     loadFlashcards,
     loadQuizzes,
