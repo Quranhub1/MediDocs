@@ -291,7 +291,7 @@ export const StudyProvider = ({ children }) => {
           console.error('[ANALYTICS] Failed to sync aggregate stats:', error);
         });
 
-        console.info('[ANALYTICS] Realtime document stats:',
+        console.info('[ANALYTICS] Realtime document stats:', {
           documentStats: snapshot.size,
           documentsViewed,
           documentsDownloaded,
