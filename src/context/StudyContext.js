@@ -51,6 +51,11 @@ const normalizeDate = (value) => {
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
+// Firestore document IDs cannot contain "/" because it is a path separator.
+// Analytics IDs are full Firestore paths, so encode them before using them as
+// documentStats document IDs while keeping the original ID in the stored data.
+const getSafeStatId = (documentId) => encodeURIComponent(String(documentId)).slice(0, 1500);
+
 export const StudyProvider = ({ children }) => {
   // AuthContext exposes currentUser, not user. The previous mismatch silently
   // disabled every user-scoped study write and made buttons appear dead.
@@ -330,7 +335,7 @@ export const StudyProvider = ({ children }) => {
     const cleanId = String(documentId);
     try {
       const studyRef = doc(db, 'userStudyData', currentUser.uid);
-      const statRef = doc(db, 'users', currentUser.uid, 'documentStats', cleanId);
+      const statRef = doc(db, 'users', currentUser.uid, 'documentStats', getSafeStatId(cleanId));
       const result = await runTransaction(db, async (transaction) => {
         const statSnap = await transaction.get(statRef);
         const studySnap = await transaction.get(studyRef);
@@ -383,7 +388,7 @@ export const StudyProvider = ({ children }) => {
         const studySnap = await transaction.get(studyRef);
         const stat = statSnap.exists() ? statSnap.data() : {};
         const study = studySnap.exists() ? studySnap.data() : {};
-        const courseKey = String(metadata.courseName || metadata.course || metadata.courseId || 'Other')
+        const courseKey = String(metadata.courseId || metadata.courseName || metadata.course || 'Other')
           .replaceAll('.', '_').replaceAll('/', '_').replaceAll('\\\\', '_').slice(0, 120) || 'Other';
         const activityByCourse = { ...(study.activityByCourse || {}) };
         const currentCourse = activityByCourse[courseKey] || { viewed: 0, downloads: 0 };
