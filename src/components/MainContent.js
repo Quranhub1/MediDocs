@@ -115,7 +115,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
       unsubscribeResources();
       unsubscribeCourses();
     };
-  }, [user, hasLoadedResources]);
+  }, [user]);
 
   useEffect(() => {
     // Preserve the selected hierarchy across browser reloads. The previous
