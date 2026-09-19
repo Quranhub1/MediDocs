@@ -58,22 +58,45 @@ const DashboardEnhancements = ({ courses: suppliedCourses = [], documents: suppl
   const progress = totalResourceCount > 0 ? Math.min(100, (documentsViewed / totalResourceCount) * 100) : 0;
 
   const formatStudyTime = (seconds) => { const safe = Math.max(0, Math.floor(Number(seconds) || 0)); const h = Math.floor(safe / 3600); const m = Math.floor((safe % 3600) / 60); const s = safe % 60; if (h) return `${h}h ${m}m`; if (m) return `${m}m ${s}s`; return `${s}s`; };
+  const normalizeCourseKey = (value) => String(value || '')
+    .trim()
+    .replaceAll('.', '_')
+    .replaceAll('/', '_')
+    .replaceAll('\\\\', '_')
+    .slice(0, 120);
+
   const grouped = useMemo(() => {
-    const activity = new Map(
-      Object.entries(activityByCourse).map(([name, value]) => [
-        name,
-        {
-          viewed: Number(value?.viewed) || 0,
-          downloads: Number(value?.downloads) || 0,
-        }
-      ])
-    );
+    const activityEntries = Object.entries(activityByCourse).map(([key, value]) => ({
+      key,
+      keyNormalized: normalizeCourseKey(key),
+      courseId: String(value?.courseId || ''),
+      courseName: String(value?.courseName || ''),
+      courseIdNormalized: normalizeCourseKey(value?.courseId),
+      courseNameNormalized: normalizeCourseKey(value?.courseName),
+      viewed: Number(value?.viewed) || 0,
+      downloads: Number(value?.downloads) || 0
+    }));
 
     return courses.map((course) => {
       const name = course.name || course.id || 'Other';
-      const stats = activity.get(name) || activity.get(course.id) || { viewed: 0, downloads: 0 };
+      const id = String(course.id || '');
+      const nameNormalized = normalizeCourseKey(name);
+      const idNormalized = normalizeCourseKey(id);
+      const match = activityEntries.find((item) =>
+        item.key === id ||
+        item.key === name ||
+        item.keyNormalized === idNormalized ||
+        item.keyNormalized === nameNormalized ||
+        item.courseId === id ||
+        item.courseName === name ||
+        item.courseIdNormalized === idNormalized ||
+        item.courseNameNormalized === nameNormalized
+      );
+      const stats = match
+        ? { viewed: match.viewed, downloads: match.downloads }
+        : { viewed: 0, downloads: 0 };
       const resourceCount = Number(
-        courseCounts.find((item) => item.courseId === course.id)?.count
+        courseCounts.find((item) => String(item.courseId) === id)?.count
       ) || 0;
       return [name, {
         ...stats,
