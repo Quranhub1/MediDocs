@@ -214,18 +214,15 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   };
 
   const handleDownload = async (doc) => {
-    const documentId = doc?.id || doc?.filePath || doc?.fileUrl || doc?.title || 'unknown';
-    void recordDocumentView(documentId, {
-      title: doc?.title || null,
-      courseId: doc?.courseId || selectedCourse?.id || null,
-      semesterId: doc?.semesterId || selectedSemester?.id || null,
-      unitId: doc?.unitId || selectedUnit?.id || null
-    });
+    const documentId = getAnalyticsDocumentId(doc);
+    // A download is its own activity. Do not also count it as a read.
+    // Using the same canonical ID as Read Online keeps per-document stats aligned.
     void recordDocumentDownload(documentId, {
       title: doc?.title || null,
       courseId: doc?.courseId || selectedCourse?.id || null,
       semesterId: doc?.semesterId || selectedSemester?.id || null,
-      unitId: doc?.unitId || selectedUnit?.id || null
+      unitId: doc?.unitId || selectedUnit?.id || null,
+      courseName: doc?.courseName || selectedCourse?.name || null
     });
     const url = getDocumentUrl(doc);
     if (!url) {
