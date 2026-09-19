@@ -4,6 +4,7 @@ import {
   getCountFromServer,
   getDocs,
   getDocsFromCache,
+  onSnapshot,
   addDoc,
   updateDoc,
   doc as docRef,
@@ -31,6 +32,71 @@ const convertTimestamp = (timestamp) => {
     return isNaN(date.getTime()) ? null : date;
   }
   return null;
+};
+
+// Realtime resource listeners. These deliberately bypass the legacy cache helpers.
+// One listener covers every nested documents subcollection, and one covers courses.
+// Firestore sends the initial snapshot once, then only changed documents afterwards.
+export const subscribeToCourses = (onData, onError) => {
+  if (!db) return () => {};
+  return onSnapshot(
+    collection(db, 'RESOURCES_STUDYPEDIA'),
+    (snapshot) => {
+      const courses = snapshot.docs.map((item) => ({
+        id: item.id,
+        ...item.data(),
+        name: item.data().name || item.id,
+        createdAtDate: convertTimestamp(item.data().createdAt)
+      }));
+      onData(courses);
+    },
+    (error) => {
+      console.error('[REALTIME] Courses listener failed:', error);
+      if (onError) onError(error);
+    }
+  );
+};
+
+export const subscribeToAllResources = (onData, onError) => {
+  if (!db) return () => {};
+  return onSnapshot(
+    collectionGroup(db, 'documents'),
+    (snapshot) => {
+      const data = snapshot.docs.map((item) => {
+        const docData = item.data();
+        const parts = item.ref.path.split('/');
+        const courseId = parts[1] || docData.courseId || '';
+        const semesterId = parts[3] || docData.semesterId || '';
+        const unitId = parts[5] === 'courseunits' ? parts[6] : null;
+        const courseName = docData.courseName || docData.course || courseId;
+        const semesterName = docData.semesterName || semesterId;
+        const unitName = docData.unitName || unitId;
+        return {
+          id: item.id,
+          ...docData,
+          courseId,
+          courseName,
+          semesterId,
+          semesterName,
+          unitId,
+          unitName,
+          fullPath: item.ref.path,
+          createdAtDate: convertTimestamp(docData.createdAt),
+          status: docData.status || 'free'
+        };
+      });
+      data.sort((a, b) => {
+        if (a.time === 'latest' && b.time !== 'latest') return -1;
+        if (a.time !== 'latest' && b.time === 'latest') return 1;
+        return (b.createdAtDate?.getTime() || 0) - (a.createdAtDate?.getTime() || 0);
+      });
+      onData(data);
+    },
+    (error) => {
+      console.error('[REALTIME] Resource listener failed:', error);
+      if (onError) onError(error);
+    }
+  );
 };
 
 // Fetch all documents from the RESOURCES_STUDYPEDIA collection
