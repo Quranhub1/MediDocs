@@ -41,7 +41,6 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   const { addToast } = useToast();
   const [courses, setCourses] = useState([]);
   const [latestDocuments, setLatestDocuments] = useState([]);
-  const [resourceCacheReady, setResourceCacheReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [subLoading, setSubLoading] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState(null);
@@ -71,7 +70,6 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
       setCourses([]);
       setLatestDocuments([]);
       setLoading(false);
-      setResourceCacheReady(false);
       return undefined;
     }
 
@@ -83,7 +81,6 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
       if (!mounted || !result?.success) return;
       const resources = (result.data || []).filter((item) => item?.status !== 'deleted');
       setLatestDocuments(resources.slice(0, 10));
-      setResourceCacheReady(true);
       setLoading(false);
       setLoadError(null);
     }).catch((error) => {
@@ -139,7 +136,6 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   }, [selectedCourse, selectedSemester, selectedUnit, semesters, courseUnits, documents]);
 
   const handleCourseClick = (course) => {
-    setResourceCacheReady(true);
     setSelectedCourse(course);
     setSelectedSemester(null);
     setSelectedUnit(null);
