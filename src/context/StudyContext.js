@@ -244,6 +244,8 @@ export const StudyProvider = ({ children }) => {
       (error) => console.error('[REALTIME] Study data listener failed:', error)
     );
 
+    void reconcileDocumentAnalytics();
+
     void Promise.all([
       loadBadges(),
       loadFlashcards(),
@@ -257,6 +259,7 @@ export const StudyProvider = ({ children }) => {
     return unsubscribeStudy;
   }, [
     currentUser,
+    reconcileDocumentAnalytics,
     loadBadges,
     loadFlashcards,
     loadQuizzes,
@@ -269,6 +272,53 @@ export const StudyProvider = ({ children }) => {
     window.addEventListener('medidocs:study-time-updated', refresh);
     return () => window.removeEventListener('medidocs:study-time-updated', refresh);
   }, [loadStreak]);
+
+  const reconcileDocumentAnalytics = useCallback(async () => {
+    if (!currentUser || !db) return;
+    try {
+      const statsRef = collection(db, 'users', currentUser.uid, 'documentStats');
+      const snapshot = await getDocs(statsRef);
+      const existingStudy = await getDoc(doc(db, 'userStudyData', currentUser.uid));
+      const study = existingStudy.exists() ? existingStudy.data() : {};
+      const activityByCourse = { ...(study.activityByCourse || {}) };
+      let viewedCount = 0;
+      let downloadedCount = 0;
+
+      snapshot.docs.forEach((item) => {
+        const data = item.data();
+        if (data.viewed === true) {
+          viewedCount += 1;
+          const courseId = data.courseId || null;
+          const courseName = data.courseName || data.course || null;
+          const courseKey = String(courseId || courseName || 'Other')
+            .replaceAll('.', '_').replaceAll('/', '_').replaceAll('\\\\', '_').slice(0, 120) || 'Other';
+          const current = activityByCourse[courseKey] || { viewed: 0, downloads: 0 };
+          activityByCourse[courseKey] = {
+            viewed: Math.max(Number(current.viewed) || 0, 1),
+            downloads: Number(current.downloads) || 0,
+            courseId: courseId || current.courseId || null,
+            courseName: courseName || current.courseName || null
+          };
+        }
+        downloadedCount += Number(data.downloads) || 0;
+      });
+
+      await setDoc(doc(db, 'userStudyData', currentUser.uid), {
+        documentsViewed: viewedCount,
+        documentsDownloaded: downloadedCount,
+        activityByCourse,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
+      console.info('[ANALYTICS] Reconciled document stats:', {
+        documentStats: snapshot.size,
+        documentsViewed: viewedCount,
+        documentsDownloaded: downloadedCount
+      });
+    } catch (error) {
+      console.error('[ANALYTICS] Failed to reconcile document stats:', error);
+    }
+  }, [currentUser]);
 
   const recordStudySession = async (durationMinutes = 0) => {
     if (!currentUser || !db) return false;
