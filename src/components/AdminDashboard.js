@@ -515,8 +515,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
         semesterId: '',
         unitId: ''
       });
-      loadDocuments();
-      loadData();
+      // The active documents listener updates the dashboard immediately after the write.
       alert('Document updated successfully!');
     } catch (error) {
       console.error('Error updating document:', error);
