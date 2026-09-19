@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
+import { collection, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 
@@ -50,81 +50,107 @@ const AnalyticsDashboard = ({ onClose }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let cancelled = false;
+    if (!currentUser || !db) {
+      setLoading(false);
+      setStats({
+        documentsViewed: 0,
+        documentsDownloaded: 0,
+        studyTimeSeconds: 0,
+        quizzesTaken: 0,
+        averageScore: null,
+        streak: 0,
+        badges: 0
+      });
+      setWeeklyActivity(getLastSevenDays().map(day => ({ ...day, seconds: 0 })));
+      return undefined;
+    }
 
-    const loadAnalytics = async () => {
-      if (!currentUser || !db) {
-        setLoading(false);
-        return;
-      }
+    setLoading(true);
+    let studyData = {};
+    let quizzes = [];
+    let badgeCount = 0;
+    let readyCount = 0;
 
-      setLoading(true);
-      try {
-        const studyRef = doc(db, 'userStudyData', currentUser.uid);
-        const [studyResult, quizResult, badgeResult] = await Promise.allSettled([
-          getDoc(studyRef),
-          getDocs(collection(db, 'users', currentUser.uid, 'quizzes')),
-          getDocs(collection(db, 'users', currentUser.uid, 'badges'))
-        ]);
+    const publish = () => {
+      const totalStudySeconds =
+        Number(studyData.totalStudySeconds) ||
+        Math.round((Number(studyData.totalStudyTime) || 0) * 60);
+      const dailyStudySeconds = studyData.dailyStudySeconds && typeof studyData.dailyStudySeconds === 'object'
+        ? studyData.dailyStudySeconds
+        : {};
 
-        const studySnapshot = studyResult.status === 'fulfilled' ? studyResult.value : null;
-        const quizSnapshot = quizResult.status === 'fulfilled' ? quizResult.value : { docs: [] };
-        const badgeSnapshot = badgeResult.status === 'fulfilled' ? badgeResult.value : { size: 0 };
-        if (studyResult.status !== 'fulfilled') console.error('[ANALYTICS] Study data read failed:', studyResult.reason);
-        if (quizResult.status !== 'fulfilled') console.error('[ANALYTICS] Quiz data read failed:', quizResult.reason);
-        if (badgeResult.status !== 'fulfilled') console.error('[ANALYTICS] Badge data read failed:', badgeResult.reason);
-        const studyData = studySnapshot?.exists() ? studySnapshot.data() : {};
-        const totalStudySeconds = Number(studyData.totalStudySeconds) || Math.round((Number(studyData.totalStudyTime) || 0) * 60);
-        const dailyStudySeconds = studyData.dailyStudySeconds && typeof studyData.dailyStudySeconds === 'object'
-          ? studyData.dailyStudySeconds
-          : {};
+      const completedQuizzes = quizzes.filter((quiz) =>
+        quiz.completed === true &&
+        Number.isFinite(Number(quiz.score)) &&
+        Number.isFinite(Number(quiz.totalQuestions)) &&
+        Number(quiz.totalQuestions) > 0
+      );
+      const averageScore = completedQuizzes.length
+        ? completedQuizzes.reduce((sum, quiz) => sum + (Number(quiz.score) / Number(quiz.totalQuestions)) * 100, 0) / completedQuizzes.length
+        : null;
 
-        const completedQuizzes = quizSnapshot.docs
-          .map(snapshot => snapshot.data())
-          .filter(quiz => quiz.completed === true && Number.isFinite(Number(quiz.score)) && Number.isFinite(Number(quiz.totalQuestions)) && Number(quiz.totalQuestions) > 0);
-
-        const averageScore = completedQuizzes.length > 0
-          ? completedQuizzes.reduce((sum, quiz) => sum + (Number(quiz.score) / Number(quiz.totalQuestions)) * 100, 0) / completedQuizzes.length
-          : null;
-
-        const days = getLastSevenDays().map(day => ({
-          ...day,
-          seconds: Math.max(0, Number(dailyStudySeconds[day.key]) || 0)
-        }));
-
-        if (!cancelled) {
-          setStats({
-            documentsViewed: Number(studyData.documentsViewed) || 0,
-            documentsDownloaded: Number(studyData.documentsDownloaded) || 0,
-            studyTimeSeconds: totalStudySeconds,
-            quizzesTaken: completedQuizzes.length,
-            averageScore,
-            streak: Number(studyData.currentStreak) || 0,
-            badges: badgeSnapshot.size
-          });
-          setWeeklyActivity(days);
-        }
-      } catch (error) {
-        console.error('[ANALYTICS] Failed to load user analytics:', error);
-        if (!cancelled) {
-          setStats({ documentsViewed: 0, documentsDownloaded: 0, studyTimeSeconds: 0, quizzesTaken: 0, averageScore: null, streak: 0, badges: 0 });
-          setWeeklyActivity(getLastSevenDays().map(day => ({ ...day, seconds: 0 })));
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+      setStats({
+        documentsViewed: Number(studyData.documentsViewed) || 0,
+        documentsDownloaded: Number(studyData.documentsDownloaded) || 0,
+        studyTimeSeconds: totalStudySeconds,
+        quizzesTaken: completedQuizzes.length,
+        averageScore,
+        streak: Number(studyData.currentStreak) || 0,
+        badges: badgeCount
+      });
+      setWeeklyActivity(getLastSevenDays().map(day => ({
+        ...day,
+        seconds: Math.max(0, Number(dailyStudySeconds[day.key]) || 0)
+      })));
+      if (readyCount >= 3) setLoading(false);
     };
 
-    loadAnalytics();
-    const refresh = () => loadAnalytics();
-    window.addEventListener('medidocs:study-time-updated', refresh);
-    window.addEventListener('medidocs:document-activity-updated', refresh);
-    window.addEventListener('medidocs:document-progress-updated', refresh);
+    const unsubStudy = onSnapshot(
+      doc(db, 'userStudyData', currentUser.uid),
+      (snapshot) => {
+        studyData = snapshot.exists() ? snapshot.data() : {};
+        readyCount = Math.min(3, readyCount + 1);
+        publish();
+      },
+      (error) => {
+        console.error('[REALTIME] Analytics study listener failed:', error);
+        readyCount = Math.min(3, readyCount + 1);
+        publish();
+      }
+    );
+
+    const unsubQuizzes = onSnapshot(
+      collection(db, 'users', currentUser.uid, 'quizzes'),
+      (snapshot) => {
+        quizzes = snapshot.docs.map((item) => item.data());
+        readyCount = Math.min(3, readyCount + 1);
+        publish();
+      },
+      (error) => {
+        console.error('[REALTIME] Analytics quiz listener failed:', error);
+        readyCount = Math.min(3, readyCount + 1);
+        publish();
+      }
+    );
+
+    const unsubBadges = onSnapshot(
+      collection(db, 'users', currentUser.uid, 'badges'),
+      (snapshot) => {
+        badgeCount = snapshot.size;
+        readyCount = Math.min(3, readyCount + 1);
+        publish();
+      },
+      (error) => {
+        console.error('[REALTIME] Analytics badge listener failed:', error);
+        readyCount = Math.min(3, readyCount + 1);
+        publish();
+      }
+    );
+
     return () => {
-      cancelled = true;
-      window.removeEventListener('medidocs:study-time-updated', refresh);
-      window.removeEventListener('medidocs:document-activity-updated', refresh);
-      window.removeEventListener('medidocs:document-progress-updated', refresh);
+      unsubStudy();
+      unsubQuizzes();
+      unsubBadges();
     };
   }, [currentUser]);
 
