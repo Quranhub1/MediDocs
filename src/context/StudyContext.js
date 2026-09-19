@@ -36,7 +36,7 @@ const emptyStreak = {
   activityByCourse: {}
 };
 
-const normalizeDate = (value) => {
+const getDateKey = (date) => {\n  const value = new Date(date);\n  const year = value.getFullYear();\n  const month = String(value.getMonth() + 1).padStart(2, '0');\n  const day = String(value.getDate()).padStart(2, '0');\n  return `${year}-${month}-${day}`;\n};\n\nconst normalizeDate = (value) => {
   if (!value) return null;
   if (typeof value.toDate === 'function') return value.toDate();
   const date = value instanceof Date ? value : new Date(value);
@@ -282,19 +282,7 @@ export const StudyProvider = ({ children }) => {
       if (lastDateString === today) newStreak = Math.max(current, 1);
       else if (lastDateString === yesterday) newStreak = current + 1;
 
-      const newLongest = Math.max(longest, newStreak);
-      const newTotal = total + Math.max(0, Number(durationMinutes) || 0);
-
-      await setDoc(docRef, {
-        currentStreak: newStreak,
-        longestStreak: newLongest,
-        lastStudyDate: serverTimestamp(),
-        totalStudyTime: newTotal,
-        totalStudySeconds: newTotal * 60,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-
-      setStreak({
+      const newLongest = Math.max(longest, newStreak);\n      const addedMinutes = Math.max(0, Number(durationMinutes) || 0);\n      const newTotal = total + addedMinutes;\n      const todayKey = getDateKey(new Date());\n      const dailyStudySeconds = { ...(old.dailyStudySeconds || {}) };\n      dailyStudySeconds[todayKey] = (Number(dailyStudySeconds[todayKey]) || 0) + (addedMinutes * 60);\n\n      await setDoc(docRef, {\n        currentStreak: newStreak,\n        longestStreak: newLongest,\n        lastStudyDate: serverTimestamp(),\n        totalStudyTime: newTotal,\n        totalStudySeconds: newTotal * 60,\n        dailyStudySeconds,\n        updatedAt: serverTimestamp()\n      }, { merge: true });\n\n      setStreak({
         current: newStreak,
         longest: newLongest,
         lastStudyDate: new Date(),
