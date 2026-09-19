@@ -25,9 +25,14 @@ import { getDocumentUrl, downloadDocument } from '../utils/documentActions';
 
 const getAnalyticsDocumentId = (doc) => {
   if (!doc) return 'unknown';
+  // Prefer the Firestore document path. filePath can point to the same storage
+  // object for multiple records, which would incorrectly collapse their stats
+  // into one "viewed" document.
+  if (doc.fullPath) return String(doc.fullPath);
+  const parts = [doc.courseId, doc.semesterId, doc.unitId, doc.id].filter(Boolean);
+  if (parts.length) return parts.join('/');
   if (doc.filePath) return String(doc.filePath);
-  const parts = [doc.courseId, doc.semesterId, doc.unitId, doc.id || doc.title].filter(Boolean);
-  return parts.length ? parts.join('/') : String(doc.id || doc.title || doc.fileUrl || 'unknown');
+  return String(doc.title || doc.fileUrl || 'unknown');
 };
 
 const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, onContactClick, onAIChatClick, setView }) => {
