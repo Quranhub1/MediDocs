@@ -20,7 +20,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useStudy } from '../context/StudyContext';
 import { useBookmarks } from '../context/BookmarkContext';
 import { useToast } from '../context/ToastContext';
-import { fetchCourses, fetchSemesters, fetchCourseUnits, fetchDocuments, fetchAllDocuments } from '../services/FirestoreService';
+import { fetchCourses, fetchSemesters, fetchCourseUnits, fetchDocuments, subscribeToAllResources, subscribeToCourses } from '../services/FirestoreService';
 import { getDocumentUrl, downloadDocument } from '../utils/documentActions';
 
 const getAnalyticsDocumentId = (doc) => {
@@ -55,35 +55,79 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   const [showStudyGroups, setShowStudyGroups] = useState(false);
   const [loadError, setLoadError] = useState(null);
 
+  // Keep the homepage resource feed live. This intentionally bypasses the
+  // legacy resource-index/localStorage cache so newly added documents appear
+  // immediately and survive navigation without a stale "latest" list.
   useEffect(() => {
-    let cancelled = false;
-    const initData = async () => {
-      setLoading(true);
-      setLoadError(null);
-      try {
-        // Do not load the entire resource hierarchy during application startup.
-        // The homepage asks for latest resources; course navigation loads only
-        // the selected course/semester/unit on demand.
-        if (view === 'home') {
-          const result = await fetchAllDocuments(10, false);
-          if (!cancelled && result.success) setLatestDocuments(result.data || []);
-        }
-        if (user && (view === 'home' || view === 'courses')) {
-          const coursesResult = await fetchCourses(false);
-          if (!cancelled && coursesResult.success) setCourses(coursesResult.data);
-          else if (!cancelled && coursesResult.error) setLoadError(coursesResult.error);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          console.error('Error initializing requested data:', error);
-          setLoadError(error.message);
-        }
-      }
-      if (!cancelled) setLoading(false);
+    if (!user) {
+      setCourses([]);
+      setLatestDocuments([]);
+      setLoading(false);
+      return undefined;
+    }
+
+    setLoading(true);
+    setLoadError(null);
+    let mounted = true;
+
+    const unsubscribeResources = subscribeToAllResources((allResources) => {
+      if (!mounted) return;
+      const latest = (allResources || [])
+        .filter((item) => item?.status !== 'deleted')
+        .slice(0, 10);
+      setLatestDocuments(latest);
+      setLoading(false);
+    }, (error) => {
+      if (!mounted) return;
+      console.error('[REALTIME] MainContent resources:', error);
+      setLoadError(error?.message || 'Unable to load resources');
+      setLoading(false);
+    });
+
+    const unsubscribeCourses = subscribeToCourses((nextCourses) => {
+      if (!mounted) return;
+      setCourses(nextCourses || []);
+    }, (error) => console.error('[REALTIME] MainContent courses:', error));
+
+    return () => {
+      mounted = false;
+      unsubscribeResources();
+      unsubscribeCourses();
     };
-    initData();
-    return () => { cancelled = true; };
-  }, [user, view]);
+  }, [user]);
+
+  useEffect(() => {
+    // Preserve the selected hierarchy across browser reloads. The previous
+    // implementation stored only "#view=documents", so a reload recreated the
+    // view with no selected course/semester/unit and rendered "No documents".
+    try {
+      const saved = JSON.parse(sessionStorage.getItem('medidocs_navigation_state_v1') || 'null');
+      if (!saved) return;
+      if (saved.course) setSelectedCourse(saved.course);
+      if (saved.semester) setSelectedSemester(saved.semester);
+      if (saved.unit) setSelectedUnit(saved.unit);
+      if (Array.isArray(saved.semesters)) setSemesters(saved.semesters);
+      if (Array.isArray(saved.courseUnits)) setCourseUnits(saved.courseUnits);
+      if (Array.isArray(saved.documents)) setDocuments(saved.documents);
+    } catch (error) {
+      console.info('[NAVIGATION] Saved navigation state unavailable:', error?.message);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('medidocs_navigation_state_v1', JSON.stringify({
+        course: selectedCourse,
+        semester: selectedSemester,
+        unit: selectedUnit,
+        semesters,
+        courseUnits,
+        documents
+      }));
+    } catch (error) {
+      console.info('[NAVIGATION] Could not persist navigation state:', error?.message);
+    }
+  }, [selectedCourse, selectedSemester, selectedUnit, semesters, courseUnits, documents]);
 
   const handleCourseClick = async (course) => {
     setSelectedCourse(course);
