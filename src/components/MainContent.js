@@ -264,9 +264,9 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
     return (
       <div>
         <HeroSection user={user} onLoginClick={onLoginClick} onRegisterClick={onRegisterClick} />
-        <DocumentCarousel documents={latestDocuments} user={user} userProfile={userProfile} />
+        <DocumentCarousel documents={latestDocuments} user={user} userProfile={userProfile} onReadDocument={handleReadOnline} onDownloadDocument={handleDownload} />
         {!user && <div className="max-w-2xl mx-auto px-4 py-8 text-center"><p className="text-gray-600 mb-4">Login to access all documents</p><button onClick={onLoginClick} className="px-6 py-3 bg-emerald-500 text-white rounded-xl font-medium hover:bg-emerald-600 transition-colors">Login</button></div>}
-        {user && <><StatsSection /><div className="space-y-0"><LatestDocuments documents={latestDocuments} user={user} userProfile={userProfile} onViewChange={setView} onDocumentClick={(doc) => console.log('Document clicked:', doc)} onDownloadClick={(doc) => console.log('Download clicked:', doc)} /><CourseGrid courses={courses} onBrowseClick={handleCourseClick} /></div></>}
+        {user && <><StatsSection /><div className="space-y-0"><LatestDocuments documents={latestDocuments} user={user} userProfile={userProfile} onViewChange={setView} onReadDocument={handleReadOnline} onDownloadDocument={handleDownload} /><CourseGrid courses={courses} onBrowseClick={handleCourseClick} /></div></>}
       </div>
     );
   }
@@ -346,7 +346,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
       content = <PrivacySection />;
       break;
     default:
-      content = <div className="space-y-0"><HeroSection user={user} onLoginClick={onLoginClick} onRegisterClick={onRegisterClick} /><StatsSection /><LatestDocuments documents={latestDocuments} user={user} userProfile={userProfile} onViewChange={setView} onDocumentClick={(doc) => console.log('Document clicked:', doc)} onDownloadClick={(doc) => console.log('Download clicked:', doc)} /><CourseGrid courses={courses} onBrowseClick={handleCourseClick} /></div>;
+      content = <div className="space-y-0"><HeroSection user={user} onLoginClick={onLoginClick} onRegisterClick={onRegisterClick} /><StatsSection /><LatestDocuments documents={latestDocuments} user={user} userProfile={userProfile} onViewChange={setView} onReadDocument={handleReadOnline} onDownloadDocument={handleDownload} /><CourseGrid courses={courses} onBrowseClick={handleCourseClick} /></div>;
       break;
   }
 
@@ -362,7 +362,8 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
           { title: selectedDocument?.title || null }
         )}
         onClose={() => setShowReader(false)}
-      />}
+        onDownload={handleDownload}
+      />
       {showFlashcards && <FlashcardStudy courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowFlashcards(false)} />}
       {showQuiz && <AdaptiveQuiz courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowQuiz(false)} />}
       {showNotes && <CollaborativeNotes courseId={selectedCourse?.id} unitId={selectedUnit?.id} onClose={() => setShowNotes(false)} />}
