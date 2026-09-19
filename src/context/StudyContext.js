@@ -348,6 +348,7 @@ export const StudyProvider = ({ children }) => {
       unsubscribeFlashcards();
       unsubscribeNotes();
     };
+  }, [currentUser, loadBadges, loadQuizzes, loadLearningReviews]);
 
   useEffect(() => {
     const refresh = () => void loadStreak();
