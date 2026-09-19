@@ -190,7 +190,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
         setPayments(snapshot.docs.map((item) => ({
           id: item.id,
           ...item.data(),
-          createdAtDate: snapshot.docs.find((d) => d.id === item.id)?.data().createdAt?.toDate?.() || null
+          createdAtDate: item.data().createdAt?.toDate?.() || null
         })));
       },
       (error) => console.error('[REALTIME] Admin payments:', error)
@@ -446,8 +446,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
       });
       setNewCourseName('');
       setShowCourseForm(false);
-      loadCourses();
-      loadData();
+      // Realtime listeners update courses immediately after the write.
     } catch (error) {
       console.error('Error adding course:', error);
       alert('Failed to add course: ' + error.message);
@@ -467,8 +466,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
       });
       setNewSemesterName('');
       setShowSemesterForm(false);
-      loadSemesters(newDoc.courseId);
-      loadData();
+      // Realtime listeners update semesters immediately after the write.
     } catch (error) {
       console.error('Error adding semester:', error);
       alert('Failed to add semester: ' + error.message);
@@ -488,8 +486,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
       });
       setNewUnitName('');
       setShowUnitForm(false);
-      loadUnits(newDoc.courseId, newDoc.semesterId);
-      loadData();
+      // Realtime listeners update units immediately after the write.
     } catch (error) {
       console.error('Error adding unit:', error);
       alert('Failed to add unit: ' + error.message);
@@ -508,8 +505,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
       });
       setEditingCourse(null);
       setEditCourseName('');
-      loadCourses();
-      loadData();
+      // Realtime listeners update courses immediately after the write.
       alert('Course updated successfully!');
     } catch (error) {
       console.error('Error updating course:', error);
@@ -524,10 +520,8 @@ const AdminDashboard = ({ user, onViewChange }) => {
     try {
       await deleteDoc(docRef(db, `RESOURCES_STUDYPEDIA/${courseId}`));
       alert('Course deleted successfully!');
-      loadCourses();
       setSemesters([]);
       setUnits([]);
-      loadData();
     } catch (error) {
       console.error('Error deleting course:', error);
       alert('Failed to delete course: ' + error.message);
@@ -544,8 +538,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
       });
       setEditingSemester(null);
       setEditSemesterName('');
-      loadSemesters(newDoc.courseId);
-      loadData();
+      // Realtime listeners update semesters immediately after the write.
       alert('Semester updated successfully!');
     } catch (error) {
       console.error('Error updating semester:', error);
@@ -560,9 +553,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
     try {
       await deleteDoc(docRef(db, `RESOURCES_STUDYPEDIA/${courseId}/semesters/${semesterId}`));
       alert('Semester deleted successfully!');
-      loadSemesters(courseId);
       setUnits([]);
-      loadData();
     } catch (error) {
       console.error('Error deleting semester:', error);
       alert('Failed to delete semester: ' + error.message);
@@ -579,8 +570,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
       });
       setEditingUnit(null);
       setEditUnitName('');
-      loadUnits(newDoc.courseId, newDoc.semesterId);
-      loadData();
+      // Realtime listeners update units immediately after the write.
       alert('Unit updated successfully!');
     } catch (error) {
       console.error('Error updating unit:', error);
@@ -595,8 +585,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
     try {
       await deleteDoc(docRef(db, `RESOURCES_STUDYPEDIA/${courseId}/semesters/${semesterId}/courseunits/${unitId}`));
       alert('Unit deleted successfully!');
-      loadUnits(courseId, semesterId);
-      loadData();
+      // Realtime listeners update units immediately after the write.
     } catch (error) {
       console.error('Error deleting unit:', error);
       alert('Failed to delete unit: ' + error.message);
