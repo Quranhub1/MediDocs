@@ -405,7 +405,6 @@ export const StudyProvider = ({ children }) => {
           courseName: metadata.courseName || metadata.course || currentCourse.courseName || null
         };
         transaction.set(statRef, {
-          viewed: true,
           downloads: (Number(stat.downloads) || 0) + 1,
           lastDownloadedAt: serverTimestamp(),
           ...metadata
