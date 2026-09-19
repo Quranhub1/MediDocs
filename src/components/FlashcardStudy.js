@@ -12,10 +12,13 @@ const FlashcardStudy = ({ courseId, unitId, onClose }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const filteredCards = flashcards.filter(card =>
-    (!courseId || card.courseId === courseId) &&
-    (!unitId || card.unitId === unitId)
-  );
+  const filteredCards = flashcards.filter((card) => {
+    const cardCourse = card.courseId || card.course || null;
+    const cardUnit = card.unitId || card.unit || null;
+    const courseMatches = !courseId || !cardCourse || String(cardCourse) === String(courseId);
+    const unitMatches = !unitId || !cardUnit || String(cardUnit) === String(unitId);
+    return courseMatches && unitMatches;
+  });
 
   const currentCard = filteredCards[currentIndex];
 
