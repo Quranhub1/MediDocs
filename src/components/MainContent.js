@@ -89,7 +89,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
       const resources = (allResources || []).filter((item) => item?.status !== 'deleted');
       setAllRealtimeDocuments(resources);
       setLatestDocuments(resources.slice(0, 10));
-      setHasLoadedResources(true);
+      hasLoadedResourcesRef.current = true;
       setLoading(false);
       setLoadError(null);
     }, (error) => {
