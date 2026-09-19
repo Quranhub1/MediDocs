@@ -1,8 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  fetchAllDocuments,
-  getAllUsers,
-  getAllPayments,
   approveUserSubscription,
   uploadThumbnail,
   uploadDocument,
@@ -22,7 +19,6 @@ import { generateThumbnail } from '../utils/thumbnailGenerator';
 import {
   collection,
   collectionGroup,
-  getDocs,
   onSnapshot,
   doc as docRef,
   updateDoc,
@@ -239,52 +235,6 @@ const AdminDashboard = ({ user, onViewChange }) => {
     setSubscriptionCountdowns(countdowns);
   }, [isAdmin, users]);
 
-  const loadDocuments = async (forceRefresh = false) => {
-    try {
-      const result = await fetchAllDocuments(10000, forceRefresh);
-      if (result.success && result.data) {
-        const allDocs = result.data.map(doc => ({
-          ...doc,
-          fullPath: doc.fullPath || `RESOURCES_STUDYPEDIA/${doc.courseId}/semesters/${doc.semesterId}/courseunits/${doc.unitId}/documents/${doc.id}`
-        }));
-        setDocuments(allDocs);
-        return allDocs;
-      }
-      return [];
-    } catch (error) {
-      console.error('Error loading documents:', error);
-      return [];
-    }
-  };
-
-  const loadUsers = async (forceRefresh = false) => {
-    try {
-      const result = await getAllUsers(forceRefresh);
-      if (result.success) {
-        setUsers(result.data || []);
-        return result.data;
-      }
-      return [];
-    } catch (error) {
-      console.error('Error loading users:', error);
-      return [];
-    }
-  };
-
-  const loadPayments = async (forceRefresh = false) => {
-    try {
-      const result = await getAllPayments(forceRefresh);
-      if (result.success) {
-        setPayments(result.data || []);
-        return result.data;
-      }
-      return [];
-    } catch (error) {
-      console.error('Error loading payments:', error);
-      return [];
-    }
-  };
-
   const loadStorageFiles = async () => {
     setLoadingStorage(true);
     setStorageMessage('');
@@ -379,60 +329,6 @@ const AdminDashboard = ({ user, onViewChange }) => {
       setConfigMessage('Error saving configuration');
     }
     setSavingConfig(false);
-  };
-
-  const loadCourses = async (forceRefresh = false) => {
-    try {
-      const coursesRef = collection(db, 'RESOURCES_STUDYPEDIA');
-      const coursesSnapshot = await getDocs(coursesRef);
-      const coursesList = coursesSnapshot.docs.map(d => ({
-        id: d.id,
-        name: d.data().name || d.id
-      }));
-      setCourses(coursesList);
-      return coursesList;
-    } catch (error) {
-      console.error('Error loading courses:', error);
-      return [];
-    }
-  };
-
-  const loadSemesters = async (courseId) => {
-    if (!courseId) {
-      setSemesters([]);
-      setUnits([]);
-      return;
-    }
-    try {
-      const semestersRef = collection(db, `RESOURCES_STUDYPEDIA/${courseId}/semesters`);
-      const semestersSnapshot = await getDocs(semestersRef);
-      const semestersList = semestersSnapshot.docs.map(d => ({
-        id: d.id,
-        name: d.data().name || d.id
-      }));
-      setSemesters(semestersList);
-      setUnits([]);
-    } catch (error) {
-      console.error('Error loading semesters:', error);
-    }
-  };
-
-  const loadUnits = async (courseId, semesterId) => {
-    if (!courseId || !semesterId) {
-      setUnits([]);
-      return;
-    }
-    try {
-      const unitsRef = collection(db, `RESOURCES_STUDYPEDIA/${courseId}/semesters/${semesterId}/courseunits`);
-      const unitsSnapshot = await getDocs(unitsRef);
-      const unitsList = unitsSnapshot.docs.map(d => ({
-        id: d.id,
-        name: d.data().name || d.id
-      }));
-      setUnits(unitsList);
-    } catch (error) {
-      console.error('Error loading units:', error);
-    }
   };
 
   const handleAddCourse = async (e) => {
@@ -839,26 +735,6 @@ const AdminDashboard = ({ user, onViewChange }) => {
     } catch (error) {
       console.error('Error locking expired subscriptions:', error);
       alert('Failed to lock expired subscriptions: ' + error.message);
-    }
-  };
-
-  const loadSubscriptionCountdowns = async () => {
-    try {
-      let usersToCheck = users;
-      if (!usersToCheck || usersToCheck.length === 0) {
-        const result = await getAllUsers();
-        usersToCheck = result.success ? (result.data || []) : [];
-      }
-      const countdowns = {};
-      usersToCheck.forEach(user => {
-        const countdown = getSubscriptionCountdown(user);
-        if (countdown) {
-          countdowns[user.id] = countdown;
-        }
-      });
-      setSubscriptionCountdowns(countdowns);
-    } catch (error) {
-      console.error('Error loading subscription countdowns:', error);
     }
   };
 
