@@ -99,6 +99,63 @@ export const subscribeToAllResources = (onData, onError) => {
   );
 };
 
+export const subscribeToSemesters = (courseId, onData, onError) => {
+  if (!db || !courseId) return () => {};
+  return onSnapshot(
+    collection(db, `RESOURCES_STUDYPEDIA/${courseId}/semesters`),
+    (snapshot) => onData(snapshot.docs.map((item) => ({
+      id: item.id,
+      ...item.data(),
+      name: item.data().name || item.id,
+      createdAtDate: convertTimestamp(item.data().createdAt)
+    }))),
+    (error) => {
+      console.error('[REALTIME] Semesters listener failed:', error);
+      if (onError) onError(error);
+    }
+  );
+};
+
+export const subscribeToCourseUnits = (courseId, semesterId, onData, onError) => {
+  if (!db || !courseId || !semesterId) return () => {};
+  return onSnapshot(
+    collection(db, `RESOURCES_STUDYPEDIA/${courseId}/semesters/${semesterId}/courseunits`),
+    (snapshot) => onData(snapshot.docs.map((item) => ({
+      id: item.id,
+      ...item.data(),
+      name: item.data().name || item.id,
+      createdAtDate: convertTimestamp(item.data().createdAt)
+    }))),
+    (error) => {
+      console.error('[REALTIME] Course units listener failed:', error);
+      if (onError) onError(error);
+    }
+  );
+};
+
+export const subscribeToDocuments = (courseId, semesterId, unitId, onData, onError) => {
+  if (!db || !courseId || !semesterId || !unitId) return () => {};
+  return onSnapshot(
+    collection(db, `RESOURCES_STUDYPEDIA/${courseId}/semesters/${semesterId}/courseunits/${unitId}/documents`),
+    (snapshot) => onData(snapshot.docs.map((item) => {
+      const data = item.data();
+      return {
+        id: item.id,
+        ...data,
+        courseId,
+        semesterId,
+        unitId,
+        createdAtDate: convertTimestamp(data.createdAt),
+        status: data.status || 'free'
+      };
+    })),
+    (error) => {
+      console.error('[REALTIME] Documents listener failed:', error);
+      if (onError) onError(error);
+    }
+  );
+};
+
 // Fetch all documents from the RESOURCES_STUDYPEDIA collection
 let resourceIndexCache = null;
 let resourceIndexCacheAt = 0;
