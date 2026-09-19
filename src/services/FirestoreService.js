@@ -145,6 +145,10 @@ export const subscribeToDocuments = (courseId, semesterId, unitId, onData, onErr
         courseId,
         semesterId,
         unitId,
+        courseName: data.courseName || data.course || courseId,
+        semesterName: data.semesterName || semesterId,
+        unitName: data.unitName || unitId,
+        fullPath: item.ref.path,
         createdAtDate: convertTimestamp(data.createdAt),
         status: data.status || 'free'
       };
