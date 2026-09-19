@@ -4,7 +4,7 @@ import './DocumentCarousel.css';
 
 const AUTO_PLAY_MS = 7000;
 
-const DocumentCarousel = ({ documents, user, userProfile }) => {
+const DocumentCarousel = ({ documents, user, userProfile, onReadDocument, onDownloadDocument }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -124,14 +124,14 @@ const DocumentCarousel = ({ documents, user, userProfile }) => {
 
       <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
         <button
-          onClick={() => readOnline(doc)}
+          onClick={() => (onReadDocument ? onReadDocument(doc) : readOnline(doc))}
           disabled={!getDocumentUrl(doc)}
           className="px-5 py-3 bg-white text-emerald-700 rounded-xl font-semibold hover:bg-emerald-50 active:scale-[0.98] transition-all shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Read Online
         </button>
         <button
-          onClick={() => downloadDocument(doc)}
+          onClick={() => (onDownloadDocument ? onDownloadDocument(doc) : downloadDocument(doc))}
           disabled={!getDocumentUrl(doc)}
           className="px-5 py-3 bg-emerald-950/70 text-white border border-white/15 rounded-xl font-semibold hover:bg-emerald-950 active:scale-[0.98] transition-all shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
         >
