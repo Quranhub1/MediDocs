@@ -20,7 +20,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useStudy } from '../context/StudyContext';
 import { useBookmarks } from '../context/BookmarkContext';
 import { useToast } from '../context/ToastContext';
-import { fetchAllDocuments, subscribeToAllResources, subscribeToCourses, subscribeToSemesters, subscribeToCourseUnits, subscribeToDocuments } from '../services/FirestoreService';
+import { fetchAllDocuments, subscribeToCourses, subscribeToSemesters, subscribeToCourseUnits, subscribeToDocuments } from '../services/FirestoreService';
 import { getDocumentUrl, downloadDocument } from '../utils/documentActions';
 
 const getAnalyticsDocumentId = (doc) => {
@@ -41,7 +41,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   const { addToast } = useToast();
   const [courses, setCourses] = useState([]);
   const [latestDocuments, setLatestDocuments] = useState([]);
-  const [allRealtimeDocuments, setAllRealtimeDocuments] = useState([]);
+  const [resourceCacheReady, setResourceCacheReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [subLoading, setSubLoading] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState(null);
@@ -62,52 +62,35 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   const [loadError, setLoadError] = useState(null);
   const hasLoadedResourcesRef = useRef(false);
 
-  // Keep the homepage resource feed live. This intentionally bypasses the
-  // legacy resource-index/localStorage cache so newly added documents appear
-  // immediately and survive navigation without a stale "latest" list.
+  // Keep the homepage lightweight: the old implementation loaded all 3,000+ documents
+  // through a collectionGroup listener even though the homepage only needs 10.
+  // Firestore already has persistent local caching enabled, so use the small server
+  // index here and let the selected unit load its own documents.
   useEffect(() => {
     if (!user) {
       setCourses([]);
       setLatestDocuments([]);
       setLoading(false);
+      setResourceCacheReady(false);
       return undefined;
     }
 
+    let mounted = true;
     setLoading(true);
     setLoadError(null);
-    let mounted = true;
 
-    void fetchAllDocuments(10000).then((result) => {
+    void fetchAllDocuments(10).then((result) => {
       if (!mounted || !result?.success) return;
       const resources = (result.data || []).filter((item) => item?.status !== 'deleted');
-      setAllRealtimeDocuments(resources);
       setLatestDocuments(resources.slice(0, 10));
-      hasLoadedResourcesRef.current = true;
+      setResourceCacheReady(true);
       setLoading(false);
       setLoadError(null);
     }).catch((error) => {
-      console.error('[RESOURCES] Initial server index failed:', error);
-    });
-
-    const unsubscribeResources = subscribeToAllResources((allResources) => {
       if (!mounted) return;
-      const resources = (allResources || []).filter((item) => item?.status !== 'deleted');
-      setAllRealtimeDocuments(resources);
-      setLatestDocuments(resources.slice(0, 10));
-      hasLoadedResourcesRef.current = true;
+      console.error('[RESOURCES] Lightweight index failed:', error);
+      setLoadError(error?.message || 'Unable to load resources');
       setLoading(false);
-      setLoadError(null);
-    }, (error) => {
-      if (!mounted) return;
-      console.error('[REALTIME] MainContent resources listener failed:', {
-        code: error?.code || 'unknown',
-        message: error?.message || String(error),
-        name: error?.name || null
-      });
-      if (!hasLoadedResourcesRef.current) {
-        setLoadError(error?.message || 'Unable to load resources');
-        setLoading(false);
-      }
     });
 
     const unsubscribeCourses = subscribeToCourses((nextCourses) => {
@@ -117,10 +100,10 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
 
     return () => {
       mounted = false;
-      unsubscribeResources();
       unsubscribeCourses();
     };
   }, [user]);
+
 
   useEffect(() => {
     // Preserve the selected hierarchy across browser reloads. The previous
@@ -156,6 +139,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
   }, [selectedCourse, selectedSemester, selectedUnit, semesters, courseUnits, documents]);
 
   const handleCourseClick = (course) => {
+    setResourceCacheReady(true);
     setSelectedCourse(course);
     setSelectedSemester(null);
     setSelectedUnit(null);
@@ -239,16 +223,6 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
     return unsubscribe;
   }, [selectedCourse?.id, selectedSemester?.id, selectedUnit?.id]);
 
-  useEffect(() => {
-    if (!selectedCourse || !selectedSemester || !selectedUnit) return;
-    const liveDocuments = allRealtimeDocuments.filter((item) =>
-      item.courseId === selectedCourse.id &&
-      item.semesterId === selectedSemester.id &&
-      item.unitId === selectedUnit.id &&
-      item.status !== 'deleted'
-    );
-    setDocuments(liveDocuments);
-  }, [allRealtimeDocuments, selectedCourse, selectedSemester, selectedUnit]);
 
   const handleReadOnline = (doc) => {
     const documentId = getAnalyticsDocumentId(doc);
