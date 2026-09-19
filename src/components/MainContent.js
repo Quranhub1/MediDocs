@@ -20,7 +20,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useStudy } from '../context/StudyContext';
 import { useBookmarks } from '../context/BookmarkContext';
 import { useToast } from '../context/ToastContext';
-import { fetchCourses, fetchSemesters, fetchCourseUnits, fetchDocuments, subscribeToAllResources, subscribeToCourses } from '../services/FirestoreService';
+import { subscribeToAllResources, subscribeToCourses, subscribeToSemesters, subscribeToCourseUnits, subscribeToDocuments } from '../services/FirestoreService';
 import { getDocumentUrl, downloadDocument } from '../utils/documentActions';
 
 const getAnalyticsDocumentId = (doc) => {
