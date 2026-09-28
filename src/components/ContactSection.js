@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import BackgroundImages from './BackgroundImages';
 import { submitContactForm } from '../services/FirestoreService';
+import SocialCard from './SocialCard';
 
 const ContactSection = ({ onContactClick }) => {
   const [formState, setFormState] = useState({
@@ -121,6 +122,10 @@ const ContactSection = ({ onContactClick }) => {
                     <p className="text-gray-600">Kampala, Uganda</p>
                   </div>
                 </div>
+              </div>
+
+              <div className="mt-6">
+                <SocialCard />
               </div>
 
               <div className="mt-6 text-left">
