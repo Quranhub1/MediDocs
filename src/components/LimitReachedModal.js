@@ -1,5 +1,6 @@
 import React from 'react';
 import { SUBSCRIPTION_PLANS } from '../services/FirestoreService';
+import PremiumButton from './PremiumButton';
 
 const PAYMENT_RECIPIENT = 'KABALI MADINA';
 const PAYMENT_PHONE = '+256 749 846 848';
@@ -52,6 +53,10 @@ const LimitReachedModal = ({ show, onClose, onChoosePlan, viewedCount }) => {
             <p className="font-medium mb-1">Payment via Mobile Money</p>
             <p>Pay to <span className="font-bold">{PAYMENT_RECIPIENT}</span> ({PAYMENT_PHONE})</p>
             <p>You'll complete payment securely through Paystack.</p>
+          </div>
+
+          <div className="flex justify-center mb-5">
+            <PremiumButton onClick={() => onChoosePlan(Object.keys(SUBSCRIPTION_PLANS)[0])}>Unlock Premium</PremiumButton>
           </div>
 
           <button

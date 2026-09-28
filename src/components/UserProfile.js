@@ -4,6 +4,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useStudy } from '../context/StudyContext';
+import PremiumButton from './PremiumButton';
 
 const formatDate = (value) => {
   if (!value) return 'Not recorded';
@@ -268,7 +269,7 @@ const UserProfile = ({ onViewChange, onLogout, onRenew }) => {
           </div>
         </div>
         <aside className="space-y-6">
-          <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm border border-gray-100 dark:border-dark-border p-5 sm:p-6"><h2 className="text-xl font-bold text-gray-900 dark:text-dark-text">Subscription</h2><div className="mt-4"><ProfileRow label="Plan" value={plan} /><ProfileRow label="Status" value={status} />{!effectiveAdmin && <ProfileRow label="Expiry" value={formatDate(expiry)} />}</div>{!effectiveAdmin && <button onClick={onRenew} className="touch-target mt-5 w-full px-5 py-3 rounded-xl bg-emerald-600 text-white font-semibold">Renew subscription</button>}</div>
+          <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm border border-gray-100 dark:border-dark-border p-5 sm:p-6"><h2 className="text-xl font-bold text-gray-900 dark:text-dark-text">Subscription</h2><div className="mt-4"><ProfileRow label="Plan" value={plan} /><ProfileRow label="Status" value={status} />{!effectiveAdmin && <ProfileRow label="Expiry" value={formatDate(expiry)} />}</div>{!effectiveAdmin && <PremiumButton onClick={onRenew} className="mt-5 w-full justify-center">Unlock Premium</PremiumButton>}</div>
           <div className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl shadow-lg p-5 sm:p-6 text-white"><p className="text-sm font-semibold text-emerald-100">Keep learning</p><h2 className="text-2xl font-extrabold mt-1">Your next milestone is waiting.</h2><button onClick={() => onViewChange?.('dashboard')} className="touch-target mt-5 px-5 py-3 rounded-xl bg-white text-emerald-700 font-semibold">Back to dashboard</button></div>
           <button onClick={onLogout} className="touch-target w-full px-5 py-3 rounded-xl border border-gray-200 dark:border-dark-border text-gray-700 dark:text-dark-text font-semibold">Log out</button>
         </aside>

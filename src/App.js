@@ -12,6 +12,7 @@ import LoginModal from './components/LoginModal';
 import RegisterModal from './components/RegisterModal';
 import PaymentModal from './components/PaymentModal';
 import ContactModal from './components/ContactModal';
+import ContactButton from './components/ContactButton';
 import AIStudyAssistant from './components/AIStudyAssistant';
 import StudyTimeTracker from './components/StudyTimeTracker';
 import DashboardEnhancements, { AccessibilityControls } from './components/UIEnhancements';
@@ -347,9 +348,7 @@ function AppContent() {
                       </button>
                     </li>
                     <li>
-                      <button onClick={() => handleViewChange('contact')} className="touch-target hover:text-white">
-                        Contact
-                      </button>
+                      <ContactButton onClick={() => handleViewChange('contact')} />
                     </li>
                   </ul>
                 </div>

@@ -28,6 +28,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
+import Loader from './Loader';
 
 const AdminDashboard = ({ user, onViewChange }) => {
   const { createUser, banUser } = useAuth();
@@ -839,11 +840,7 @@ const AdminDashboard = ({ user, onViewChange }) => {
     return (
       <div className="mobile-admin min-h-screen bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-slate-100 flex items-center justify-center px-4">
         <div className="text-center w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 shadow-xl px-6 py-8">
-          <div
-            className="animate-spin rounded-full h-16 w-16 border-4 border-emerald-500 border-t-transparent mx-auto mb-6"
-            role="status"
-            aria-label="Loading admin data"
-          ></div>
+          <Loader />
           <p className="text-gray-700 dark:text-slate-100 text-lg font-semibold">Loading admin data...</p>
           <p className="text-gray-400 dark:text-slate-400 text-sm mt-2">Please wait while we fetch the latest information</p>
         </div>
