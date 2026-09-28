@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
+import Loader from './Loader';
 
 const getDateKey = (date) => {
   const value = new Date(date);
@@ -158,7 +159,7 @@ const AnalyticsDashboard = ({ onClose }) => {
     return (
       <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
         <div className="bg-white dark:bg-dark-card rounded-2xl shadow-2xl p-8 max-w-md w-full">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto mb-4"></div>
+          <Loader />
           <p className="text-center text-gray-600 dark:text-dark-muted">Loading analytics...</p>
         </div>
       </div>

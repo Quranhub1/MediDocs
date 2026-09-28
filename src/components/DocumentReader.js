@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { downloadDocument, getDocumentUrl, isValidDocumentUrl } from '../utils/documentActions';
+import Loader from './Loader';
 
 const NON_EMBEDDABLE_HOSTS = ['mega.nz', 'icedrive.net', 'mediafire.com', 'drive.google.com', 'dropbox.com', '1drv.ms', 'app.box.com'];
 
@@ -151,7 +152,7 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
 
           {!showFallback && !loadStarted && (
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center bg-gray-100/80 dark:bg-gray-900/80">
-              <div className="text-center"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600 mx-auto mb-3" /><p className="text-gray-600 dark:text-dark-muted">Opening document...</p></div>
+               <div className="text-center"><Loader /><p className="text-gray-600 dark:text-dark-muted">Opening document...</p></div>
             </div>
           )}
 

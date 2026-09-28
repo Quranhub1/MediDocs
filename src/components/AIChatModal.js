@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Loader from './Loader';
 
 const AIChatModal = ({ show, onClose }) => {
   const [messages, setMessages] = useState([]);
@@ -156,7 +157,7 @@ const AIChatModal = ({ show, onClose }) => {
             <div className="flex justify-start">
               <div className="bg-white rounded-2xl px-4 py-2.5 shadow-md">
                 <div className="flex items-center space-x-2">
-                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-emerald-500"></div>
+                  <Loader />
                   <span className="text-gray-500 text-sm">Thinking...</span>
                 </div>
               </div>
