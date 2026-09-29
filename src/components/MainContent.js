@@ -372,12 +372,17 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
       {content}
       {showReader && selectedDocument && <DocumentReader
         document={selectedDocument}
-        onProgress={(seconds, progressPercent) => recordDocumentProgress(
-          getAnalyticsDocumentId(selectedDocument),
-          seconds,
-          progressPercent,
-          { title: selectedDocument?.title || null }
-        )}
+        onProgress={(seconds, progressPercent) => {
+          // DocumentReader can emit progress during unmount/fast navigation.
+          // Keep the reader resilient even if the study context is unavailable.
+          if (typeof recordDocumentProgress !== 'function') return;
+          void recordDocumentProgress(
+            getAnalyticsDocumentId(selectedDocument),
+            seconds,
+            progressPercent,
+            { title: selectedDocument?.title || null }
+          );
+        }}
         onClose={() => setShowReader(false)}
         onDownload={handleDownload}
       />}
