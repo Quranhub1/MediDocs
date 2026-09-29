@@ -205,7 +205,7 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
         </div>
 
         <div className="relative flex-1 overflow-hidden bg-gray-100 dark:bg-gray-900">
-          {!showFallback && isPDF && (
+          {!showFallback && !isIcedriveShare && isPDF && (
             <iframe
               src={previewUrl || filePath}
               className="w-full h-full border-0"
@@ -215,13 +215,13 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
             />
           )}
 
-          {!showFallback && isImage && (
+          {!showFallback && !isIcedriveShare && isImage && (
             <div className="w-full h-full flex items-center justify-center p-4 overflow-auto">
               <img src={previewUrl || filePath} alt={doc.title || 'Document'} className="max-w-full max-h-full object-contain" onLoad={() => setLoadStarted(true)} onError={() => setEmbedFailed(true)} />
             </div>
           )}
 
-          {!showFallback && isVideo && (
+          {!showFallback && !isIcedriveShare && isVideo && (
             <div className="w-full h-full flex items-center justify-center p-4">
               <video controls className="max-w-full max-h-full" onLoadedData={() => setLoadStarted(true)} onError={() => setEmbedFailed(true)}><source src={previewUrl || filePath} type={`video/${extension}`} />Your browser does not support this video.</video>
             </div>
@@ -271,8 +271,18 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
                 </video>
               )}
 
-              {!icedrivePreviewState.loading && icedrivePreviewState.url &&
-                !['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'pdf', 'mp4', 'webm', 'ogg', 'mov'].includes(extension) && (
+              {!icedrivePreviewState.loading && icedrivePreviewState.url && isOffice && (
+                <iframe
+                  src={`https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(icedrivePreviewState.url)}`}
+                  className="w-full h-full border-0"
+                  title={doc.title || 'Icedrive document'}
+                  onLoad={() => setLoadStarted(true)}
+                  onError={() => setEmbedFailed(true)}
+                />
+              )}
+
+              {!icedrivePreviewState.loading && icedrivePreviewState.url && isGenericDocument && !isOffice &&
+                !['pdf', 'mp4', 'webm', 'ogg', 'mov', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension) && (
                   <iframe
                     src={icedrivePreviewState.url}
                     className="w-full h-full border-0"
