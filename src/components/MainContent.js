@@ -233,6 +233,17 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
     setShowReader(true);
   };
 
+  // Keep legacy document-action fallbacks inside the same MediDocs reader.
+  useEffect(() => {
+    const handleInAppReadRequest = (event) => {
+      if (event?.detail && typeof event.detail === 'object') {
+        handleReadOnline(event.detail);
+      }
+    };
+    window.addEventListener('medidocs:read-document', handleInAppReadRequest);
+    return () => window.removeEventListener('medidocs:read-document', handleInAppReadRequest);
+  }, [handleReadOnline]);
+
   const handleDownload = async (doc) => {
     const documentId = getAnalyticsDocumentId(doc);
     // A download is its own activity. Do not also count it as a read.
