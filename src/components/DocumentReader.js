@@ -53,9 +53,15 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
 
   const filePath = getDocumentUrl(doc) || '';
   const validUrl = isValidDocumentUrl(doc);
-  const fileName = typeof filePath === 'string'
-    ? filePath.split('?')[0].split('#')[0].split('/').pop() || doc?.title || 'document'
-    : doc?.title || 'document';
+  const hostName = getHostName(filePath);
+  const fileNameFromUrl = typeof filePath === 'string'
+    ? filePath.split('?')[0].split('#')[0].split('/').pop() || ''
+    : '';
+  // Icedrive share URLs end with a share token, so the stored title is the
+  // reliable source for the actual filename and extension.
+  const fileName = (hostName === 'icedrive.net' && doc?.title)
+    ? doc.title
+    : fileNameFromUrl || doc?.title || 'document';
 
   useEffect(() => {
     console.info('[DocumentReader] open', {
@@ -73,24 +79,71 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
   const isVideo = ['mp4', 'webm', 'ogg', 'mov'].includes(extension);
   const isOffice = ['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(extension);
   const isGenericDocument = validUrl && !isPDF && !isImage && !isVideo;
-  const hostName = getHostName(filePath);
-
   // Icedrive public share pages are HTML application pages, not the image/file
-  // itself. Google Viewer therefore receives an HTML page and can expose its own
-  // navigation. Keep the share page inside the MediDocs reader instead.
+  // itself. MediDocs resolves them through its own server endpoint instead of
+  // executing Icedrive's full web application inside an iframe.
   const isIcedriveShare = hostName === 'icedrive.net';
+  const [icedrivePreviewState, setIcedrivePreviewState] = useState({
+    loading: false,
+    url: '',
+    error: ''
+  });
   const googleViewerUrl = filePath
     ? `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(filePath)}`
     : '';
 
   useEffect(() => {
+    let cancelled = false;
+    let objectUrl = null;
+
     setEmbedFailed(false);
     setLoadStarted(false);
-    setPreviewUrl(filePath);
-    let objectUrl = null;
-    let cancelled = false;
+    setPreviewUrl(isIcedriveShare ? '' : filePath);
+    setIcedrivePreviewState({ loading: isIcedriveShare, url: '', error: '' });
+
+    const resolveIcedrivePreview = async () => {
+      if (!isIcedriveShare || !validUrl) return;
+      try {
+        const response = await fetch(`/api/icedrive/preview?url=${encodeURIComponent(filePath)}`, {
+          headers: { Accept: 'application/json' }
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data?.success || !data?.previewUrl) {
+          throw new Error(data?.error || 'Icedrive preview resource was not available');
+        }
+
+        if (!cancelled) {
+          setIcedrivePreviewState({
+            loading: false,
+            url: data.previewUrl,
+            error: ''
+          });
+          setPreviewUrl(data.previewUrl);
+          console.info('[DocumentReader] Icedrive preview resource resolved:', {
+            id: doc?.id || null,
+            fileId: data.fileId || null,
+            source: data.source || 'unknown'
+          });
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setIcedrivePreviewState({
+            loading: false,
+            url: '',
+            error: error?.message || 'Unable to resolve Icedrive preview'
+          });
+          console.error('[DocumentReader] Icedrive preview resolution failed:', {
+            url: filePath,
+            error: error?.message || String(error)
+          });
+        }
+      }
+    };
+
+    void resolveIcedrivePreview();
+
     const prepareInlinePreview = async () => {
-      if (!filePath || !validUrl || !storage || (!isPDF && !isImage && !isVideo)) return;
+      if (isIcedriveShare || !filePath || !validUrl || !storage || (!isPDF && !isImage && !isVideo)) return;
       try {
         const storageReference = ref(storage, filePath);
         const blob = await getBlob(storageReference);
@@ -175,16 +228,71 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
           )}
 
           {!showFallback && isIcedriveShare && (
-            <iframe
-              src={filePath}
-              className="w-full h-full border-0"
-              title={doc.title || 'Icedrive document'}
-              referrerPolicy="no-referrer"
-              allow="fullscreen"
-              sandbox="allow-scripts allow-same-origin allow-forms allow-downloads"
-              onLoad={() => { setLoadStarted(true); console.info('[DocumentReader] Icedrive share loaded inside MediDocs:', filePath); }}
-              onError={() => { setEmbedFailed(true); console.error('[DocumentReader] Icedrive share iframe failed:', filePath); }}
-            />
+            <div className="w-full h-full flex items-center justify-center p-4 overflow-auto">
+              {icedrivePreviewState.loading && (
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600 mx-auto mb-3" />
+                  <p className="text-gray-600 dark:text-dark-muted">Preparing document preview...</p>
+                </div>
+              )}
+
+              {!icedrivePreviewState.loading && icedrivePreviewState.url && ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension) && (
+                <img
+                  src={icedrivePreviewState.url}
+                  alt={doc.title || 'Document'}
+                  className="max-w-full max-h-full object-contain"
+                  onLoad={() => setLoadStarted(true)}
+                  onError={() => {
+                    setEmbedFailed(true);
+                    console.error('[DocumentReader] Icedrive image preview failed:', icedrivePreviewState.url);
+                  }}
+                />
+              )}
+
+              {!icedrivePreviewState.loading && icedrivePreviewState.url && extension === 'pdf' && (
+                <iframe
+                  src={icedrivePreviewState.url}
+                  className="w-full h-full border-0"
+                  title={doc.title || 'PDF document'}
+                  onLoad={() => setLoadStarted(true)}
+                  onError={() => setEmbedFailed(true)}
+                />
+              )}
+
+              {!icedrivePreviewState.loading && icedrivePreviewState.url && ['mp4', 'webm', 'ogg', 'mov'].includes(extension) && (
+                <video
+                  controls
+                  className="max-w-full max-h-full"
+                  onLoadedData={() => setLoadStarted(true)}
+                  onError={() => setEmbedFailed(true)}
+                >
+                  <source src={icedrivePreviewState.url} type={`video/${extension}`} />
+                  Your browser does not support this video.
+                </video>
+              )}
+
+              {!icedrivePreviewState.loading && icedrivePreviewState.url &&
+                !['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'pdf', 'mp4', 'webm', 'ogg', 'mov'].includes(extension) && (
+                  <iframe
+                    src={icedrivePreviewState.url}
+                    className="w-full h-full border-0"
+                    title={doc.title || 'Icedrive document'}
+                    onLoad={() => setLoadStarted(true)}
+                    onError={() => setEmbedFailed(true)}
+                  />
+              )}
+
+              {!icedrivePreviewState.loading && icedrivePreviewState.error && (
+                <div className="text-center max-w-xl px-6">
+                  <div className="text-5xl mb-3">{getFileTypeIcon(fileName)}</div>
+                  <h4 className="font-semibold text-gray-800 dark:text-dark-text mb-2">Preview unavailable</h4>
+                  <p className="text-gray-600 dark:text-dark-muted mb-4">{icedrivePreviewState.error}</p>
+                  <button onClick={() => downloadDocument(doc)} className="px-4 py-2 bg-gray-700 text-white rounded-lg">
+                    Download
+                  </button>
+                </div>
+              )}
+            </div>
           )}
 
           {!showFallback && !isIcedriveShare && (isOffice || isGenericDocument) && (
