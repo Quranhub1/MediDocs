@@ -73,6 +73,9 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
   const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension);
   const isVideo = ['mp4', 'webm', 'ogg', 'mov'].includes(extension);
   const isOffice = ['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(extension);
+  // Some hosted files (especially Icedrive links) use opaque URLs with no
+  // extension or MIME metadata. Keep those URLs in the MediDocs reader too.
+  const isGenericDocument = validUrl && !isPDF && !isImage && !isVideo;
   const hostName = getHostName(filePath);
   const isExternalHost = NON_EMBEDDABLE_HOSTS.some((host) => hostName.includes(host));
   const googleViewerUrl = filePath ? `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(filePath)}` : '';
@@ -121,7 +124,7 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
 
   if (!doc) return null;
 
-  const canPreview = validUrl && (isPDF || isImage || isVideo || isOffice);
+  const canPreview = validUrl && (isPDF || isImage || isVideo || isOffice || isGenericDocument);
   const showFallback = !filePath || !canPreview || embedFailed;
 
   return (
@@ -168,8 +171,14 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
             </div>
           )}
 
-          {!showFallback && isOffice && (
-            <iframe src={googleViewerUrl} className="w-full h-full border-0" title={doc.title || 'Office document'} onLoad={() => setLoadStarted(true)} onError={() => setEmbedFailed(true)} />
+          {!showFallback && (isOffice || isGenericDocument) && (
+            <iframe
+              src={googleViewerUrl}
+              className="w-full h-full border-0"
+              title={doc.title || 'Document'}
+              onLoad={() => setLoadStarted(true)}
+              onError={() => setEmbedFailed(true)}
+            />
           )}
 
           {!showFallback && !loadStarted && (
