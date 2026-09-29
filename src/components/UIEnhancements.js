@@ -12,9 +12,8 @@ const ProgressRing = ({ value = 0, label = 'Progress' }) => {
   return <div className="relative w-20 h-20 shrink-0" role="img" aria-label={`${label}: ${Math.round(safeValue)} percent`}><svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80"><circle cx="40" cy="40" r={radius} fill="none" stroke="currentColor" strokeWidth="7" className="text-gray-200 dark:text-gray-700" /><circle cx="40" cy="40" r={radius} fill="none" stroke="currentColor" strokeWidth="7" strokeLinecap="round" className="text-emerald-500 transition-all duration-1000" strokeDasharray={circumference} strokeDashoffset={offset} /></svg><span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-gray-800 dark:text-dark-text">{Math.round(safeValue)}%</span></div>;
 };
 
-const DashboardEnhancements = ({ courses: suppliedCourses = [], documents: suppliedDocuments = [], userProfile }) => {
+const DashboardEnhancements = ({ courses: suppliedCourses = [] }) => {
   const [courses, setCourses] = useState(suppliedCourses);
-  const [documents, setDocuments] = useState(suppliedDocuments);
   const [courseCounts, setCourseCounts] = useState([]);
   const [totalResources, setTotalResources] = useState(0);
   useEffect(() => {
@@ -26,7 +25,6 @@ const DashboardEnhancements = ({ courses: suppliedCourses = [], documents: suppl
 
     const unsubscribeResources = subscribeToAllResources((nextDocuments) => {
       if (!mounted) return;
-      setDocuments(nextDocuments);
       setTotalResources(nextDocuments.length);
 
       const counts = nextDocuments.reduce((acc, item) => {
@@ -51,7 +49,7 @@ const DashboardEnhancements = ({ courses: suppliedCourses = [], documents: suppl
     };
   }, []);
   const { streak } = useStudy();
-  const activityByCourse = streak?.activityByCourse || {};
+  const activityByCourse = streak?.activityByCourse;
   const documentsViewed = Number(streak?.documentsViewed) || 0;
   const totalStudySeconds = Number(streak?.totalStudySeconds) || 0;
   const totalResourceCount = Math.max(Number(totalResources) || 0, documentsViewed);
@@ -66,7 +64,7 @@ const DashboardEnhancements = ({ courses: suppliedCourses = [], documents: suppl
     .slice(0, 120);
 
   const grouped = useMemo(() => {
-    const activityEntries = Object.entries(activityByCourse).map(([key, value]) => ({
+    const activityEntries = Object.entries(activityByCourse || {}).map(([key, value]) => ({
       key,
       keyNormalized: normalizeCourseKey(key),
       courseId: String(value?.courseId || ''),
