@@ -269,11 +269,14 @@ const fetchIcedrivePreview = async (shareUrl) => {
     throw new Error(`Icedrive share page returned HTTP ${shareResponse.status}`);
   }
 
+  const canonicalShareUrl = isAllowedIcedriveShareUrl(shareResponse.url)
+    ? shareResponse.url
+    : shareUrl;
   const html = await shareResponse.text();
   const metadata = extractIcedriveShareMetadata(html);
 
   if (!metadata.fileId || !/^\d+$/.test(metadata.fileId)) {
-    throw new Error('Icedrive public share did not expose a previewable file ID');
+    throw new Error(`Icedrive share did not expose a file ID (HTTP ${shareResponse.status}, final URL: ${canonicalShareUrl})`);
   }
 
   let directUrl = '';
@@ -321,6 +324,7 @@ const fetchIcedrivePreview = async (shareUrl) => {
     fileId: metadata.fileId,
     fileName: metadata.shareData?.filename || metadata.shareData?.title || '',
     extension: metadata.shareData?.extension || '',
+    canonicalShareUrl,
     previewUrl,
     direct: Boolean(directUrl),
     source: directUrl ? 'icedrive-file-preview' : 'icedrive-share-thumbnail'
@@ -351,7 +355,7 @@ app.get('/api/icedrive/preview', async (req, res) => {
     });
     return res.status(502).json({
       success: false,
-      error: 'Unable to resolve the Icedrive preview resource.'
+      error: error?.message || 'Unable to resolve the Icedrive preview resource.'
     });
   }
 });
