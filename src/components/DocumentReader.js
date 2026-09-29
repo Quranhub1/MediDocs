@@ -4,8 +4,6 @@ import { downloadDocument, getDocumentUrl, isValidDocumentUrl } from '../utils/d
 import { getBlob, ref } from 'firebase/storage';
 import { storage } from '../firebase';
 
-const NON_EMBEDDABLE_HOSTS = ['mega.nz', 'icedrive.net', 'mediafire.com', 'drive.google.com', 'dropbox.com', '1drv.ms', 'app.box.com'];
-
 const getHostName = (url) => {
   try { return new URL(url).hostname.replace(/^www\./, '').toLowerCase(); } catch { return ''; }
 };
@@ -68,17 +66,22 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
       filePathType: typeof filePath
     });
   }, [doc, filePath, validUrl]);
+
   const extension = (fileName.split('.').pop() || '').toLowerCase();
   const isPDF = extension === 'pdf' || doc?.fileType === 'application/pdf' || doc?.mimeType === 'application/pdf';
   const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension);
   const isVideo = ['mp4', 'webm', 'ogg', 'mov'].includes(extension);
   const isOffice = ['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(extension);
-  // Some hosted files (especially Icedrive links) use opaque URLs with no
-  // extension or MIME metadata. Keep those URLs in the MediDocs reader too.
   const isGenericDocument = validUrl && !isPDF && !isImage && !isVideo;
   const hostName = getHostName(filePath);
-  const isExternalHost = NON_EMBEDDABLE_HOSTS.some((host) => hostName.includes(host));
-  const googleViewerUrl = filePath ? `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(filePath)}` : '';
+
+  // Icedrive public share pages are HTML application pages, not the image/file
+  // itself. Google Viewer therefore receives an HTML page and can expose its own
+  // navigation. Keep the share page inside the MediDocs reader instead.
+  const isIcedriveShare = hostName === 'icedrive.net';
+  const googleViewerUrl = filePath
+    ? `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(filePath)}`
+    : '';
 
   useEffect(() => {
     setEmbedFailed(false);
@@ -171,7 +174,19 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
             </div>
           )}
 
-          {!showFallback && (isOffice || isGenericDocument) && (
+          {!showFallback && isIcedriveShare && (
+            <iframe
+              src={filePath}
+              className="w-full h-full border-0"
+              title={doc.title || 'Icedrive document'}
+              referrerPolicy="no-referrer"
+              allow="fullscreen"
+              onLoad={() => { setLoadStarted(true); console.info('[DocumentReader] Icedrive share loaded inside MediDocs:', filePath); }}
+              onError={() => { setEmbedFailed(true); console.error('[DocumentReader] Icedrive share iframe failed:', filePath); }}
+            />
+          )}
+
+          {!showFallback && !isIcedriveShare && (isOffice || isGenericDocument) && (
             <iframe
               src={googleViewerUrl}
               className="w-full h-full border-0"
