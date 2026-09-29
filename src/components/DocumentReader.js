@@ -122,7 +122,7 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
   if (!doc) return null;
 
   const canPreview = validUrl && (isPDF || isImage || isVideo || isOffice);
-  const showFallback = !filePath || isExternalHost || !canPreview || embedFailed;
+  const showFallback = !filePath || !canPreview || embedFailed;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-2 sm:p-4" data-theme={theme}>
