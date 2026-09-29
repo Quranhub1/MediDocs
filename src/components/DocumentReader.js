@@ -161,13 +161,13 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
 
           {!showFallback && isImage && (
             <div className="w-full h-full flex items-center justify-center p-4 overflow-auto">
-              <img src={filePath} alt={doc.title || 'Document'} className="max-w-full max-h-full object-contain" onLoad={() => setLoadStarted(true)} onError={() => setEmbedFailed(true)} />
+              <img src={previewUrl || filePath} alt={doc.title || 'Document'} className="max-w-full max-h-full object-contain" onLoad={() => setLoadStarted(true)} onError={() => setEmbedFailed(true)} />
             </div>
           )}
 
           {!showFallback && isVideo && (
             <div className="w-full h-full flex items-center justify-center p-4">
-              <video controls className="max-w-full max-h-full" onLoadedData={() => setLoadStarted(true)} onError={() => setEmbedFailed(true)}><source src={filePath} type={`video/${extension}`} />Your browser does not support this video.</video>
+              <video controls className="max-w-full max-h-full" onLoadedData={() => setLoadStarted(true)} onError={() => setEmbedFailed(true)}><source src={previewUrl || filePath} type={`video/${extension}`} />Your browser does not support this video.</video>
             </div>
           )}
 
