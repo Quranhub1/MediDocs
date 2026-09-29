@@ -3,6 +3,7 @@ import { initializeApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import { getStorage } from "firebase/storage";
 
 // Firebase configuration - must be set in environment variables
 const firebaseConfig = {
@@ -36,6 +37,7 @@ if (isConfigValid && getApps().length === 0) {
 
 // Initialize Firebase services (may be null if initialization failed)
 export const auth = app ? getAuth(app) : null;
+export const storage = app ? getStorage(app) : null;
 export const storage = app ? getStorage(app) : null;
 export const db = (() => {
   if (!app) return null;
