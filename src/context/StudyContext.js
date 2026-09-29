@@ -356,59 +356,6 @@ export const StudyProvider = ({ children }) => {
     return () => window.removeEventListener('medidocs:study-time-updated', refresh);
   }, [loadStreak]);
 
-  const reconcileDocumentAnalytics = useCallback(async () => {
-    if (!currentUser || !db) return;
-    try {
-      const statsRef = collection(db, 'users', currentUser.uid, 'documentStats');
-      const snapshot = await getDocs(statsRef);
-      const activityByCourse = {};
-      let viewedCount = 0;
-      let downloadedCount = 0;
-
-      snapshot.docs.forEach((item) => {
-        const data = item.data() || {};
-        const courseId = data.courseId || null;
-        const courseName = data.courseName || data.course || null;
-        const courseKey = String(courseId || courseName || 'Other')
-          .replaceAll('.', '_')
-          .replaceAll('/', '_')
-          .replaceAll('\\', '_')
-          .slice(0, 120) || 'Other';
-        const current = activityByCourse[courseKey] || {
-          viewed: 0,
-          downloads: 0,
-          courseId,
-          courseName
-        };
-        const viewed = data.viewed === true ? 1 : 0;
-        const downloads = Number(data.downloads) || 0;
-        viewedCount += viewed;
-        downloadedCount += downloads;
-        activityByCourse[courseKey] = {
-          viewed: Number(current.viewed) + viewed,
-          downloads: Number(current.downloads) + downloads,
-          courseId: courseId || current.courseId || null,
-          courseName: courseName || current.courseName || null
-        };
-      });
-
-      await setDoc(doc(db, 'userStudyData', currentUser.uid), {
-        documentsViewed: viewedCount,
-        documentsDownloaded: downloadedCount,
-        activityByCourse,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-
-      console.info('[ANALYTICS] Reconciled document stats:', {
-        documentStats: snapshot.size,
-        documentsViewed: viewedCount,
-        documentsDownloaded: downloadedCount
-      });
-    } catch (error) {
-      console.error('[ANALYTICS] Failed to reconcile document stats:', error);
-    }
-  }, [currentUser]);
-
   const recordStudySession = async (durationMinutes = 0) => {
     if (!currentUser || !db) return false;
     if (durationMinutes === 5) {
