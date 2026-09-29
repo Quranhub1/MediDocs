@@ -1,4 +1,4 @@
-const CACHE_NAME = 'medidocs-v9';
+const CACHE_NAME = 'medidocs-v10';
 const RUNTIME_CACHE_NAME = 'medidocs-runtime-v1';
 const IMAGE_CACHE_NAME = 'medidocs-images-v2';
 const DOCUMENTS_CACHE_NAME = 'medidocs-documents-v2';
@@ -47,16 +47,27 @@ const isStaticAsset = (url) =>
   url.pathname.startsWith('/static/') || /\.(css|js|woff2?|ttf|otf)$/i.test(url.pathname);
 const isApiRequest = (url) => url.pathname.startsWith('/api/');
 
+const cacheResponse = (request, response, cacheName) => {
+  if (!response || !response.ok) return;
+  // Clone synchronously, before the browser or another consumer can read the
+  // one-shot response body.
+  let cacheResponse;
+  try {
+    cacheResponse = response.clone();
+  } catch (error) {
+    console.warn('[SW] Response clone skipped:', error);
+    return;
+  }
+
+  caches.open(cacheName)
+    .then((cache) => cache.put(request, cacheResponse))
+    .catch((error) => console.warn('[SW] Cache write skipped:', error));
+};
+
 const navigationResponse = async (request) => {
   try {
     const response = await fetch(request);
-    if (response && response.ok) {
-      // Clone immediately and await the cache write. A Response body is a
-      // one-shot stream, so delaying clone/cache.put can race with consumers.
-      const cacheResponse = response.clone();
-      const cache = await caches.open(RUNTIME_CACHE_NAME);
-      await cache.put(request, cacheResponse);
-    }
+    cacheResponse(request, response, RUNTIME_CACHE_NAME);
     return response;
   } catch (error) {
     return (await caches.match(request)) || (await caches.match('/index.html'));
@@ -78,11 +89,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          if (response && response.ok) {
-            caches.open(API_CACHE_NAME)
-              .then((cache) => cache.put(request, response.clone()))
-              .catch((error) => console.warn('[SW] API cache write skipped:', error));
-          }
+          cacheResponse(request, response, API_CACHE_NAME);
           return response;
         })
         .catch(() => caches.match(request))
@@ -95,11 +102,7 @@ self.addEventListener('fetch', (event) => {
       caches.match(request).then((cached) => {
         if (cached) return cached;
         return fetch(request).then((response) => {
-          if (response && response.ok) {
-            caches.open(IMAGE_CACHE_NAME)
-              .then((cache) => cache.put(request, response.clone()))
-              .catch((error) => console.warn('[SW] image cache write skipped:', error));
-          }
+          cacheResponse(request, response, IMAGE_CACHE_NAME);
           return response;
         });
       })
@@ -112,11 +115,7 @@ self.addEventListener('fetch', (event) => {
       caches.match(request).then((cached) => {
         if (cached) return cached;
         return fetch(request).then((response) => {
-          if (response && response.ok) {
-            caches.open(CACHE_NAME)
-              .then((cache) => cache.put(request, response.clone()))
-              .catch((error) => console.warn('[SW] static cache write skipped:', error));
-          }
+          cacheResponse(request, response, CACHE_NAME);
           return response;
         });
       })
