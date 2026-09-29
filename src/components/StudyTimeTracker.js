@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react';
-import { doc, runTransaction } from 'firebase/firestore';
+import { doc, increment, runTransaction, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 
-const FLUSH_INTERVAL_MS = 10000;
-const MIN_TRACKED_SECONDS = 1;
+const FLUSH_INTERVAL_MS = 60000;
+const MIN_TRACKED_SECONDS = 5;
+const QUOTA_BACKOFF_MS = 15 * 60 * 1000;
 
 const getDateKey = (date = new Date()) => {
   const year = date.getFullYear();
@@ -34,11 +35,22 @@ const getPreviousDateKey = (date = new Date()) => {
   return getDateKey(previous);
 };
 
+const isQuotaError = (error) => {
+  const message = String(error?.message || error || '').toLowerCase();
+  return error?.code === 'resource-exhausted' ||
+    message.includes('quota exceeded') ||
+    message.includes('resource_exhausted');
+};
+
 const StudyTimeTracker = () => {
   const { currentUser } = useAuth();
   const lastTickRef = useRef(null);
   const pendingSecondsRef = useRef(0);
+  const minuteCarryRef = useRef(0);
   const flushingRef = useRef(false);
+  const quotaBackoffUntilRef = useRef(0);
+  const quotaWarningShownRef = useRef(false);
+  const streakAttemptDayRef = useRef(null);
 
   useEffect(() => {
     if (!currentUser || !db) return undefined;
@@ -47,6 +59,54 @@ const StudyTimeTracker = () => {
     let active = document.visibilityState === 'visible';
     lastTickRef.current = Date.now();
     pendingSecondsRef.current = 0;
+    minuteCarryRef.current = 0;
+    flushingRef.current = false;
+    quotaBackoffUntilRef.current = 0;
+    quotaWarningShownRef.current = false;
+    streakAttemptDayRef.current = null;
+
+    const studyRef = doc(db, 'userStudyData', currentUser.uid);
+
+    const syncDailyStreak = async (dateKey, recordedAt) => {
+      if (streakAttemptDayRef.current === dateKey) return;
+      // Mark the attempt before starting so a quota/error condition cannot
+      // cause a retry every minute for the same day.
+      streakAttemptDayRef.current = dateKey;
+
+      try {
+        await runTransaction(db, async (transaction) => {
+          const snapshot = await transaction.get(studyRef);
+          const existing = snapshot.exists() ? snapshot.data() : {};
+          const previousStudyDate = getStudyDay(existing.lastStudyDate);
+          const yesterday = getPreviousDateKey(recordedAt);
+
+          let currentStreak = Number(existing.currentStreak) || 0;
+          let longestStreak = Number(existing.longestStreak) || 0;
+
+          if (!previousStudyDate) {
+            currentStreak = 1;
+          } else if (previousStudyDate === dateKey) {
+            currentStreak = Math.max(1, currentStreak);
+          } else if (previousStudyDate === yesterday) {
+            currentStreak += 1;
+          } else {
+            currentStreak = 1;
+          }
+
+          longestStreak = Math.max(longestStreak, currentStreak);
+
+          transaction.set(studyRef, {
+            currentStreak,
+            longestStreak,
+            lastStudyDate: recordedAt,
+            lastStudyAt: recordedAt,
+            updatedAt: recordedAt
+          }, { merge: true });
+        });
+      } catch (error) {
+        console.warn('[STUDY TIME] Daily streak sync skipped:', error?.message || error);
+      }
+    };
 
     const flush = async (force = false) => {
       if (flushingRef.current || !currentUser || !db) return;
@@ -57,92 +117,70 @@ const StudyTimeTracker = () => {
       }
       lastTickRef.current = now;
 
+      if (Date.now() < quotaBackoffUntilRef.current) return;
+
       const seconds = Math.floor(pendingSecondsRef.current);
       if (seconds < MIN_TRACKED_SECONDS && !force) return;
       if (seconds < MIN_TRACKED_SECONDS) return;
 
       pendingSecondsRef.current -= seconds;
-      flushingRef.current = true;
 
-      const studyRef = doc(db, 'userStudyData', currentUser.uid);
       const dateKey = getDateKey();
-      const duration = formatDuration(seconds);
       const recordedAt = new Date();
       const status = active ? 'active' : 'away';
+      const duration = formatDuration(seconds);
+
+      const minutesAvailable = minuteCarryRef.current + seconds;
+      const wholeMinutes = Math.floor(minutesAvailable / 60);
+      const nextMinuteCarry = minutesAvailable % 60;
+
+      flushingRef.current = true;
 
       try {
-        let result = null;
+        // The streak calculation is the only remaining transaction and happens
+        // at most once per calendar day. Time itself uses atomic increments,
+        // avoiding a read/modify/write transaction every heartbeat.
+        await syncDailyStreak(dateKey, recordedAt);
 
-        await runTransaction(db, async (transaction) => {
-          const snapshot = await transaction.get(studyRef);
-          const existing = snapshot.exists() ? snapshot.data() : {};
-          const previousStudyDate = getStudyDay(existing.lastStudyDate);
-          const today = dateKey;
-          const yesterday = getPreviousDateKey(recordedAt);
+        await setDoc(studyRef, {
+          totalStudySeconds: increment(seconds),
+          ...(wholeMinutes > 0 ? { totalStudyTime: increment(wholeMinutes) } : {}),
+          [`dailyStudySeconds.${dateKey}`]: increment(seconds),
+          lastStudyDate: recordedAt,
+          lastStudyAt: recordedAt,
+          studyStatus: status,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
 
-          let currentStreak = Number(existing.currentStreak) || 0;
-          let longestStreak = Number(existing.longestStreak) || 0;
-
-          if (!previousStudyDate) {
-            currentStreak = 1;
-          } else if (previousStudyDate === today) {
-            currentStreak = Math.max(1, currentStreak);
-          } else if (previousStudyDate === yesterday) {
-            currentStreak += 1;
-          } else {
-            currentStreak = 1;
-          }
-
-          longestStreak = Math.max(longestStreak, currentStreak);
-
-          const existingTotalSeconds = Number(existing.totalStudySeconds) || Math.round((Number(existing.totalStudyTime) || 0) * 60);
-          const totalStudySeconds = existingTotalSeconds + seconds;
-          const existingDaily = existing.dailyStudySeconds?.[dateKey];
-          const dailyStudySeconds = (Number(existingDaily) || 0) + seconds;
-
-          const data = {
-            totalStudySeconds,
-            totalStudyTime: Math.floor(totalStudySeconds / 60),
-            [`dailyStudySeconds.${dateKey}`]: dailyStudySeconds,
-            currentStreak,
-            longestStreak,
-            lastStudyDate: recordedAt,
-            lastStudyAt: recordedAt,
-            studyStatus: status,
-            updatedAt: recordedAt
-          };
-
-          if (snapshot.exists()) {
-            transaction.update(studyRef, data);
-          } else {
-            transaction.set(studyRef, {
-              ...data,
-              createdAt: recordedAt
-            });
-          }
-
-          result = { currentStreak, longestStreak, totalStudySeconds, dailyStudySeconds };
-        });
+        minuteCarryRef.current = nextMinuteCarry;
 
         console.info('[STUDY TIME]', {
           uid: currentUser.uid,
           recordedSeconds: seconds,
           recordedDuration: `${duration.hours}h ${duration.minutes}m ${duration.seconds}s`,
-          totalStudySeconds: result?.totalStudySeconds,
-          totalStudyDuration: result ? `${formatDuration(result.totalStudySeconds).hours}h ${formatDuration(result.totalStudySeconds).minutes}m ${formatDuration(result.totalStudySeconds).seconds}s` : undefined,
-          dailyStudySeconds: result?.dailyStudySeconds,
-          currentStreak: result?.currentStreak,
-          longestStreak: result?.longestStreak,
           dateKey,
           status
         });
 
         window.dispatchEvent(new CustomEvent('medidocs:study-time-updated', {
-          detail: result
+          detail: {
+            recordedSeconds: seconds,
+            dateKey,
+            status
+          }
         }));
       } catch (error) {
         pendingSecondsRef.current += seconds;
-        console.error('[STUDY TIME] Failed to persist study time:', error);
+
+        if (isQuotaError(error)) {
+          quotaBackoffUntilRef.current = Date.now() + QUOTA_BACKOFF_MS;
+          if (!quotaWarningShownRef.current) {
+            quotaWarningShownRef.current = true;
+            console.warn('[STUDY TIME] Firestore quota is exhausted; study-time writes are temporarily paused and will resume automatically.');
+          }
+        } else {
+          console.error('[STUDY TIME] Failed to persist study time:', error);
+        }
       } finally {
         flushingRef.current = false;
       }
