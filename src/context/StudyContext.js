@@ -536,28 +536,37 @@ export const StudyProvider = ({ children }) => {
     const cleanId = String(documentId);
     const addedSeconds = Math.max(0, Math.floor(Number(seconds) || 0));
     if (addedSeconds < 1 && progressPercent == null) return false;
+
     try {
       const statRef = doc(db, 'users', currentUser.uid, 'documentStats', getSafeStatId(cleanId));
       const studyRef = doc(db, 'userStudyData', currentUser.uid);
-      await runTransaction(db, async (transaction) => {
-        const statSnap = await transaction.get(statRef);
-        const stat = statSnap.exists() ? statSnap.data() : {};
-        const currentProgress = Number(stat.progressPercent) || 0;
-        const nextProgress = progressPercent == null
-          ? currentProgress
-          : Math.max(currentProgress, Math.min(100, Number(progressPercent) || 0));
-        transaction.set(statRef, {
-          viewed: true,
-          totalSeconds: (Number(stat.totalSeconds) || 0) + addedSeconds,
-          progressPercent: nextProgress,
-          lastProgressAt: serverTimestamp(),
-          ...metadata
-        }, { merge: true });
-        transaction.set(studyRef, {
+
+      // Progress is an append-only heartbeat. A transaction is unnecessary here
+      // and can produce optimistic-version conflicts when Firestore's persistent
+      // multi-tab cache is active. Field transforms make the seconds increment
+      // atomic without requiring the document version to match a transaction base.
+      const statUpdate = {
+        viewed: true,
+        totalSeconds: increment(addedSeconds),
+        lastProgressAt: serverTimestamp(),
+        ...metadata
+      };
+
+      if (progressPercent != null) {
+        statUpdate.progressPercent = Math.max(
+          0,
+          Math.min(100, Number(progressPercent) || 0)
+        );
+      }
+
+      await Promise.all([
+        setDoc(statRef, statUpdate, { merge: true }),
+        setDoc(studyRef, {
           totalDocumentStudySeconds: increment(addedSeconds),
           updatedAt: serverTimestamp()
-        }, { merge: true });
-      });
+        }, { merge: true })
+      ]);
+
       window.dispatchEvent(new CustomEvent('medidocs:document-progress-updated', {
         detail: { documentId: cleanId, seconds: addedSeconds, progressPercent }
       }));
