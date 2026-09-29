@@ -239,8 +239,16 @@ const extractIcedriveShareMetadata = (html) => {
     ''
   ).trim();
 
+  // The public-share page passes its metadata as base64-encoded JSON.
+  // The actual thumbnail therefore lives in shareData.thumbnail, not in the
+  // raw HTML source.
   const thumbnailMatch = html.match(/["']thumbnail["']\s*:\s*["']([^"']+)["']/i);
-  const thumbnail = normalizeRemoteUrl(thumbnailMatch?.[1] || '');
+  const thumbnail = normalizeRemoteUrl(
+    shareData?.thumbnail ||
+    shareData?.thumbnail_url ||
+    thumbnailMatch?.[1] ||
+    ''
+  );
 
   return {
     shareData,
@@ -282,9 +290,15 @@ const fetchIcedrivePreview = async (shareUrl) => {
   let directUrl = '';
   let thumbnailUrl = metadata.thumbnail;
 
-  // Icedrive's public preview endpoint may return download_url at the top
-  // level or thumbnails nested under data. Read both shapes without assuming
-  // a particular response schema.
+  // For public image shares, the signed thumbnail embedded in the share
+  // metadata is already a usable preview resource. Use it first so a change
+  // to Icedrive's internal API cannot break image previews.
+  const isImageExtension = /^(?:jpe?g|png|gif|webp|svg)$/i.test(
+    String(metadata.shareData?.extension || '')
+  );
+
+  // Icedrive's preview endpoint may return a direct URL or a thumbnail.
+  // Keep it as a secondary source for PDFs, Office files, and other types.
   const apiUrl = `https://icedrive.net/API/Internal/V1/?request=file-preview&id=${encodeURIComponent(metadata.fileId)}&sess=1`;
   try {
     const previewResponse = await fetch(apiUrl, {
@@ -314,7 +328,9 @@ const fetchIcedrivePreview = async (shareUrl) => {
     console.warn('[ICEDRIVE] Preview API request failed; using share thumbnail fallback:', error?.message || error);
   }
 
-  const previewUrl = directUrl || makeLargeThumbnailUrl(thumbnailUrl);
+  const previewUrl = isImageExtension && thumbnailUrl
+    ? makeLargeThumbnailUrl(thumbnailUrl)
+    : (directUrl || makeLargeThumbnailUrl(thumbnailUrl));
   if (!previewUrl) {
     throw new Error('Icedrive did not return a preview resource for this file');
   }
