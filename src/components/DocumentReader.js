@@ -124,7 +124,8 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
 
   if (!doc) return null;
 
-  const canPreview = validUrl && (isPDF || isImage || isVideo || isOffice || isGenericDocument);
+  const showGoogleViewer = !isExternalHost && (isOffice || isGenericDocument);
+  const canPreview = validUrl && (isPDF || isImage || isVideo || showGoogleViewer);
   const showFallback = !filePath || !canPreview || embedFailed;
 
   return (
@@ -171,7 +172,7 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
             </div>
           )}
 
-          {!showFallback && (isOffice || isGenericDocument) && (
+          {!showFallback && showGoogleViewer && (
             <iframe
               src={googleViewerUrl}
               className="w-full h-full border-0"

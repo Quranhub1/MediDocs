@@ -102,6 +102,7 @@ export const downloadDocument = async (doc) => {
     });
     const downloadFrame = document.createElement('iframe');
     downloadFrame.setAttribute('aria-hidden', 'true');
+    downloadFrame.setAttribute('sandbox', '');
     downloadFrame.tabIndex = -1;
     downloadFrame.style.position = 'fixed';
     downloadFrame.style.width = '1px';
