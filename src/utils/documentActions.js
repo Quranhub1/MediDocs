@@ -47,8 +47,8 @@ export const getDocumentFileName = (doc) => {
   return doc?.title || 'document';
 };
 
-// Open the document in a new browser tab so it can be read online
-// without navigating away from the application.
+// Request that the running MediDocs app open the document in its own reader.
+// Never navigate the browser to the source URL or create another window.
 export const readOnline = (doc) => {
   const url = getDocumentUrl(doc);
   console.info('[DocumentActions] readOnline', {
@@ -61,12 +61,12 @@ export const readOnline = (doc) => {
     alert('No read online link available for this document');
     return;
   }
-  window.open(url, '_blank', 'noopener,noreferrer');
+  window.dispatchEvent(new CustomEvent('medidocs:read-document', { detail: doc }));
 };
 
-// Download the document. Tries a binary fetch first (forces a real
-// download); falls back to opening the file in a new tab if the
-// origin blocks the cross-origin fetch.
+// Download the document without ever opening or navigating a new browser window.
+// If cross-origin fetch is blocked, use a hidden iframe so the browser handles
+// the download in the current MediDocs window.
 export const downloadDocument = async (doc) => {
   const url = getDocumentUrl(doc);
   console.info('[DocumentActions] download', {
@@ -95,11 +95,22 @@ export const downloadDocument = async (doc) => {
     a.remove();
     window.URL.revokeObjectURL(blobUrl);
   } catch (error) {
-    console.error('[DocumentActions] download fetch failed, opening source URL', {
+    console.error('[DocumentActions] download fetch failed; using same-window download fallback', {
       id: doc?.id || null,
       url,
       error: error?.message || String(error)
     });
-    window.open(url, '_blank', 'noopener,noreferrer');
+    const downloadFrame = document.createElement('iframe');
+    downloadFrame.setAttribute('aria-hidden', 'true');
+    downloadFrame.tabIndex = -1;
+    downloadFrame.style.position = 'fixed';
+    downloadFrame.style.width = '1px';
+    downloadFrame.style.height = '1px';
+    downloadFrame.style.border = '0';
+    downloadFrame.style.opacity = '0';
+    downloadFrame.style.pointerEvents = 'none';
+    downloadFrame.src = url;
+    document.body.appendChild(downloadFrame);
+    window.setTimeout(() => downloadFrame.remove(), 60000);
   }
 };
