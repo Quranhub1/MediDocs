@@ -3,6 +3,7 @@ import { useTheme } from '../context/ThemeContext';
 import { downloadDocument, getDocumentUrl, isValidDocumentUrl } from '../utils/documentActions';
 import { getBlob, ref } from 'firebase/storage';
 import { storage } from '../firebase';
+import { renderPdf, renderDocx, renderXlsx, fetchFileAsArrayBuffer } from '../utils/inlineViewer';
 
 const NON_EMBEDDABLE_HOSTS = ['mega.nz', 'icedrive.net', 'mediafire.com', 'drive.google.com', 'dropbox.com', '1drv.ms', 'app.box.com'];
 
@@ -27,6 +28,11 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
   const [embedFailed, setEmbedFailed] = useState(false);
   const [loadStarted, setLoadStarted] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
+  const [inlineHtml, setInlineHtml] = useState(null);
+  const [pdfPages, setPdfPages] = useState([]);
+  const [pdfPageCount, setPdfPageCount] = useState(0);
+  const [currentPdfPage, setCurrentPdfPage] = useState(0);
+  const [renderError, setRenderError] = useState(null);
   const sessionStartedRef = useRef(null);
   const lastProgressFlushRef = useRef(null);
   const flushProgress = () => {
@@ -77,25 +83,68 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
   // extension or MIME metadata. Keep those URLs in the MediDocs reader too.
   const isGenericDocument = validUrl && !isPDF && !isImage && !isVideo;
   const hostName = getHostName(filePath);
-  const isExternalHost = NON_EMBEDDABLE_HOSTS.some((host) => hostName.includes(host));
-  const googleViewerUrl = filePath ? `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(filePath)}` : '';
 
   useEffect(() => {
     setEmbedFailed(false);
     setLoadStarted(false);
     setPreviewUrl(filePath);
+    setInlineHtml(null);
+    setPdfPages([]);
+    setPdfPageCount(0);
+    setCurrentPdfPage(0);
+    setRenderError(null);
     let objectUrl = null;
     let cancelled = false;
     const prepareInlinePreview = async () => {
-      if (!filePath || !validUrl || !storage || (!isPDF && !isImage && !isVideo)) return;
+      if (!filePath || !validUrl) return;
+      const source = filePath;
       try {
-        const storageReference = ref(storage, filePath);
-        const blob = await getBlob(storageReference);
-        if (cancelled) return;
-        objectUrl = URL.createObjectURL(blob);
-        setPreviewUrl(objectUrl);
+        if (isPDF) {
+          const rendered = await renderPdf(source);
+          if (cancelled) return;
+          setPdfPageCount(rendered.pageCount);
+          setPdfPages(rendered.pages);
+          setCurrentPdfPage(0);
+          setLoadStarted(true);
+          return;
+        }
+        if (isOffice) {
+          const rendered = await renderDocx(source);
+          if (cancelled) return;
+          setInlineHtml(rendered.html);
+          setLoadStarted(true);
+          return;
+        }
+        if (isGenericDocument) {
+          const ext = (fileName.split('.').pop() || '').toLowerCase();
+          if (ext === 'xlsx' || ext === 'xls') {
+            const rendered = await renderXlsx(source);
+            if (cancelled) return;
+            setInlineHtml(rendered.html);
+            setLoadStarted(true);
+            return;
+          }
+          const rendered = await renderDocx(source);
+          if (cancelled) return;
+          setInlineHtml(rendered.html);
+          setLoadStarted(true);
+          return;
+        }
+        if (!storage || (!isPDF && !isImage && !isVideo)) return;
+        try {
+          const storageReference = ref(storage, filePath);
+          const blob = await getBlob(storageReference);
+          if (cancelled) return;
+          objectUrl = URL.createObjectURL(blob);
+          setPreviewUrl(objectUrl);
+        } catch (error) {
+          console.info('[DocumentReader] Direct inline blob preview unavailable; using source URL:', error?.message || error);
+        }
       } catch (error) {
-        console.info('[DocumentReader] Direct inline blob preview unavailable; using source URL:', error?.message || error);
+        if (cancelled) return;
+        console.error('[DocumentReader] Inline render failed:', error?.message || error);
+        setRenderError(error?.message || 'Failed to render document');
+        setLoadStarted(true);
       }
     };
     void prepareInlinePreview();
@@ -108,7 +157,7 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
-  }, [doc, filePath, validUrl, isPDF, isImage, isVideo]);
+  }, [doc, filePath, validUrl, isPDF, isImage, isVideo, fileName, isOffice, isGenericDocument]);
 
   const toggleFullscreen = async () => {
     try {
@@ -124,9 +173,9 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
 
   if (!doc) return null;
 
-  const showGoogleViewer = !isExternalHost && (isOffice || isGenericDocument);
-  const canPreview = validUrl && (isPDF || isImage || isVideo || showGoogleViewer);
-  const showFallback = !filePath || !canPreview || embedFailed;
+  const hasInlinePdf = isPDF && pdfPages.length > 0;
+  const hasInlineOffice = (isOffice || (isGenericDocument && ['docx','doc','xlsx','xls'].includes((fileName.split('.').pop()||'').toLowerCase()))) && inlineHtml;
+  const showFallback = !filePath || (!hasInlinePdf && !isImage && !isVideo && !hasInlineOffice);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-2 sm:p-4" data-theme={theme}>
@@ -150,35 +199,52 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
         </div>
 
         <div className="relative flex-1 overflow-hidden bg-gray-100 dark:bg-gray-900">
-          {!showFallback && isPDF && (
-            <iframe
-              src={previewUrl || filePath}
-              className="w-full h-full border-0"
-              title={doc.title || 'PDF document'}
-              onLoad={() => { setLoadStarted(true); console.info('[DocumentReader] PDF loaded:', filePath); }}
-              onError={() => { setEmbedFailed(true); console.error('[DocumentReader] PDF iframe failed:', filePath); }}
-            />
+          {!showFallback && hasInlinePdf && (
+            <div className="w-full h-full overflow-auto p-4">
+              {pdfPageCount > 1 && (
+                <div className="flex items-center justify-between mb-3 gap-2">
+                  <button
+                    onClick={() => setCurrentPdfPage((p) => Math.max(0, p - 1))}
+                    disabled={currentPdfPage === 0}
+                    className="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded-lg text-xs disabled:opacity-40"
+                  >
+                    Previous page
+                  </button>
+                  <span className="text-xs text-gray-600 dark:text-dark-muted">
+                    Page {currentPdfPage + 1} of {pdfPageCount}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPdfPage((p) => Math.min(pdfPageCount - 1, p + 1))}
+                    disabled={currentPdfPage >= pdfPageCount - 1}
+                    className="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded-lg text-xs disabled:opacity-40"
+                  >
+                    Next page
+                  </button>
+                </div>
+              )}
+              <div className="flex justify-center">
+                <img src={pdfPages[currentPdfPage]} alt={doc.title || 'PDF page'} className="max-w-full h-auto rounded shadow" />
+              </div>
+            </div>
           )}
 
-          {!showFallback && isImage && (
+          {!showFallback && !hasInlinePdf && isImage && (
             <div className="w-full h-full flex items-center justify-center p-4 overflow-auto">
               <img src={previewUrl || filePath} alt={doc.title || 'Document'} className="max-w-full max-h-full object-contain" onLoad={() => setLoadStarted(true)} onError={() => setEmbedFailed(true)} />
             </div>
           )}
 
-          {!showFallback && isVideo && (
+          {!showFallback && !hasInlinePdf && isVideo && (
             <div className="w-full h-full flex items-center justify-center p-4">
               <video controls className="max-w-full max-h-full" onLoadedData={() => setLoadStarted(true)} onError={() => setEmbedFailed(true)}><source src={previewUrl || filePath} type={`video/${extension}`} />Your browser does not support this video.</video>
             </div>
           )}
 
-          {!showFallback && showGoogleViewer && (
-            <iframe
-              src={googleViewerUrl}
-              className="w-full h-full border-0"
-              title={doc.title || 'Document'}
-              onLoad={() => setLoadStarted(true)}
-              onError={() => setEmbedFailed(true)}
+          {!showFallback && hasInlineOffice && (
+            <div
+              className="w-full h-full overflow-auto p-6 bg-white dark:bg-dark-card"
+              style={{ fontSize: `${fontSize}px` }}
+              dangerouslySetInnerHTML={{ __html: inlineHtml }}
             />
           )}
 
@@ -194,7 +260,7 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
                 <div className="text-6xl mb-4">{getFileTypeIcon(fileName)}</div>
                 <h4 className="font-semibold text-gray-800 dark:text-dark-text mb-2">{doc.title || fileName}</h4>
                 <p className="text-gray-500 dark:text-dark-muted mb-5 break-all">{fileName}</p>
-                <p className="text-gray-600 dark:text-dark-muted mb-6">{!filePath ? 'This document has no file URL.' : 'This document cannot be rendered inline by this browser or its source. It will remain inside the app without opening another window.'}</p>
+                <p className="text-gray-600 dark:text-dark-muted mb-6">{!filePath ? 'This document has no file URL.' : renderError ? `Unable to render this document: ${renderError}` : 'This document cannot be rendered inline by this browser or its source. It will remain inside the app without opening another window.'}</p>
                 {filePath && <div className="flex flex-wrap justify-center gap-3"><button onClick={() => downloadDocument(doc)} className="px-4 py-2 bg-gray-700 text-white rounded-lg">Download</button></div>}
               </div>
             </div>
