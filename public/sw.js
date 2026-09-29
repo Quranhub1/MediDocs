@@ -51,16 +51,16 @@ const cacheResponse = (request, response, cacheName) => {
   if (!response || !response.ok) return;
   // Clone synchronously, before the browser or another consumer can read the
   // one-shot response body.
-  let cacheResponse;
+  let responseClone;
   try {
-    cacheResponse = response.clone();
+    responseClone = response.clone();
   } catch (error) {
     console.warn('[SW] Response clone skipped:', error);
     return;
   }
 
   caches.open(cacheName)
-    .then((cache) => cache.put(request, cacheResponse))
+    .then((cache) => cache.put(request, responseClone))
     .catch((error) => console.warn('[SW] Cache write skipped:', error));
 };
 
