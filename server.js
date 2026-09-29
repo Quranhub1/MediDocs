@@ -178,10 +178,10 @@ const ICEDRIVE_PREVIEW_CACHE_MS = 5 * 60 * 1000;
 const isAllowedIcedriveShareUrl = (value) => {
   try {
     const parsed = new URL(String(value || '').trim());
-    const hostname = parsed.hostname.replace(/^www\\./, '').toLowerCase();
+    const hostname = parsed.hostname.replace(/^www\./, '').toLowerCase();
     return parsed.protocol === 'https:' &&
       hostname === 'icedrive.net' &&
-      /^\\/s\\/[A-Za-z0-9_-]+$/.test(parsed.pathname);
+      /^\/s\/[A-Za-z0-9_-]+$/.test(parsed.pathname);
   } catch {
     return false;
   }
@@ -200,7 +200,7 @@ const fetchIcedrivePreview = async (shareUrl) => {
   if (!shareResponse.ok) throw new Error(`Icedrive share page returned HTTP ${shareResponse.status}`);
 
   const html = await shareResponse.text();
-  const encodedMatch = html.match(/initPublicSharePage\\(\\s*['"]([^'"]+)['"]/);
+  const encodedMatch = html.match(/initPublicSharePage\(\s*['"]([^'"]+)['"]/);
   let shareData = null;
 
   if (encodedMatch?.[1]) {
@@ -215,11 +215,11 @@ const fetchIcedrivePreview = async (shareUrl) => {
   const fileId = String(
     shareData?.id ||
     shareData?.share_record?.item_id ||
-    (html.match(/previewItem\\(\\s*['"]([^'"]+)['"]/i) || [])[1] ||
+    (html.match(/previewItem\(\s*['"]([^'"]+)['"]/i) || [])[1] ||
     ''
   ).trim();
 
-  if (!fileId || !/^\\d+$/.test(fileId)) {
+  if (!fileId || !/^\d+$/.test(fileId)) {
     throw new Error('Icedrive public share did not expose a previewable file ID');
   }
 
