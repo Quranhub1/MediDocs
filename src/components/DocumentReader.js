@@ -181,6 +181,7 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
               title={doc.title || 'Icedrive document'}
               referrerPolicy="no-referrer"
               allow="fullscreen"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-downloads"
               onLoad={() => { setLoadStarted(true); console.info('[DocumentReader] Icedrive share loaded inside MediDocs:', filePath); }}
               onError={() => { setEmbedFailed(true); console.error('[DocumentReader] Icedrive share iframe failed:', filePath); }}
             />
