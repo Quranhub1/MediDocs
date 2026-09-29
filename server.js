@@ -328,11 +328,11 @@ const fetchIcedrivePreview = async (shareUrl) => {
     console.warn('[ICEDRIVE] Preview API request failed; using share thumbnail fallback:', error?.message || error);
   }
 
-  const previewUrl = isImageExtension && thumbnailUrl
-    ? makeLargeThumbnailUrl(thumbnailUrl)
-    : (directUrl || makeLargeThumbnailUrl(thumbnailUrl));
+  // A thumbnail is never a valid substitute for the original document.
+  // Read Online and Download must use the full file URL returned by Icedrive.
+  const previewUrl = directUrl;
   if (!previewUrl) {
-    throw new Error('Icedrive did not return a preview resource for this file');
+    throw new Error('Icedrive did not expose a full-file download URL for this share');
   }
 
   const result = {
@@ -342,8 +342,8 @@ const fetchIcedrivePreview = async (shareUrl) => {
     extension: metadata.shareData?.extension || '',
     canonicalShareUrl,
     previewUrl,
-    direct: Boolean(directUrl),
-    source: directUrl ? 'icedrive-file-preview' : 'icedrive-share-thumbnail'
+    direct: true,
+    source: 'icedrive-full-file'
   };
 
   icedrivePreviewCache.set(shareUrl, { value: result, cachedAt: Date.now() });
@@ -378,6 +378,521 @@ app.get('/api/icedrive/preview', async (req, res) => {
 
 // Receives sanitized browser-side Cloudinary failures so they are visible in Render logs.
 // Never send secrets, tokens, the upload preset, or full Cloudinary URLs here.
+// ============================================================
+// FULL DOCUMENT CLOUD PROXY
+// ============================================================
+
+let MegaFile = null;
+try {
+  ({ File: MegaFile } = require('megajs'));
+  console.info('[CLOUD] MEGAJS loaded');
+} catch (error) {
+  console.warn('[CLOUD] MEGAJS is unavailable. MEGA links will return a clear error:', error?.message || error);
+}
+
+const getCloudProvider = (value) => {
+  try {
+    const host = new URL(String(value || '').trim()).hostname
+      .replace(/^www\./, '')
+      .toLowerCase();
+
+    if (host === 'icedrive.net' || host === 'icedrive.io') return 'icedrive';
+    if (host === 'mega.nz' || host === 'mega.io' || host === 'mega.co.nz') return 'mega';
+    if (
+      host === 'drive.google.com' ||
+      host === 'docs.google.com' ||
+      host === 'drive.usercontent.google.com' ||
+      host === 'docs.googleusercontent.com'
+    ) return 'google-drive';
+    if (host === 'dropbox.com' || host === 'dl.dropboxusercontent.com') return 'dropbox';
+    if (host === '1drv.ms' || host === 'onedrive.live.com' || host.endsWith('.sharepoint.com')) return 'onedrive';
+    if (host === 'app.box.com' || host === 'pcloud.com') return 'direct-cloud';
+    return '';
+  } catch {
+    return '';
+  }
+};
+
+const getSafeFilename = (value, fallback = 'document') => {
+  const filename = String(value || '').trim()
+    .replace(/[\\/:*?"<>|]+/g, '_')
+    .replace(/[\r\n]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .slice(0, 180);
+
+  return filename || fallback;
+};
+
+const mimeTypeFromFilename = (filename) => {
+  const ext = String(filename || '').toLowerCase().split('.').pop();
+  const types = {
+    pdf: 'application/pdf',
+    txt: 'text/plain',
+    csv: 'text/csv',
+    html: 'text/html',
+    htm: 'text/html',
+    json: 'application/json',
+    xml: 'application/xml',
+    doc: 'application/msword',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ppt: 'application/vnd.ms-powerpoint',
+    pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    xls: 'application/vnd.ms-excel',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    odt: 'application/vnd.oasis.opendocument.text',
+    ods: 'application/vnd.oasis.opendocument.spreadsheet',
+    odp: 'application/vnd.oasis.opendocument.presentation',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    gif: 'image/gif',
+    webp: 'image/webp',
+    svg: 'image/svg+xml',
+    mp4: 'video/mp4',
+    webm: 'video/webm',
+    ogg: 'video/ogg',
+    mov: 'video/quicktime',
+    mp3: 'audio/mpeg',
+    wav: 'audio/wav',
+    zip: 'application/zip'
+  };
+
+  return types[ext] || 'application/octet-stream';
+};
+
+const getSetCookieHeader = (response) => {
+  try {
+    if (typeof response.headers.getSetCookie === 'function') {
+      return response.headers.getSetCookie().map((item) => item.split(';')[0]).join('; ');
+    }
+  } catch {
+    // Fall through to the single-header implementation below.
+  }
+
+  const value = response.headers.get('set-cookie');
+  if (!value) return '';
+
+  return value
+    .split(/,(?=[^;,]+=)/)
+    .map((item) => item.split(';')[0].trim())
+    .filter(Boolean)
+    .join('; ');
+};
+
+const getFilenameFromDisposition = (value) => {
+  if (!value) return '';
+
+  const utf8 = String(value).match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8?.[1]) {
+    try {
+      return decodeURIComponent(utf8[1]);
+    } catch {
+      return utf8[1];
+    }
+  }
+
+  const quoted = String(value).match(/filename="([^"]+)"/i);
+  if (quoted?.[1]) return quoted[1];
+
+  const plain = String(value).match(/filename=([^;]+)/i);
+  return plain?.[1]?.trim() || '';
+};
+
+const parseGoogleDriveSource = (sourceUrl) => {
+  const parsed = new URL(sourceUrl);
+  const pathname = parsed.pathname;
+  let fileId = '';
+  let workspaceType = '';
+
+  const patterns = [
+    [/\/file\/d\/([^/]+)/, 'blob'],
+    [/\/document\/d\/([^/]+)/, 'document'],
+    [/\/spreadsheets\/d\/([^/]+)/, 'spreadsheet'],
+    [/\/presentation\/d\/([^/]+)/, 'presentation']
+  ];
+
+  for (const [pattern, type] of patterns) {
+    const match = pathname.match(pattern);
+    if (match?.[1]) {
+      fileId = decodeURIComponent(match[1]);
+      workspaceType = type;
+      break;
+    }
+  }
+
+  if (!fileId && parsed.searchParams.get('id')) {
+    fileId = parsed.searchParams.get('id');
+    workspaceType = 'blob';
+  }
+
+  if (!fileId) {
+    throw new Error('Google Drive link does not contain a supported file ID');
+  }
+
+  const resourceKey =
+    parsed.searchParams.get('resourcekey') ||
+    parsed.searchParams.get('resourceKey') ||
+    '';
+
+  return { fileId, workspaceType, resourceKey };
+};
+
+const buildGoogleDriveDownloadUrl = (sourceUrl) => {
+  const parsed = parseGoogleDriveSource(sourceUrl);
+  const key = parsed.resourceKey
+    ? '&resourcekey=' + encodeURIComponent(parsed.resourceKey)
+    : '';
+
+  if (parsed.workspaceType === 'document') {
+    return 'https://docs.google.com/document/d/' + encodeURIComponent(parsed.fileId) + '/export?format=pdf';
+  }
+
+  if (parsed.workspaceType === 'spreadsheet') {
+    return 'https://docs.google.com/spreadsheets/d/' + encodeURIComponent(parsed.fileId) + '/export?format=xlsx';
+  }
+
+  if (parsed.workspaceType === 'presentation') {
+    return 'https://docs.google.com/presentation/d/' + encodeURIComponent(parsed.fileId) + '/export/pptx';
+  }
+
+  return 'https://drive.usercontent.google.com/download?id=' +
+    encodeURIComponent(parsed.fileId) +
+    '&export=download&confirm=t' +
+    key;
+};
+
+const extractGoogleDriveConfirmation = (html) => {
+  const patterns = [
+    /[?&]confirm=([0-9A-Za-z_-]+)/i,
+    /name=["']confirm["'][^>]*value=["']([^"']+)["']/i,
+    /confirm=([0-9A-Za-z_-]+)[^"'\s<]*/i
+  ];
+
+  for (const pattern of patterns) {
+    const match = String(html || '').match(pattern);
+    if (match?.[1]) return match[1];
+  }
+
+  return '';
+};
+
+const appendGoogleConfirmation = (url, token) => {
+  const parsed = new URL(url);
+  parsed.searchParams.set('confirm', token);
+  return parsed.toString();
+};
+
+const fetchGoogleDriveDocument = async (sourceUrl, rangeHeader = '') => {
+  const parsed = parseGoogleDriveSource(sourceUrl);
+  const targetUrl = buildGoogleDriveDownloadUrl(sourceUrl);
+
+  const requestHeaders = {
+    'User-Agent': 'MediDocs/1.0 full-document-proxy',
+    'Accept': '*/*'
+  };
+
+  if (rangeHeader) requestHeaders.Range = rangeHeader;
+
+  let response = await fetch(targetUrl, {
+    headers: requestHeaders,
+    redirect: 'follow'
+  });
+
+  const responseContentType = String(response.headers.get('content-type') || '').toLowerCase();
+  if (responseContentType.includes('text/html')) {
+    const html = await response.text();
+    const confirmToken = extractGoogleDriveConfirmation(html);
+
+    if (confirmToken) {
+      const cookie = getSetCookieHeader(response);
+      const confirmedUrl = appendGoogleConfirmation(targetUrl, confirmToken);
+      const confirmedHeaders = { ...requestHeaders };
+      if (cookie) confirmedHeaders.Cookie = cookie;
+
+      response = await fetch(confirmedUrl, {
+        headers: confirmedHeaders,
+        redirect: 'follow'
+      });
+    } else if (parsed.workspaceType === 'document' || parsed.workspaceType === 'spreadsheet' || parsed.workspaceType === 'presentation') {
+      throw new Error('Google Workspace export was returned as HTML instead of document bytes');
+    } else {
+      throw new Error('Google Drive returned an access page instead of the file. Check that the file is shared publicly and downloadable.');
+    }
+  }
+
+  if (!response.ok) {
+    throw new Error('Google Drive returned HTTP ' + response.status);
+  }
+
+  return response;
+};
+
+const buildDropboxSourceUrl = (sourceUrl) => {
+  const parsed = new URL(sourceUrl);
+  const host = parsed.hostname.replace(/^www\./, '').toLowerCase();
+
+  if (host === 'dropbox.com') {
+    parsed.searchParams.set('dl', '1');
+  }
+
+  return parsed.toString();
+};
+
+const buildOneDriveSourceUrl = (sourceUrl) => {
+  const parsed = new URL(sourceUrl);
+  parsed.searchParams.set('download', '1');
+  return parsed.toString();
+};
+
+const streamWebResponseToExpress = async (response, res, options = {}) => {
+  const { filename, download = false, fallbackMime = '' } = options;
+  const { Readable } = require('stream');
+
+  res.status(response.status === 206 ? 206 : 200);
+
+  const contentType = response.headers.get('content-type') || fallbackMime || 'application/octet-stream';
+  const contentLength = response.headers.get('content-length');
+  const contentRange = response.headers.get('content-range');
+  const acceptRanges = response.headers.get('accept-ranges');
+
+  res.setHeader('Content-Type', contentType);
+  if (contentLength) res.setHeader('Content-Length', contentLength);
+  if (contentRange) res.setHeader('Content-Range', contentRange);
+  res.setHeader('Accept-Ranges', acceptRanges || 'bytes');
+
+  const upstreamDisposition = response.headers.get('content-disposition');
+  const upstreamFilename = getFilenameFromDisposition(upstreamDisposition);
+  const finalFilename = getSafeFilename(filename || upstreamFilename || 'document', 'document');
+
+  res.setHeader(
+    'Content-Disposition',
+    (download ? 'attachment' : 'inline') +
+      '; filename="' + finalFilename.replace(/"/g, '\\"') + '"'
+  );
+  res.setHeader('Cache-Control', 'private, max-age=300');
+
+  if (!response.body) return res.end();
+  Readable.fromWeb(response.body).pipe(res);
+};
+
+const streamMegaDocument = async (sourceUrl, res, options = {}) => {
+  if (!MegaFile) {
+    throw new Error('MEGA support is not available on the server yet. The MEGAJS dependency is missing.');
+  }
+
+  const { filename: filenameHint, download = false, rangeHeader = '' } = options;
+  const mainFile = MegaFile.fromURL(sourceUrl);
+  mainFile.api.userAgent = 'MediDocs/1.0 full-document-proxy';
+
+  let selectedFile = await mainFile.loadAttributes();
+  if (!selectedFile) selectedFile = mainFile;
+
+  if (selectedFile.children) {
+    throw new Error('The supplied MEGA link points to a folder. Use a shared link to the individual file.');
+  }
+
+  const finalFilename = getSafeFilename(selectedFile.name || filenameHint || 'document', getSafeFilename(filenameHint || 'document'));
+  const totalSize = Number(selectedFile.size) || 0;
+  const fallbackMime = mimeTypeFromFilename(finalFilename);
+
+  let downloadOptions = { maxConnections: 4 };
+  let status = 200;
+  let contentLength = totalSize;
+  let contentRange = '';
+
+  const rangeMatch = String(rangeHeader || '').match(/^bytes=(\d*)-(\d*)$/i);
+  if (rangeMatch && totalSize > 0) {
+    const requestedStart = rangeMatch[1]
+      ? Number(rangeMatch[1])
+      : Math.max(0, totalSize - Number(rangeMatch[2] || 0));
+    const requestedEnd = rangeMatch[2]
+      ? Number(rangeMatch[2])
+      : totalSize - 1;
+
+    const start = Math.max(0, Math.min(requestedStart, totalSize - 1));
+    const end = Math.max(start, Math.min(requestedEnd, totalSize - 1));
+
+    downloadOptions = { ...downloadOptions, start, end };
+    status = 206;
+    contentLength = end - start + 1;
+    contentRange = 'bytes ' + start + '-' + end + '/' + totalSize;
+  }
+
+  const stream = selectedFile.download(downloadOptions);
+  stream.on('error', (error) => {
+    console.error('[MEGA] Full-file stream failed:', error?.message || error);
+    if (!res.headersSent) {
+      res.status(502).json({
+        success: false,
+        error: 'MEGA could not provide the full document.'
+      });
+    } else {
+      res.destroy(error);
+    }
+  });
+
+  res.status(status);
+  res.setHeader('Content-Type', fallbackMime);
+  res.setHeader('Accept-Ranges', 'bytes');
+  if (contentLength) res.setHeader('Content-Length', String(contentLength));
+  if (contentRange) res.setHeader('Content-Range', contentRange);
+  res.setHeader(
+    'Content-Disposition',
+    (download ? 'attachment' : 'inline') +
+      '; filename="' + finalFilename.replace(/"/g, '\\"') + '"'
+  );
+  res.setHeader('Cache-Control', 'private, max-age=300');
+
+  stream.pipe(res);
+};
+
+app.get('/api/document/content', async (req, res) => {
+  const sourceUrl = String(req.query.url || '').trim();
+  const filenameHint = getSafeFilename(req.query.filename || '', 'document');
+  const download = String(req.query.download || '') === '1';
+  const provider = getCloudProvider(sourceUrl);
+
+  if (!sourceUrl || !provider) {
+    return res.status(400).json({
+      success: false,
+      error: 'Only supported public cloud-drive document links can be opened here.'
+    });
+  }
+
+  try {
+    const rangeHeader = String(req.headers.range || '');
+
+    if (provider === 'icedrive') {
+      const resolved = await fetchIcedrivePreview(sourceUrl);
+      if (!resolved?.direct || !resolved?.previewUrl) {
+        throw new Error('Icedrive did not provide the full document file.');
+      }
+
+      const response = await fetch(resolved.previewUrl, {
+        headers: {
+          'User-Agent': 'MediDocs/1.0 full-document-proxy',
+          'Accept': '*/*',
+          ...(rangeHeader ? { Range: rangeHeader } : {})
+        },
+        redirect: 'follow'
+      });
+
+      if (!response.ok) {
+        throw new Error('Icedrive file returned HTTP ' + response.status);
+      }
+
+      return await streamWebResponseToExpress(response, res, {
+        filename: filenameHint !== 'document' ? filenameHint : resolved.fileName,
+        download,
+        fallbackMime: mimeTypeFromFilename(resolved.fileName || filenameHint)
+      });
+    }
+
+    if (provider === 'mega') {
+      return await streamMegaDocument(sourceUrl, res, {
+        filename: filenameHint,
+        download,
+        rangeHeader
+      });
+    }
+
+    if (provider === 'google-drive') {
+      const response = await fetchGoogleDriveDocument(sourceUrl, rangeHeader);
+      const upstreamFilename = getFilenameFromDisposition(response.headers.get('content-disposition'));
+
+      return await streamWebResponseToExpress(response, res, {
+        filename: filenameHint !== 'document' ? filenameHint : upstreamFilename,
+        download,
+        fallbackMime: mimeTypeFromFilename(filenameHint)
+      });
+    }
+
+    if (provider === 'dropbox') {
+      const targetUrl = buildDropboxSourceUrl(sourceUrl);
+      const response = await fetch(targetUrl, {
+        headers: {
+          'User-Agent': 'MediDocs/1.0 full-document-proxy',
+          'Accept': '*/*',
+          ...(rangeHeader ? { Range: rangeHeader } : {})
+        },
+        redirect: 'follow'
+      });
+
+      if (!response.ok) throw new Error('Dropbox returned HTTP ' + response.status);
+
+      const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+      if (contentType.includes('text/html')) {
+        throw new Error('Dropbox returned its share page instead of the file. Use a public share that permits downloading.');
+      }
+
+      return await streamWebResponseToExpress(response, res, {
+        filename: filenameHint,
+        download,
+        fallbackMime: mimeTypeFromFilename(filenameHint)
+      });
+    }
+
+    if (provider === 'onedrive') {
+      const targetUrl = buildOneDriveSourceUrl(sourceUrl);
+      const response = await fetch(targetUrl, {
+        headers: {
+          'User-Agent': 'MediDocs/1.0 full-document-proxy',
+          'Accept': '*/*',
+          ...(rangeHeader ? { Range: rangeHeader } : {})
+        },
+        redirect: 'follow'
+      });
+
+      if (!response.ok) throw new Error('OneDrive returned HTTP ' + response.status);
+
+      const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+      if (contentType.includes('text/html')) {
+        throw new Error('OneDrive returned its share page instead of the file. Use a public share that permits downloading.');
+      }
+
+      return await streamWebResponseToExpress(response, res, {
+        filename: filenameHint,
+        download,
+        fallbackMime: mimeTypeFromFilename(filenameHint)
+      });
+    }
+
+    const response = await fetch(sourceUrl, {
+      headers: {
+        'User-Agent': 'MediDocs/1.0 full-document-proxy',
+        'Accept': '*/*',
+        ...(rangeHeader ? { Range: rangeHeader } : {})
+      },
+      redirect: 'follow'
+    });
+
+    if (!response.ok) throw new Error('Cloud file returned HTTP ' + response.status);
+
+    const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+    if (contentType.includes('text/html')) {
+      throw new Error('This cloud URL returned a web page instead of the document file. Store the provider download/share URL for a public file.');
+    }
+
+    return await streamWebResponseToExpress(response, res, {
+      filename: filenameHint,
+      download,
+      fallbackMime: mimeTypeFromFilename(filenameHint)
+    });
+  } catch (error) {
+    console.error('[DOCUMENT] Full cloud document request failed:', {
+      provider,
+      url: sourceUrl,
+      error: error?.message || String(error)
+    });
+
+    return res.status(502).json({
+      success: false,
+      provider,
+      error: error?.message || 'Unable to retrieve the full document from the cloud provider.'
+    });
+  }
+});
+
 app.post('/api/debug/cloudinary', (req, res) => {
   const {
     stage,
