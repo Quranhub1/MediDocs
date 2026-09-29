@@ -1,4 +1,4 @@
-const CACHE_NAME = 'medidocs-v8';
+const CACHE_NAME = 'medidocs-v9';
 const RUNTIME_CACHE_NAME = 'medidocs-runtime-v1';
 const IMAGE_CACHE_NAME = 'medidocs-images-v2';
 const DOCUMENTS_CACHE_NAME = 'medidocs-documents-v2';
