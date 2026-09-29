@@ -51,8 +51,11 @@ const navigationResponse = async (request) => {
   try {
     const response = await fetch(request);
     if (response && response.ok) {
+      // Clone immediately and await the cache write. A Response body is a
+      // one-shot stream, so delaying clone/cache.put can race with consumers.
+      const cacheResponse = response.clone();
       const cache = await caches.open(RUNTIME_CACHE_NAME);
-      cache.put(request, response.clone());
+      await cache.put(request, cacheResponse);
     }
     return response;
   } catch (error) {
@@ -77,7 +80,8 @@ self.addEventListener('fetch', (event) => {
         .then((response) => {
           if (response && response.ok) {
             caches.open(API_CACHE_NAME)
-              .then((cache) => cache.put(request, response.clone()));
+              .then((cache) => cache.put(request, response.clone()))
+              .catch((error) => console.warn('[SW] API cache write skipped:', error));
           }
           return response;
         })
@@ -93,7 +97,8 @@ self.addEventListener('fetch', (event) => {
         return fetch(request).then((response) => {
           if (response && response.ok) {
             caches.open(IMAGE_CACHE_NAME)
-              .then((cache) => cache.put(request, response.clone()));
+              .then((cache) => cache.put(request, response.clone()))
+              .catch((error) => console.warn('[SW] image cache write skipped:', error));
           }
           return response;
         });
@@ -109,7 +114,8 @@ self.addEventListener('fetch', (event) => {
         return fetch(request).then((response) => {
           if (response && response.ok) {
             caches.open(CACHE_NAME)
-              .then((cache) => cache.put(request, response.clone()));
+              .then((cache) => cache.put(request, response.clone()))
+              .catch((error) => console.warn('[SW] static cache write skipped:', error));
           }
           return response;
         });
