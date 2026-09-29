@@ -2,7 +2,18 @@
 
 export const getDocumentUrl = (doc) => {
   if (!doc || typeof doc !== 'object') return null;
-  const candidates = [doc.fileUrl, doc.filePath, doc.url];
+
+  // Documents created at different points in MediDocs may use different
+  // casing for the stored file URL field. Prefer the current field names,
+  // but keep compatibility with existing records instead of requiring a
+  // database migration.
+  const candidates = [
+    doc.fileUrl,
+    doc.filePath,
+    doc.filepath,
+    doc.url
+  ];
+
   const url = candidates.find((value) => typeof value === 'string' && value.trim());
   return url ? url.trim() : null;
 };
