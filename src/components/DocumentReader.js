@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { downloadDocument, getDocumentUrl, isValidDocumentUrl } from '../utils/documentActions';
-import { getBlob, refFromURL } from 'firebase/storage';
+import { getBlob, ref } from 'firebase/storage';
 import { storage } from '../firebase';
 
 const NON_EMBEDDABLE_HOSTS = ['mega.nz', 'icedrive.net', 'mediafire.com', 'drive.google.com', 'dropbox.com', '1drv.ms', 'app.box.com'];
@@ -86,7 +86,7 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
     const prepareInlinePreview = async () => {
       if (!filePath || !validUrl || !storage || (!isPDF && !isImage && !isVideo)) return;
       try {
-        const storageReference = refFromURL(filePath);
+        const storageReference = ref(storage, filePath);
         const blob = await getBlob(storageReference);
         if (cancelled) return;
         objectUrl = URL.createObjectURL(blob);
