@@ -1,7 +1,6 @@
 import {
   collection,
   collectionGroup,
-  getCountFromServer,
   getDocs,
   getDocsFromCache,
   onSnapshot,
@@ -599,7 +598,7 @@ export const deleteStorageFile = async (filePath) => {
 // Create folder in Firebase Storage
 export const createStorageFolder = async (folderName) => {
   try {
-    const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+    const { ref, uploadBytes } = await import('firebase/storage');
     const { storage } = await import('../firebase');
     
     const folderRef = ref(storage, `${folderName}/.keep`);
