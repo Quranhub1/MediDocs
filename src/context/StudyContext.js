@@ -57,6 +57,7 @@ const normalizeDate = (value) => {
 const getSafeStatId = (documentId) => encodeURIComponent(String(documentId)).slice(0, 1500);
 
 export const StudyProvider = ({ children }) => {
+  const documentStatsAggregateRef = useRef({ viewed: null, downloaded: null });
   // AuthContext exposes currentUser, not user. The previous mismatch silently
   // disabled every user-scoped study write and made buttons appear dead.
   const { currentUser } = useAuth();
@@ -213,6 +214,7 @@ export const StudyProvider = ({ children }) => {
       setFlashcards([]);
       setQuizzes([]);
       setStudyNotes([]);
+      documentStatsAggregateRef.current = { viewed: null, downloaded: null };
       setLearningReviews([]);
       return undefined;
     }
@@ -282,21 +284,37 @@ export const StudyProvider = ({ children }) => {
           activityByCourse
         }));
 
-        void setDoc(doc(db, 'userStudyData', currentUser.uid), {
-          documentsViewed,
-          documentsDownloaded,
-          activityByCourse,
-          updatedAt: serverTimestamp()
-        }, { merge: true }).catch((error) => {
-          console.error('[ANALYTICS] Failed to sync aggregate stats:', error);
-        });
+        const previousAggregate = documentStatsAggregateRef.current;
+        const aggregateChanged =
+          previousAggregate.viewed !== documentsViewed ||
+          previousAggregate.downloaded !== documentsDownloaded;
 
-        console.info('[ANALYTICS] Realtime document stats:', {
-          documentStats: snapshot.size,
-          documentsViewed,
-          documentsDownloaded,
-          courses: Object.keys(activityByCourse).length
-        });
+        if (aggregateChanged) {
+          documentStatsAggregateRef.current = {
+            viewed: documentsViewed,
+            downloaded: documentsDownloaded
+          };
+
+          void setDoc(doc(db, 'userStudyData', currentUser.uid), {
+            documentsViewed,
+            documentsDownloaded,
+            activityByCourse,
+            updatedAt: serverTimestamp()
+          }, { merge: true }).catch((error) => {
+            console.error('[ANALYTICS] Failed to sync aggregate stats:', error);
+          });
+        }
+
+        // Progress updates change a documentStats record every few seconds.
+        // Only log when the meaningful aggregate changes, not on every heartbeat.
+        if (aggregateChanged || previousAggregate.viewed === null) {
+          console.info('[ANALYTICS] Realtime document stats:', {
+            documentStats: snapshot.size,
+            documentsViewed,
+            documentsDownloaded,
+            courses: Object.keys(activityByCourse).length
+          });
+        }
       },
       (error) => console.error('[ANALYTICS] Document stats listener failed:', {
         code: error?.code || 'unknown',
