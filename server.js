@@ -172,6 +172,125 @@ const aiLimiter = rateLimit({
 
 app.use(generalLimiter);
 
+const icedrivePreviewCache = new Map();
+const ICEDRIVE_PREVIEW_CACHE_MS = 5 * 60 * 1000;
+
+const isAllowedIcedriveShareUrl = (value) => {
+  try {
+    const parsed = new URL(String(value || '').trim());
+    const hostname = parsed.hostname.replace(/^www\\./, '').toLowerCase();
+    return parsed.protocol === 'https:' &&
+      hostname === 'icedrive.net' &&
+      /^\\/s\\/[A-Za-z0-9_-]+$/.test(parsed.pathname);
+  } catch {
+    return false;
+  }
+};
+
+const fetchIcedrivePreview = async (shareUrl) => {
+  const cached = icedrivePreviewCache.get(shareUrl);
+  if (cached && Date.now() - cached.cachedAt < ICEDRIVE_PREVIEW_CACHE_MS) return cached.value;
+
+  const shareResponse = await fetch(shareUrl, {
+    headers: {
+      'User-Agent': 'MediDocs/1.0 document-preview',
+      'Accept': 'text/html,application/xhtml+xml'
+    }
+  });
+  if (!shareResponse.ok) throw new Error(`Icedrive share page returned HTTP ${shareResponse.status}`);
+
+  const html = await shareResponse.text();
+  const encodedMatch = html.match(/initPublicSharePage\\(\\s*['"]([^'"]+)['"]/);
+  let shareData = null;
+
+  if (encodedMatch?.[1]) {
+    try {
+      const decoded = Buffer.from(encodedMatch[1], 'base64').toString('utf8');
+      shareData = JSON.parse(decoded);
+    } catch (error) {
+      console.warn('[ICEDRIVE] Unable to decode share metadata:', error?.message || error);
+    }
+  }
+
+  const fileId = String(
+    shareData?.id ||
+    shareData?.share_record?.item_id ||
+    (html.match(/previewItem\\(\\s*['"]([^'"]+)['"]/i) || [])[1] ||
+    ''
+  ).trim();
+
+  if (!fileId || !/^\\d+$/.test(fileId)) {
+    throw new Error('Icedrive public share did not expose a previewable file ID');
+  }
+
+  const apiUrl = `https://icedrive.net/API/Internal/V1/?request=file-preview&id=${encodeURIComponent(fileId)}&sess=1`;
+  const previewResponse = await fetch(apiUrl, {
+    headers: {
+      'User-Agent': 'MediDocs/1.0 document-preview',
+      'Accept': 'application/json'
+    }
+  });
+  if (!previewResponse.ok) throw new Error(`Icedrive preview API returned HTTP ${previewResponse.status}`);
+
+  const previewData = await previewResponse.json();
+  const firstItem = Array.isArray(previewData?.data) ? previewData.data.find((item) => item && (item.thumbnail || item.download_url || item.url)) : null;
+  const rawUrl = typeof previewData?.download_url === 'string' ? previewData.download_url : '';
+  const thumbnailUrl = typeof firstItem?.thumbnail === 'string' ? firstItem.thumbnail : '';
+
+  let previewUrl = rawUrl || thumbnailUrl;
+  if (thumbnailUrl && !rawUrl) {
+    // Icedrive embeds a small thumbnail in the share page. Request a larger
+    // preview where the signed thumbnail URL supports the size parameters.
+    previewUrl = thumbnailUrl.replace(/&w=[^&]+&h=[^&]+&m=[^&]+.*$/i, '&w=2048&h=2048');
+  }
+
+  const result = {
+    success: true,
+    fileId,
+    fileName: shareData?.filename || shareData?.title || '',
+    extension: shareData?.extension || '',
+    previewUrl,
+    direct: Boolean(rawUrl),
+    source: rawUrl ? 'icedrive-file-preview' : 'icedrive-thumbnail'
+  };
+
+  icedrivePreviewCache.set(shareUrl, { value: result, cachedAt: Date.now() });
+  return result;
+};
+
+app.get('/api/icedrive/preview', async (req, res) => {
+  const shareUrl = String(req.query.url || '').trim();
+
+  if (!isAllowedIcedriveShareUrl(shareUrl)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Only valid Icedrive public file-share URLs are supported.'
+    });
+  }
+
+  try {
+    const result = await fetchIcedrivePreview(shareUrl);
+    if (!result.previewUrl) {
+      return res.status(404).json({
+        success: false,
+        error: 'Icedrive did not return a preview resource for this file.'
+      });
+    }
+
+    res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+    return res.json(result);
+  } catch (error) {
+    console.error('[ICEDRIVE] Preview resolution failed:', {
+      url: shareUrl,
+      message: error?.message || String(error)
+    });
+    return res.status(502).json({
+      success: false,
+      error: 'Unable to resolve the Icedrive preview resource.'
+    });
+  }
+});
+
 // Receives sanitized browser-side Cloudinary failures so they are visible in Render logs.
 // Never send secrets, tokens, the upload preset, or full Cloudinary URLs here.
 app.post('/api/debug/cloudinary', (req, res) => {
