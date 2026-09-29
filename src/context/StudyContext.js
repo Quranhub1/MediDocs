@@ -574,25 +574,49 @@ export const StudyProvider = ({ children }) => {
     try {
       const statRef = doc(db, 'users', currentUser.uid, 'documentStats', getSafeStatId(cleanId));
       const studyRef = doc(db, 'userStudyData', currentUser.uid);
-      await runTransaction(db, async (transaction) => {
-        const statSnap = await transaction.get(statRef);
-        const stat = statSnap.exists() ? statSnap.data() : {};
-        const currentProgress = Number(stat.progressPercent) || 0;
-        const nextProgress = progressPercent == null
-          ? currentProgress
-          : Math.max(currentProgress, Math.min(100, Number(progressPercent) || 0));
-        transaction.set(statRef, {
-          viewed: true,
-          totalSeconds: (Number(stat.totalSeconds) || 0) + addedSeconds,
-          progressPercent: nextProgress,
-          lastProgressAt: serverTimestamp(),
-          ...metadata
-        }, { merge: true });
-        transaction.set(studyRef, {
-          totalDocumentStudySeconds: increment(addedSeconds),
-          updatedAt: serverTimestamp()
-        }, { merge: true });
-      });
+      const attemptWrite = async () => {
+        await runTransaction(db, async (transaction) => {
+          if (progressPercent == null) {
+            transaction.set(statRef, {
+              viewed: true,
+              totalSeconds: increment(addedSeconds),
+              lastProgressAt: serverTimestamp(),
+              ...metadata
+            }, { merge: true });
+          } else {
+            const statSnap = await transaction.get(statRef);
+            const stat = statSnap.exists() ? statSnap.data() : {};
+            const currentProgress = Number(stat.progressPercent) || 0;
+            const nextProgress = Math.max(currentProgress, Math.min(100, Number(progressPercent) || 0));
+            transaction.set(statRef, {
+              viewed: true,
+              totalSeconds: increment(addedSeconds),
+              progressPercent: nextProgress,
+              lastProgressAt: serverTimestamp(),
+              ...metadata
+            }, { merge: true });
+          }
+          transaction.set(studyRef, {
+            totalDocumentStudySeconds: increment(addedSeconds),
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        });
+      };
+      let lastError;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          await attemptWrite();
+          break;
+        } catch (error) {
+          lastError = error;
+          const code = error?.code || '';
+          if (attempt < 2 && (code === 'aborted' || code.includes('failed-precondition'))) {
+            await new Promise((resolve) => setTimeout(resolve, 50 * (attempt + 1)));
+          } else {
+            throw error;
+          }
+        }
+      }
       window.dispatchEvent(new CustomEvent('medidocs:document-progress-updated', {
         detail: { documentId: cleanId, seconds: addedSeconds, progressPercent }
       }));
