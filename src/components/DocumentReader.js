@@ -127,13 +127,21 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
         }
       } catch (error) {
         if (!cancelled) {
+          const fallbackThumbnail = typeof doc?.thumbnailUrl === 'string' && /^https?:\/\//i.test(doc.thumbnailUrl.trim())
+            ? doc.thumbnailUrl.trim()
+            : '';
           setIcedrivePreviewState({
             loading: false,
-            url: '',
-            error: error?.message || 'Unable to resolve Icedrive preview'
+            url: fallbackThumbnail,
+            error: fallbackThumbnail ? '' : (error?.message || 'Unable to resolve Icedrive preview')
           });
+          if (fallbackThumbnail) {
+            setLoadStarted(true);
+            console.info('[DocumentReader] Using stored document thumbnail as Icedrive fallback:', fallbackThumbnail);
+          }
           console.error('[DocumentReader] Icedrive preview resolution failed:', {
             url: filePath,
+            fallbackThumbnail: Boolean(fallbackThumbnail),
             error: error?.message || String(error)
           });
         }
