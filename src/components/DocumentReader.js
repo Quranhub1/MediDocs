@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { downloadDocument, getDocumentUrl, isValidDocumentUrl } from '../utils/documentActions';
+import { getBlob, refFromURL } from 'firebase/storage';
+import { storage } from '../firebase';
 
 const NON_EMBEDDABLE_HOSTS = ['mega.nz', 'icedrive.net', 'mediafire.com', 'drive.google.com', 'dropbox.com', '1drv.ms', 'app.box.com'];
 
@@ -24,6 +26,7 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [embedFailed, setEmbedFailed] = useState(false);
   const [loadStarted, setLoadStarted] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState('');
   const sessionStartedRef = useRef(null);
   const lastProgressFlushRef = useRef(null);
   const flushProgress = () => {
@@ -77,12 +80,32 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
   useEffect(() => {
     setEmbedFailed(false);
     setLoadStarted(false);
+    setPreviewUrl(filePath);
+    let objectUrl = null;
+    let cancelled = false;
+    const prepareInlinePreview = async () => {
+      if (!filePath || !validUrl || !storage || (!isPDF && !isImage && !isVideo)) return;
+      try {
+        const storageReference = refFromURL(filePath);
+        const blob = await getBlob(storageReference);
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        setPreviewUrl(objectUrl);
+      } catch (error) {
+        console.info('[DocumentReader] Direct inline blob preview unavailable; using source URL:', error?.message || error);
+      }
+    };
+    void prepareInlinePreview();
     setFontSize(16);
     setIsFullscreen(Boolean(document.fullscreenElement));
     const handleFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, [doc]);
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, [doc, filePath, validUrl, isPDF, isImage, isVideo]);
 
   const toggleFullscreen = async () => {
     try {
@@ -98,7 +121,7 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
 
   if (!doc) return null;
 
-  const canPreview = validUrl && !isExternalHost && (isPDF || isImage || isVideo || isOffice);
+  const canPreview = validUrl && (isPDF || isImage || isVideo || isOffice);
   const showFallback = !filePath || isExternalHost || !canPreview || embedFailed;
 
   return (
@@ -125,7 +148,7 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
         <div className="relative flex-1 overflow-hidden bg-gray-100 dark:bg-gray-900">
           {!showFallback && isPDF && (
             <iframe
-              src={filePath}
+              src={previewUrl || filePath}
               className="w-full h-full border-0"
               title={doc.title || 'PDF document'}
               onLoad={() => { setLoadStarted(true); console.info('[DocumentReader] PDF loaded:', filePath); }}
@@ -161,8 +184,8 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
                 <div className="text-6xl mb-4">{getFileTypeIcon(fileName)}</div>
                 <h4 className="font-semibold text-gray-800 dark:text-dark-text mb-2">{doc.title || fileName}</h4>
                 <p className="text-gray-500 dark:text-dark-muted mb-5 break-all">{fileName}</p>
-                <p className="text-gray-600 dark:text-dark-muted mb-6">{!filePath ? 'This document has no file URL.' : isExternalHost ? `This host (${hostName}) does not permit reliable inline preview.` : 'This file type cannot be previewed inside the app.'}</p>
-                {filePath && <div className="flex flex-wrap justify-center gap-3"><a href={filePath} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-emerald-600 text-white rounded-lg">Open Document</a><button onClick={() => downloadDocument(doc)} className="px-4 py-2 bg-gray-700 text-white rounded-lg">Download</button></div>}
+                <p className="text-gray-600 dark:text-dark-muted mb-6">{!filePath ? 'This document has no file URL.' : 'This document cannot be rendered inline by this browser or its source. It will remain inside the app without opening another window.'}</p>
+                {filePath && <div className="flex flex-wrap justify-center gap-3"><button onClick={() => downloadDocument(doc)} className="px-4 py-2 bg-gray-700 text-white rounded-lg">Download</button></div>}
               </div>
             </div>
           )}
