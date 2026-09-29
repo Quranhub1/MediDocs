@@ -1,4 +1,4 @@
-const CACHE_NAME = 'medidocs-v3';
+const CACHE_NAME = 'medidocs-v4';
 const APP_SHELL = ['/', '/index.html', '/manifest.json', '/favicon.ico', '/medidocs-icon.svg'];
 
 self.addEventListener('install', (event) => {
