@@ -18,6 +18,17 @@ export const isValidDocumentUrl = (doc) => {
   }
 };
 
+// Escape HTML special characters for existing document rendering helpers.
+export const escapeHtml = (text) => {
+  if (typeof text !== 'string') return '';
+  return text
+    .replace(/&/g, '&')
+    .replace(/</g, '<')
+    .replace(/>/g, '>')
+    .replace(/"/g, '"')
+    .replace(/'/g, '&#039;');
+};
+
 export const getDocumentHostName = (value) => {
   const url = typeof value === 'string' ? value : getDocumentUrl(value);
   if (!url) return '';
