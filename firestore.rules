@@ -12,6 +12,18 @@ service cloud.firestore {
         );
     }
 
+    // Compatibility rule for any legacy dashboard listener using lowercase /resources.
+    // The existing RESOURCES_STUDYPEDIA hierarchy remains unchanged.
+    match /resources/{document=**} {
+      allow read: if request.auth != null;
+
+      allow write: if request.auth != null &&
+        (
+          request.auth.token.email == 'kaigwaakram123@gmail.com' ||
+          request.auth.token.email == 'sshipher@gmail.com'
+        );
+    }
+
     match /users/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;
 
