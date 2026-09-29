@@ -152,6 +152,45 @@ function AppContent() {
     };
   }, [currentView]);
 
+  // Keep every normal hyperlink inside the current browser tab. Some document
+  // metadata is loaded dynamically, so this guard also covers anchors created
+  // after the initial render. Downloads, mail links, and phone links keep their
+  // browser-native behavior.
+  useEffect(() => {
+    const normalizeAnchor = (anchor) => {
+      if (!(anchor instanceof HTMLAnchorElement)) return;
+      const href = anchor.getAttribute('href') || '';
+      if (!href || /^(?:mailto:|tel:|javascript:|data:|blob:)/i.test(href)) return;
+      if (anchor.target && anchor.target.toLowerCase() !== '_self') {
+        anchor.target = '_self';
+      }
+    };
+
+    const handleClick = (event) => {
+      const anchor = event.target?.closest?.('a');
+      if (anchor) normalizeAnchor(anchor);
+    };
+
+    document.addEventListener('click', handleClick, true);
+    document.querySelectorAll('a').forEach(normalizeAnchor);
+
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          if (!(node instanceof Element)) return;
+          if (node.matches('a')) normalizeAnchor(node);
+          node.querySelectorAll?.('a').forEach(normalizeAnchor);
+        });
+      });
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      document.removeEventListener('click', handleClick, true);
+      observer.disconnect();
+    };
+  }, []);
+
   useEffect(() => {
     if (currentUser && checkLoginAnomaly) {
       checkLoginAnomaly(currentUser.email, 'unknown', navigator.userAgent);
