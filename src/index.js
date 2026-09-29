@@ -10,8 +10,11 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 // resource index remain usable when connectivity is intermittent.
 if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
+    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
       .then((registration) => {
+        // Force a fresh service-worker script check so users are not stuck on
+        // an older cached worker after a production fix.
+        registration.update().catch(() => {});
         registration.addEventListener('updatefound', () => {
           const worker = registration.installing;
           if (!worker) return;
