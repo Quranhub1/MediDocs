@@ -1023,6 +1023,7 @@ export const StudyProvider = ({ children }) => {
     recordStudySession,
     recordDocumentView,
     recordDocumentDownload,
+    recordDocumentProgress,
     createFlashcard,
     updateFlashcardReview,
     recordLearningReview,
