@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { serverTimestamp } from 'firebase/firestore';
 
 const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) => {
-  const { userProfile, currentUser } = useAuth();
+  const { userProfile, currentUser, isAuthenticated } = useAuth();
   const [selectedPlanKey, setSelectedPlanKey] = useState(selectedPlan || 'monthly');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
@@ -21,13 +21,13 @@ const PaymentModal = ({ show, onClose, selectedPlan = null, onPaymentSuccess }) 
       setPhoneNumber(userProfile?.phone || '');
       setEmail(userProfile?.email || currentUser?.email || '');
     }
-  }, [show, selectedPlan, userProfile?.phone, userProfile?.email, currentUser?.email]);
+  }, [show, selectedPlan, userProfile?.phone, userProfile?.email, currentUser?.email, isAuthenticated]);
 
   const getPlanDetails = () => SUBSCRIPTION_PLANS[selectedPlanKey] || SUBSCRIPTION_PLANS.monthly;
 
   const handleSubmit = async () => {
     const plan = getPlanDetails();
-    if (!currentUser?.uid || !phoneNumber.trim() || !email.trim() || !transactionId.trim()) {
+    if (!isAuthenticated || !currentUser?.uid || !phoneNumber.trim() || !email.trim() || !transactionId.trim()) {
       setSubmitStatus('error');
       return;
     }
