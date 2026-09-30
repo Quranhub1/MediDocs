@@ -57,65 +57,34 @@ export const subscribeToCourses = (onData, onError) => {
 };
 
 export const subscribeToAllResources = (onData, onError) => {
-  if (!db) return () => {};
-  return onSnapshot(
-    collectionGroup(db, 'documents'),
-    (snapshot) => {
-      const data = snapshot.docs.map((item) => {
-        const docData = item.data();
-        const parts = item.ref.path.split('/');
-        const courseId = parts[1] || docData.courseId || '';
-        const semesterId = parts[3] || docData.semesterId || '';
-        const unitId = parts[5] === 'courseunits' ? parts[6] : null;
-        const courseName = docData.courseName || docData.course || courseId;
-        const semesterName = docData.semesterName || semesterId;
-        const unitName = docData.unitName || unitId;
-        return {
-          id: item.id,
-          ...docData,
-          courseId,
-          courseName,
-          semesterId,
-          semesterName,
-          unitId,
-          unitName,
-          fullPath: item.ref.path,
-          createdAtDate: convertTimestamp(docData.createdAt),
-          status: docData.status || 'free'
-        };
-      });
-      data.sort((a, b) => {
-        if (a.time === 'latest' && b.time !== 'latest') return -1;
-        if (a.time !== 'latest' && b.time === 'latest') return 1;
-        return (b.createdAtDate?.getTime() || 0) - (a.createdAtDate?.getTime() || 0);
-      });
-      onData(data);
-    },
-    async (error) => {
-      const permissionError = error?.code === 'permission-denied' || error?.code === 'failed-precondition';
-      if (permissionError) {
-        try {
-          const response = await fetch('/api/resources/index?limit=10000');
-          const result = await response.json().catch(() => ({}));
-          if (response.ok && result.success) {
-            const data = (result.data || []).map((item) => ({
-              ...item,
-              fullPath: item.fullPath || '',
-              status: item.status || 'free'
-            }));
-            onData(data);
-            console.warn('[REALTIME] Client resource listener unavailable; using server resource index.');
-            return;
-          }
-        } catch (fallbackError) {
-          console.warn('[REALTIME] Server resource index fallback failed:', fallbackError?.message || fallbackError);
-        }
-      } else {
-        console.warn('[REALTIME] Resource listener failed:', error);
+  let disposed = false;
+  let refreshTimer = null;
+
+  const load = async (forceRefresh = false) => {
+    try {
+      const result = await fetchResourceIndexFromApi(10000, forceRefresh);
+      if (disposed) return;
+      if (result?.success) {
+        onData(result.data || []);
+        return;
       }
+      throw new Error(result?.error || 'Resource index unavailable');
+    } catch (error) {
+      if (disposed) return;
+      console.warn('[RESOURCES] Server resource index unavailable:', error?.message || error);
       if (onError) onError(error);
     }
-  );
+  };
+
+  void load(false);
+  refreshTimer = window.setInterval(() => {
+    void load(true);
+  }, 5 * 60 * 1000);
+
+  return () => {
+    disposed = true;
+    if (refreshTimer) window.clearInterval(refreshTimer);
+  };
 };
 
 export const subscribeToSemesters = (courseId, onData, onError) => {
@@ -153,30 +122,40 @@ export const subscribeToCourseUnits = (courseId, semesterId, onData, onError) =>
 };
 
 export const subscribeToDocuments = (courseId, semesterId, unitId, onData, onError) => {
-  if (!db || !courseId || !semesterId || !unitId) return () => {};
-  return onSnapshot(
-    collection(db, `RESOURCES_STUDYPEDIA/${courseId}/semesters/${semesterId}/courseunits/${unitId}/documents`),
-    (snapshot) => onData(snapshot.docs.map((item) => {
-      const data = item.data();
-      return {
-        id: item.id,
-        ...data,
-        courseId,
-        semesterId,
-        unitId,
-        courseName: data.courseName || data.course || courseId,
-        semesterName: data.semesterName || semesterId,
-        unitName: data.unitName || unitId,
-        fullPath: item.ref.path,
-        createdAtDate: convertTimestamp(data.createdAt),
-        status: data.status || 'free'
-      };
-    })),
-    (error) => {
-      console.error('[REALTIME] Documents listener failed:', error);
+  if (!courseId || !semesterId || !unitId) return () => {};
+
+  let disposed = false;
+  let refreshTimer = null;
+
+  const load = async (forceRefresh = false) => {
+    try {
+      const result = await fetchResourceIndexFromApi(10000, forceRefresh);
+      if (disposed) return;
+      if (!result?.success) throw new Error(result?.error || 'Resource index unavailable');
+
+      const data = (result.data || []).filter((item) =>
+        String(item.courseId || '') === String(courseId) &&
+        String(item.semesterId || '') === String(semesterId) &&
+        String(item.unitId || '') === String(unitId)
+      );
+
+      onData(data);
+    } catch (error) {
+      if (disposed) return;
+      console.warn('[DOCUMENTS] Server document index unavailable:', error?.message || error);
       if (onError) onError(error);
     }
-  );
+  };
+
+  void load(false);
+  refreshTimer = window.setInterval(() => {
+    void load(true);
+  }, 5 * 60 * 1000);
+
+  return () => {
+    disposed = true;
+    if (refreshTimer) window.clearInterval(refreshTimer);
+  };
 };
 
 // Fetch all documents from the RESOURCES_STUDYPEDIA collection
@@ -473,13 +452,34 @@ export const fetchCourseUnits = async (courseId, semesterId, forceRefresh = fals
 // Get documents only for the selected course unit.
 export const fetchDocuments = async (courseId, semesterId, unitId, forceRefresh = false) => {
   try {
-    if (!courseId || !semesterId || !unitId) return { success: false, error: 'Course ID, Semester ID, and Unit ID required', data: [] };
-    const result = await getCachedCollection(`RESOURCES_STUDYPEDIA/${courseId}/semesters/${semesterId}/courseunits/${unitId}/documents`, forceRefresh);
-    return { success: true, data: result.data.map((docData) => ({
-      ...docData,
-      createdAtDate: convertTimestamp(docData.createdAt),
-      status: docData.status || 'free'
-    })) };
+    if (!courseId || !semesterId || !unitId) {
+      return { success: false, error: 'Course ID, Semester ID, and Unit ID required', data: [] };
+    }
+
+    const result = await fetchResourceIndexFromApi(10000, forceRefresh);
+    if (!result?.success) {
+      return {
+        success: false,
+        error: result?.error || 'Resource index unavailable',
+        data: [],
+        quotaExceeded: Boolean(result?.quotaExceeded)
+      };
+    }
+
+    const data = (result.data || []).filter((item) =>
+      String(item.courseId || '') === String(courseId) &&
+      String(item.semesterId || '') === String(semesterId) &&
+      String(item.unitId || '') === String(unitId)
+    );
+
+    return {
+      success: true,
+      data: data.map((item) => ({
+        ...item,
+        createdAtDate: convertTimestamp(item.createdAt || item.createdAtDate),
+        status: item.status || 'free'
+      }))
+    };
   } catch (error) {
     console.error('Error fetching documents:', error);
     return { success: false, error: error.message, data: [] };
