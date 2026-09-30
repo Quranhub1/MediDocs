@@ -48,7 +48,8 @@ const getInitialView = () => {
 };
 
 function AppContent() {
-  const { currentUser, userProfile, isBanned, logout, refreshUserProfile } = useAuth();
+  const { currentUser, isAuthenticated, userProfile, isBanned, logout, refreshUserProfile } = useAuth();
+  const displayUser = isAuthenticated ? currentUser : null;
   const { checkLoginAnomaly } = useAnomaly();
   const { learningStatsByCourse, learningReviews } = useStudy();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -192,10 +193,10 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    if (currentUser && checkLoginAnomaly) {
+    if (isAuthenticated && currentUser && checkLoginAnomaly) {
       checkLoginAnomaly(currentUser.email, 'unknown', navigator.userAgent);
     }
-  }, [currentUser, checkLoginAnomaly]);
+  }, [currentUser, isAuthenticated, checkLoginAnomaly]);
 
   const toggleSidebar = () => setIsSidebarOpen((open) => !open);
   const closeSidebar = () => setIsSidebarOpen(false);
@@ -296,7 +297,7 @@ function AppContent() {
 
         <div className="flex flex-col min-h-screen">
           <Header
-            user={currentUser}
+            user={displayUser}
             userProfile={userProfile}
             currentView={currentView}
             onViewChange={handleViewChange}
@@ -326,7 +327,7 @@ function AppContent() {
                   <AdminUserRegistry />
                   <SubscriptionManager />
                 </>
-              ) : currentView === 'profile' && currentUser ? (
+              ) : currentView === 'profile' && displayUser ? (
                 <>
                   <UserProfile
                     onViewChange={handleViewChange}
@@ -410,7 +411,7 @@ function AppContent() {
           </footer>
         </div>
 
-        {currentView === 'courses' && currentUser && <DashboardEnhancements userProfile={userProfile} />}
+        {currentView === 'courses' && displayUser && <DashboardEnhancements userProfile={userProfile} />}
 
         <LoginModal
           show={showLoginModal}
