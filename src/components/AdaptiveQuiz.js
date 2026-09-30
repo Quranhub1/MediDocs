@@ -19,7 +19,7 @@ const getWeekKey = (date = new Date()) => {
 };
 
 const AdaptiveQuiz = ({ courseId, unitId, onClose }) => {
-  const { currentUser } = useAuth();
+  const { currentUser, isAuthenticated } = useAuth();
   const { recordLearningReview } = useStudy();
   const [progress, setProgress] = useState({ completed: [], scores: {} });
   const [currentQuiz, setCurrentQuiz] = useState(null);
@@ -57,7 +57,7 @@ const AdaptiveQuiz = ({ courseId, unitId, onClose }) => {
     let cancelled = false;
 
     const loadProgress = async () => {
-      if (!currentUser || !db) {
+      if (!isAuthenticated || !currentUser || !db) {
         setLoading(false);
         return;
       }
@@ -97,7 +97,7 @@ const AdaptiveQuiz = ({ courseId, unitId, onClose }) => {
 
     void loadProgress();
     return () => { cancelled = true; };
-  }, [currentUser, availableQuizzes]);
+  }, [currentUser, isAuthenticated, availableQuizzes]);
 
   const choose = (questionId, value) => {
     if (!submitted && !saving) {
@@ -106,7 +106,7 @@ const AdaptiveQuiz = ({ courseId, unitId, onClose }) => {
   };
 
   const submit = async () => {
-    if (!currentQuiz || !currentUser || !db || saving) return;
+    if (!currentQuiz || !isAuthenticated || !currentUser || !db || saving) return;
 
     const totalQuestions = currentQuiz.questions.length;
     const answered = currentQuiz.questions.filter((question) => answers[question.id] !== undefined).length;
@@ -219,7 +219,7 @@ const AdaptiveQuiz = ({ courseId, unitId, onClose }) => {
     );
   }
 
-  if (!currentUser) {
+  if (!isAuthenticated || !currentUser) {
     return (
       <div className="adaptive-quiz-backdrop" role="dialog" aria-modal="true">
         <div className="adaptive-quiz-loading">
