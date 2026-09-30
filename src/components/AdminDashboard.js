@@ -12,13 +12,10 @@ import {
   lockExpiredSubscriptions,
   getSubscriptionCountdown,
   SUBSCRIPTION_PLANS,
-  subscribeToAllResources,
-  subscribeToCourses
 } from '../services/FirestoreService';
 import { generateThumbnail } from '../utils/thumbnailGenerator';
 import {
   collection,
-  collectionGroup,
   onSnapshot,
   doc as docRef,
   updateDoc,
@@ -152,23 +149,72 @@ const AdminDashboard = ({ user, onViewChange }) => {
     setLoading(true);
     let mounted = true;
 
-    const unsubscribeResources = subscribeToAllResources((nextDocuments) => {
-      if (!mounted) return;
-      const allDocs = nextDocuments.map((item) => ({
-        ...item,
-        fullPath: item.fullPath || item.ref?.path
-      }));
-      setDocuments(allDocs);
-    }, (error) => console.error('[REALTIME] Admin resources:', error));
+    // Admin resource data is served through the server-side Firebase Admin SDK.
+    // This avoids client-side collection-group permission failures and removes a
+    // large set of realtime listeners from the administrator dashboard.
+    let resourceRefreshTimer;
+    const loadAdminResources = async () => {
+      try {
+        const response = await fetch('/api/resources/index?limit=10000');
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Resource index unavailable');
+        }
+        if (!mounted) return;
 
-    const unsubscribeCourses = subscribeToCourses((nextCourses) => {
-      if (!mounted) return;
-      setCourses(nextCourses.map((item) => ({
-        id: item.id,
-        name: item.name || item.id,
-        ...item
-      })));
-    }, (error) => console.error('[REALTIME] Admin courses:', error));
+        const allDocs = Array.isArray(result.data) ? result.data.map((item) => ({
+          ...item,
+          fullPath: item.fullPath || ''
+        })) : [];
+        setDocuments(allDocs);
+
+        const courseMap = new Map();
+        const semesterMap = new Map();
+        const unitMap = new Map();
+
+        allDocs.forEach((item) => {
+          const courseId = item.courseId || item.course || item.courseName || '';
+          const courseName = item.courseName || item.course || courseId;
+          if (courseId) courseMap.set(String(courseId), { id: String(courseId), name: courseName });
+
+          const semesterId = item.semesterId || item.semester || item.semesterName || '';
+          const semesterName = item.semesterName || item.semester || semesterId;
+          if (semesterId) {
+            semesterMap.set(String(semesterId), {
+              id: String(semesterId),
+              name: semesterName,
+              courseId: String(courseId || '')
+            });
+          }
+
+          const unitId = item.unitId || item.unit || item.unitName || '';
+          const unitName = item.unitName || item.unit || unitId;
+          if (unitId) {
+            unitMap.set(String(unitId), {
+              id: String(unitId),
+              name: unitName,
+              courseId: String(courseId || ''),
+              semesterId: String(semesterId || '')
+            });
+          }
+        });
+
+        setCourses(Array.from(courseMap.values()));
+        setSemesters(Array.from(semesterMap.values()));
+        setUnits(Array.from(unitMap.values()));
+      } catch (error) {
+        if (mounted) {
+          console.warn('[REALTIME] Admin resource index unavailable:', error?.message || error);
+          setDocuments([]);
+          setCourses([]);
+          setSemesters([]);
+          setUnits([]);
+        }
+      }
+    };
+
+    loadAdminResources();
+    resourceRefreshTimer = window.setInterval(loadAdminResources, 5 * 60 * 1000);
 
     const unsubscribeUsers = onSnapshot(
       collection(db, 'users'),
@@ -192,36 +238,13 @@ const AdminDashboard = ({ user, onViewChange }) => {
       (error) => console.error('[REALTIME] Admin payments:', error)
     );
 
-    const unsubscribeSemesters = onSnapshot(
-      collectionGroup(db, 'semesters'),
-      (snapshot) => {
-        if (!mounted) return;
-        setSemesters(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
-      },
-      (error) => console.error('[REALTIME] Admin semesters:', error)
-    );
-
-    const unsubscribeUnits = onSnapshot(
-      collectionGroup(db, 'courseunits'),
-      (snapshot) => {
-        if (!mounted) return;
-        setUnits(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
-        setLoading(false);
-      },
-      (error) => {
-        console.error('[REALTIME] Admin units:', error);
-        setLoading(false);
-      }
-    );
+    setLoading(false);
 
     return () => {
       mounted = false;
-      unsubscribeResources();
-      unsubscribeCourses();
+      window.clearInterval(resourceRefreshTimer);
       unsubscribeUsers();
       unsubscribePayments();
-      unsubscribeSemesters();
-      unsubscribeUnits();
     };
   }, [isAdmin]);
 
