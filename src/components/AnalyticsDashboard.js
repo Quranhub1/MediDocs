@@ -36,7 +36,7 @@ const getLastSevenDays = () => {
 };
 
 const AnalyticsDashboard = ({ onClose }) => {
-  const { currentUser } = useAuth();
+  const { currentUser, isAuthenticated } = useAuth();
   const [stats, setStats] = useState({
     documentsViewed: 0,
     documentsDownloaded: 0,
@@ -50,7 +50,7 @@ const AnalyticsDashboard = ({ onClose }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!currentUser || !db) {
+    if (!isAuthenticated || !currentUser || !db) {
       setLoading(false);
       setStats({
         documentsViewed: 0,
@@ -152,7 +152,7 @@ const AnalyticsDashboard = ({ onClose }) => {
       unsubQuizzes();
       unsubBadges();
     };
-  }, [currentUser]);
+  }, [currentUser, isAuthenticated]);
 
   if (loading) {
     return (
