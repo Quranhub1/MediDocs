@@ -1,6 +1,5 @@
 import {
   collection,
-  collectionGroup,
   getDocs,
   getDocsFromCache,
   onSnapshot,
@@ -33,9 +32,8 @@ const convertTimestamp = (timestamp) => {
   return null;
 };
 
-// Realtime resource listeners. These deliberately bypass the legacy cache helpers.
-// One listener covers every nested documents subcollection, and one covers courses.
-// Firestore sends the initial snapshot once, then only changed documents afterwards.
+// Resource discovery is served through the backend index so browsers do not need
+// a collection-group listener over the entire resource hierarchy.
 export const subscribeToCourses = (onData, onError) => {
   if (!db) return () => {};
   return onSnapshot(
