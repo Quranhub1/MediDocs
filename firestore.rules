@@ -12,6 +12,19 @@ service cloud.firestore {
         );
     }
 
+    // Collection-group queries on nested documents need an explicit rule.
+    // Restrict access to documents that belong to the MediDocs resource hierarchy.
+    match /{resourcePath=**}/documents/{documentId} {
+      allow read: if request.auth != null &&
+        resourcePath.startsWith('RESOURCES_STUDYPEDIA/');
+      allow write: if request.auth != null &&
+        (
+          request.auth.token.email == 'kaigwaakram123@gmail.com' ||
+          request.auth.token.email == 'sshipher@gmail.com'
+        ) &&
+        resourcePath.startsWith('RESOURCES_STUDYPEDIA/');
+    }
+
     // Compatibility rule for any legacy dashboard listener using lowercase /resources.
     // The existing RESOURCES_STUDYPEDIA hierarchy remains unchanged.
     match /resources/{document=**} {
