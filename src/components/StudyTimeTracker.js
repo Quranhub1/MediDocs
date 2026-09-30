@@ -53,7 +53,7 @@ const StudyTimeTracker = () => {
   const streakAttemptDayRef = useRef(null);
 
   useEffect(() => {
-    if (!currentUser || !db) return undefined;
+    if (!currentUser || currentUser.isAnonymous || !db) return undefined;
 
     let intervalId = null;
     let active = document.visibilityState === 'visible';
@@ -115,7 +115,7 @@ const StudyTimeTracker = () => {
     };
 
     const flush = async (force = false) => {
-      if (flushingRef.current || !currentUser || !db) return;
+      if (flushingRef.current || !currentUser || currentUser.isAnonymous || !db) return;
 
       const now = Date.now();
       if (active && lastTickRef.current) {
