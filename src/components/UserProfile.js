@@ -46,7 +46,7 @@ const UserAvatar = ({ photoURL, initials, uploading, onChange }) => {
 };
 
 const UserProfile = ({ onViewChange, onLogout, onRenew }) => {
-  const { currentUser, userProfile, isAdmin, refreshUserProfile } = useAuth();
+  const { currentUser, isAuthenticated, userProfile, isAdmin, refreshUserProfile } = useAuth();
   const { streak, badges } = useStudy();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(userProfile?.name || currentUser?.displayName || '');
@@ -69,7 +69,7 @@ const UserProfile = ({ onViewChange, onLogout, onRenew }) => {
   const handlePhotoChange = async (event) => {
     const file = event.target.files?.[0];
     event.target.value = '';
-    if (!file || !currentUser) return;
+    if (!file || !isAuthenticated || !currentUser) return;
 
     if (!file.type.startsWith('image/')) {
       setMessage({ type: 'error', text: 'Please choose an image file.' });
@@ -194,7 +194,7 @@ const UserProfile = ({ onViewChange, onLogout, onRenew }) => {
 
   const saveProfile = async (event) => {
     event.preventDefault();
-    if (!currentUser) return;
+    if (!isAuthenticated || !currentUser) return;
     setSaving(true); setMessage(null);
     try {
       await updateDoc(doc(db, 'users', currentUser.uid), { name: name.trim(), phone: phone.trim() });
@@ -207,7 +207,7 @@ const UserProfile = ({ onViewChange, onLogout, onRenew }) => {
   };
 
   const sendPasswordReset = async () => {
-    if (!currentUser?.email) return;
+    if (!isAuthenticated || !currentUser?.email) return;
     setPasswordLoading(true); setMessage(null);
     try {
       await sendPasswordResetEmail(auth, currentUser.email);
@@ -217,7 +217,7 @@ const UserProfile = ({ onViewChange, onLogout, onRenew }) => {
     } finally { setPasswordLoading(false); }
   };
 
-  if (!currentUser) return null;
+  if (!isAuthenticated || !currentUser) return null;
 
   return (
     <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10" aria-labelledby="profile-title">
