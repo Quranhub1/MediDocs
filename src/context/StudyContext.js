@@ -368,12 +368,9 @@ export const StudyProvider = ({ children }) => {
     };
   }, [currentUser, loadBadges, loadQuizzes, loadLearningReviews]);
 
-  useEffect(() => {
-    const refresh = () => void loadStreak();
-    window.addEventListener('medidocs:study-time-updated', refresh);
-    return () => window.removeEventListener('medidocs:study-time-updated', refresh);
-  }, [loadStreak]);
-
+  // The realtime userStudyData listener above already keeps streak totals current.
+  // Avoid issuing an extra getDoc after every study-time flush; doing so can
+  // amplify Firestore quota exhaustion without adding useful UI state.
   const recordStudySession = async (durationMinutes = 0) => {
     if (!currentUser || !db) return false;
     if (durationMinutes === 5) {
