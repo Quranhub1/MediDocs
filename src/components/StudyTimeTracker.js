@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { doc, increment, runTransaction, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc, increment, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 
@@ -69,41 +69,47 @@ const StudyTimeTracker = () => {
 
     const syncDailyStreak = async (dateKey, recordedAt) => {
       if (streakAttemptDayRef.current === dateKey) return;
-      // Mark the attempt before starting so a quota/error condition cannot
-      // cause a retry every minute for the same day.
+      // Only attempt the daily streak read once. A transaction is deliberately
+      // avoided here: when Firestore is quota-exhausted, transaction retries can
+      // generate a long chain of BatchGetDocuments requests and make the app
+      // appear stuck while the rest of the UI is trying to load.
       streakAttemptDayRef.current = dateKey;
 
       try {
-        await runTransaction(db, async (transaction) => {
-          const snapshot = await transaction.get(studyRef);
-          const existing = snapshot.exists() ? snapshot.data() : {};
-          const previousStudyDate = getStudyDay(existing.lastStudyDate);
-          const yesterday = getPreviousDateKey(recordedAt);
+        const snapshot = await getDoc(studyRef);
+        const existing = snapshot.exists() ? snapshot.data() : {};
+        const previousStudyDate = getStudyDay(existing.lastStudyDate);
+        const yesterday = getPreviousDateKey(recordedAt);
 
-          let currentStreak = Number(existing.currentStreak) || 0;
-          let longestStreak = Number(existing.longestStreak) || 0;
+        let currentStreak = Number(existing.currentStreak) || 0;
+        let longestStreak = Number(existing.longestStreak) || 0;
 
-          if (!previousStudyDate) {
-            currentStreak = 1;
-          } else if (previousStudyDate === dateKey) {
-            currentStreak = Math.max(1, currentStreak);
-          } else if (previousStudyDate === yesterday) {
-            currentStreak += 1;
-          } else {
-            currentStreak = 1;
-          }
+        if (!previousStudyDate) {
+          currentStreak = 1;
+        } else if (previousStudyDate === dateKey) {
+          currentStreak = Math.max(1, currentStreak);
+        } else if (previousStudyDate === yesterday) {
+          currentStreak += 1;
+        } else {
+          currentStreak = 1;
+        }
 
-          longestStreak = Math.max(longestStreak, currentStreak);
+        longestStreak = Math.max(longestStreak, currentStreak);
 
-          transaction.set(studyRef, {
-            currentStreak,
-            longestStreak,
-            lastStudyDate: recordedAt,
-            lastStudyAt: recordedAt,
-            updatedAt: recordedAt
-          }, { merge: true });
-        });
+        await setDoc(studyRef, {
+          currentStreak,
+          longestStreak,
+          lastStudyDate: recordedAt,
+          lastStudyAt: recordedAt,
+          updatedAt: recordedAt
+        }, { merge: true });
       } catch (error) {
+        if (isQuotaError(error)) {
+          quotaBackoffUntilRef.current = Math.max(
+            quotaBackoffUntilRef.current,
+            Date.now() + QUOTA_BACKOFF_MS
+          );
+        }
         console.warn('[STUDY TIME] Daily streak sync skipped:', error?.message || error);
       }
     };
