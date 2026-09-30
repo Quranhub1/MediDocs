@@ -91,8 +91,28 @@ export const subscribeToAllResources = (onData, onError) => {
       });
       onData(data);
     },
-    (error) => {
-      console.error('[REALTIME] Resource listener failed:', error);
+    async (error) => {
+      const permissionError = error?.code === 'permission-denied' || error?.code === 'failed-precondition';
+      if (permissionError) {
+        try {
+          const response = await fetch('/api/resources/index?limit=10000');
+          const result = await response.json().catch(() => ({}));
+          if (response.ok && result.success) {
+            const data = (result.data || []).map((item) => ({
+              ...item,
+              fullPath: item.fullPath || '',
+              status: item.status || 'free'
+            }));
+            onData(data);
+            console.warn('[REALTIME] Client resource listener unavailable; using server resource index.');
+            return;
+          }
+        } catch (fallbackError) {
+          console.warn('[REALTIME] Server resource index fallback failed:', fallbackError?.message || fallbackError);
+        }
+      } else {
+        console.warn('[REALTIME] Resource listener failed:', error);
+      }
       if (onError) onError(error);
     }
   );
