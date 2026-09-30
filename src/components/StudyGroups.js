@@ -11,7 +11,7 @@ const StudyGroups = ({ onClose, user }) => {
   const [loading, setLoading] = useState(false);
 
   const loadGroups = async () => {
-    if (!user) return;
+    if (!user || user.isAnonymous) return;
     setLoading(true);
     try {
       const snap = await getDocs(query(collection(db, 'studyGroups'), limit(50)));
@@ -32,7 +32,7 @@ const StudyGroups = ({ onClose, user }) => {
 
   const createGroup = async (e) => {
     e.preventDefault();
-    if (!name.trim() || !user) return;
+    if (!name.trim() || !user || user.isAnonymous) return;
     try {
       const ref = await addDoc(collection(db, 'studyGroups'), { name: name.trim(), ownerId: user.uid, memberIds: [user.uid], createdAt: serverTimestamp() });
       setName('');
@@ -44,7 +44,7 @@ const StudyGroups = ({ onClose, user }) => {
 
   const sendMessage = async (e) => {
     e.preventDefault();
-    if (!message.trim() || !selected || !user) return;
+    if (!message.trim() || !selected || !user || user.isAnonymous) return;
     try {
       await addDoc(collection(db, 'studyGroups', selected.id, 'messages'), { text: message.trim(), userId: user.uid, userName: user.displayName || user.email || 'Student', createdAt: serverTimestamp() });
       setMessage('');
@@ -52,7 +52,7 @@ const StudyGroups = ({ onClose, user }) => {
     } catch (e) { console.error('[GROUPS] send failed', e); }
   };
 
-  if (!user) return null;
+  if (!user || user.isAnonymous) return null;
   return <div className="fixed inset-0 z-[80] bg-black/50 p-3 sm:p-6 flex items-center justify-center">
     <div className="w-full max-w-5xl max-h-[92vh] overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-2xl">
       <div className="p-4 border-b dark:border-slate-700 flex justify-between items-center">
