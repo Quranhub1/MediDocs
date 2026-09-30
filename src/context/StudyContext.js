@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import {
   collection,
   doc,
@@ -57,7 +57,6 @@ const normalizeDate = (value) => {
 const getSafeStatId = (documentId) => encodeURIComponent(String(documentId)).slice(0, 1500);
 
 export const StudyProvider = ({ children }) => {
-  const documentStatsAggregateRef = useRef({ viewed: null, downloaded: null });
   // AuthContext exposes currentUser, not user. The previous mismatch silently
   // disabled every user-scoped study write and made buttons appear dead.
   const { currentUser } = useAuth();
@@ -242,129 +241,22 @@ export const StudyProvider = ({ children }) => {
       (error) => console.error('[REALTIME] Study data listener failed:', error)
     );
 
-    const unsubscribeDocumentStats = onSnapshot(
-      collection(db, 'users', currentUser.uid, 'documentStats'),
-      (snapshot) => {
-        const activityByCourse = {};
-        let documentsViewed = 0;
-        let documentsDownloaded = 0;
-
-        snapshot.docs.forEach((item) => {
-          const data = item.data() || {};
-          const courseId = data.courseId || null;
-          const courseName = data.courseName || data.course || null;
-          const courseKey = String(courseId || courseName || 'Other')
-            .replaceAll('.', '_')
-            .replaceAll('/', '_')
-            .replaceAll('\\', '_')
-            .slice(0, 120) || 'Other';
-
-          const current = activityByCourse[courseKey] || {
-            viewed: 0,
-            downloads: 0,
-            courseId,
-            courseName
-          };
-          const viewed = data.viewed === true ? 1 : 0;
-          const downloads = Number(data.downloads) || 0;
-          documentsViewed += viewed;
-          documentsDownloaded += downloads;
-          activityByCourse[courseKey] = {
-            viewed: Number(current.viewed) + viewed,
-            downloads: Number(current.downloads) + downloads,
-            courseId: courseId || current.courseId || null,
-            courseName: courseName || current.courseName || null
-          };
-        });
-
-        setStreak((prev) => ({
-          ...prev,
-          documentsViewed,
-          documentsDownloaded,
-          activityByCourse
-        }));
-
-        const previousAggregate = documentStatsAggregateRef.current;
-        const aggregateChanged =
-          previousAggregate.viewed !== documentsViewed ||
-          previousAggregate.downloaded !== documentsDownloaded;
-
-        if (aggregateChanged) {
-          documentStatsAggregateRef.current = {
-            viewed: documentsViewed,
-            downloaded: documentsDownloaded
-          };
-
-          void setDoc(doc(db, 'userStudyData', currentUser.uid), {
-            documentsViewed,
-            documentsDownloaded,
-            activityByCourse,
-            updatedAt: serverTimestamp()
-          }, { merge: true }).catch((error) => {
-            console.error('[ANALYTICS] Failed to sync aggregate stats:', error);
-          });
-        }
-
-        // Progress updates change a documentStats record every few seconds.
-        // Only log when the meaningful aggregate changes, not on every heartbeat.
-        if (aggregateChanged || previousAggregate.viewed === null) {
-          console.info('[ANALYTICS] Realtime document stats:', {
-            documentStats: snapshot.size,
-            documentsViewed,
-            documentsDownloaded,
-            courses: Object.keys(activityByCourse).length
-          });
-        }
-      },
-      (error) => console.error('[ANALYTICS] Document stats listener failed:', {
-        code: error?.code || 'unknown',
-        message: error?.message || String(error)
-      })
-    );
-
-    const unsubscribeFlashcards = onSnapshot(
-      collection(db, 'users', currentUser.uid, 'flashcards'),
-      (snapshot) => {
-        const cards = snapshot.docs
-          .map((item) => ({ id: item.id, ...item.data() }))
-          .sort((a, b) => (normalizeDate(b.createdAt)?.getTime() || 0) - (normalizeDate(a.createdAt)?.getTime() || 0));
-        setFlashcards(cards);
-        console.info('[FLASHCARDS] Realtime load:', cards.length);
-      },
-      (error) => console.error('[FLASHCARDS] Realtime listener failed:', {
-        code: error?.code || 'unknown',
-        message: error?.message || String(error)
-      })
-    );
-
-    const unsubscribeNotes = onSnapshot(
-      collection(db, 'users', currentUser.uid, 'studyNotes'),
-      (snapshot) => {
-        const notes = snapshot.docs
-          .map((item) => ({ id: item.id, ...item.data() }))
-          .sort((a, b) => (normalizeDate(b.createdAt)?.getTime() || 0) - (normalizeDate(a.createdAt)?.getTime() || 0));
-        setStudyNotes(notes);
-        console.info('[NOTES] Realtime load:', notes.length);
-      },
-      (error) => console.error('[NOTES] Realtime listener failed:', {
-        code: error?.code || 'unknown',
-        message: error?.message || String(error)
-      })
-    );
-
+    // Keep only the aggregate study document realtime. The child collections
+    // are loaded once per authenticated session and updated optimistically in
+    // local state after successful writes. This avoids permanent listeners for
+    // documentStats, flashcards, and notes and substantially reduces read churn.
     void Promise.all([
       loadBadges(),
       loadQuizzes(),
-      loadLearningReviews()
+      loadLearningReviews(),
+      loadFlashcards(),
+      loadStudyNotes()
     ]).catch((error) => {
       console.error('[STUDY] Failed to initialise study data:', error);
     });
 
     return () => {
       unsubscribeStudy();
-      unsubscribeDocumentStats();
-      unsubscribeFlashcards();
-      unsubscribeNotes();
     };
   }, [currentUser, loadBadges, loadQuizzes, loadLearningReviews]);
 
