@@ -15,14 +15,14 @@ export const useBookmarks = () => {
 };
 
 export const BookmarkProvider = ({ children }) => {
-  const { user } = useAuth();
+  const { currentUser, isAuthenticated } = useAuth();
   const { addToast } = useToast();
   const [bookmarks, setBookmarks] = useState([]);
   const [recentSearches, setRecentSearches] = useState([]);
   const [trending, setTrending] = useState([]);
 
   useEffect(() => {
-    if (user && db) {
+    if (isAuthenticated && currentUser && db) {
       loadBookmarks();
     }
     if (db) {
@@ -32,9 +32,9 @@ export const BookmarkProvider = ({ children }) => {
   }, [user]);
 
   const loadBookmarks = async () => {
-    if (!user || !db) return;
+    if (!isAuthenticated || !currentUser || !db) return;
     try {
-      const q = query(collection(db, 'users', user.uid, 'bookmarks'), orderBy('createdAt', 'desc'));
+      const q = query(collection(db, 'users', currentUser.uid, 'bookmarks'), orderBy('createdAt', 'desc'));
       const snapshot = await getDocs(q);
       setBookmarks(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (error) {
@@ -54,14 +54,14 @@ export const BookmarkProvider = ({ children }) => {
   };
 
   const toggleBookmark = async (document) => {
-    if (!user) {
+    if (!isAuthenticated || !currentUser) {
       addToast('Please login to bookmark documents', 'warning');
       return;
     }
     try {
       const existing = bookmarks.find(b => b.documentId === document.id);
       if (existing) {
-        await deleteDoc(doc(db, 'users', user.uid, 'bookmarks', existing.id));
+        await deleteDoc(doc(db, 'users', currentUser.uid, 'bookmarks', existing.id));
         setBookmarks(prev => prev.filter(b => b.id !== existing.id));
         addToast('Bookmark removed', 'info');
       } else {
@@ -76,7 +76,7 @@ export const BookmarkProvider = ({ children }) => {
           description: document.description,
           createdAt: serverTimestamp()
         };
-        const docRef = await setDoc(doc(collection(db, 'users', user.uid, 'bookmarks')), bookmark);
+        const docRef = await setDoc(doc(collection(db, 'users', currentUser.uid, 'bookmarks')), bookmark);
         setBookmarks(prev => [{ id: docRef.id, ...bookmark }, ...prev]);
         addToast('Bookmarked!', 'success');
       }
@@ -87,13 +87,13 @@ export const BookmarkProvider = ({ children }) => {
   };
 
   const addRecentSearch = async (searchTerm) => {
-    if (!user || !searchTerm.trim()) return;
+    if (!isAuthenticated || !currentUser || !searchTerm.trim()) return;
     try {
       const recent = {
         term: searchTerm.trim(),
         createdAt: serverTimestamp()
       };
-      const docRef = await setDoc(doc(collection(db, 'users', user.uid, 'recentSearches')), recent);
+      const docRef = await setDoc(doc(collection(db, 'users', currentUser.uid, 'recentSearches')), recent);
       setRecentSearches(prev => [{ id: docRef.id, ...recent }, ...prev.filter(s => s.term !== searchTerm.trim())].slice(0, 10));
     } catch (error) {
       console.error('Error saving search:', error);
@@ -101,9 +101,9 @@ export const BookmarkProvider = ({ children }) => {
   };
 
   const clearRecentSearches = async () => {
-    if (!user) return;
+    if (!isAuthenticated || !currentUser) return;
     try {
-      const q = query(collection(db, 'users', user.uid, 'recentSearches'));
+      const q = query(collection(db, 'users', currentUser.uid, 'recentSearches'));
       const snapshot = await getDocs(q);
       const batch = [];
       snapshot.docs.forEach(doc => batch.push(deleteDoc(doc.ref)));
