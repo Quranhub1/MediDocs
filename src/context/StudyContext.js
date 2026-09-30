@@ -513,7 +513,7 @@ export const StudyProvider = ({ children }) => {
   };
 
   const recordLearningReview = async (itemId, rating, metadata = {}) => {
-    if (!currentUser || !db || !itemId) return false;
+    if (!currentUser || currentUser.isAnonymous || !db || !itemId) return false;
     const cleanRating = ['again', 'hard', 'easy'].includes(rating) ? rating : 'again';
     try {
       const reviewRef = doc(db, 'users', currentUser.uid, 'learningReviews', String(itemId));
@@ -659,7 +659,7 @@ export const StudyProvider = ({ children }) => {
   };
 
   const updateFlashcardReview = async (flashcardId, quality) => {
-    if (!currentUser || !db || !flashcardId) return false;
+    if (!currentUser || currentUser.isAnonymous || !db || !flashcardId) return false;
 
     const numericQuality = Math.max(0, Math.min(5, Number(quality)));
     const flashcard = flashcards.find((item) => item.id === flashcardId);
