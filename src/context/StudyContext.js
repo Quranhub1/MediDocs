@@ -213,7 +213,6 @@ export const StudyProvider = ({ children }) => {
       setFlashcards([]);
       setQuizzes([]);
       setStudyNotes([]);
-      documentStatsAggregateRef.current = { viewed: null, downloaded: null };
       setLearningReviews([]);
       return undefined;
     }
@@ -258,7 +257,7 @@ export const StudyProvider = ({ children }) => {
     return () => {
       unsubscribeStudy();
     };
-  }, [currentUser, loadBadges, loadQuizzes, loadLearningReviews]);
+  }, [currentUser, loadBadges, loadQuizzes, loadLearningReviews, loadFlashcards, loadStudyNotes]);
 
   // The realtime userStudyData listener above already keeps streak totals current.
   // Avoid issuing an extra getDoc after every study-time flush; doing so can
@@ -324,7 +323,7 @@ export const StudyProvider = ({ children }) => {
   };
 
   const recordDocumentView = async (documentId, metadata = {}) => {
-    if (!currentUser || !db || !documentId) return false;
+    if (!currentUser || currentUser.isAnonymous || !db || !documentId) return false;
     const cleanId = String(documentId);
     try {
       const studyRef = doc(db, 'userStudyData', currentUser.uid);
@@ -377,7 +376,7 @@ export const StudyProvider = ({ children }) => {
   };
 
   const recordDocumentDownload = async (documentId, metadata = {}) => {
-    if (!currentUser || !db || !documentId) return false;
+    if (!currentUser || currentUser.isAnonymous || !db || !documentId) return false;
     const cleanId = String(documentId);
     try {
       const studyRef = doc(db, 'userStudyData', currentUser.uid);
@@ -421,7 +420,7 @@ export const StudyProvider = ({ children }) => {
   };
 
   const recordDocumentProgress = async (documentId, seconds = 0, progressPercent = null, metadata = {}) => {
-    if (!currentUser || !db || !documentId) return false;
+    if (!currentUser || currentUser.isAnonymous || !db || !documentId) return false;
     const cleanId = String(documentId);
     const addedSeconds = Math.max(0, Math.floor(Number(seconds) || 0));
     if (addedSeconds < 1 && progressPercent == null) return false;
@@ -834,7 +833,7 @@ export const StudyProvider = ({ children }) => {
   };
 
   const updateStudyNote = async (noteId, content) => {
-    if (!currentUser || !db || !noteId) return false;
+    if (!currentUser || currentUser.isAnonymous || !db || !noteId) return false;
     const cleanContent = String(content || '').trim();
     if (!cleanContent) return false;
 
@@ -855,7 +854,7 @@ export const StudyProvider = ({ children }) => {
   };
 
   const shareStudyNote = async (noteId) => {
-    if (!currentUser || !db || !noteId) return false;
+    if (!currentUser || currentUser.isAnonymous || !db || !noteId) return false;
     try {
       await updateDoc(doc(db, 'users', currentUser.uid, 'studyNotes', noteId), {
         shared: true,
