@@ -73,7 +73,7 @@ export const StudyProvider = ({ children }) => {
   const [learningStatsByCourse, setLearningStatsByCourse] = useState({});
 
   const loadStreak = useCallback(async () => {
-    if (!currentUser || !db) {
+    if (!currentUser || currentUser.isAnonymous || !db) {
       setStreak(emptyStreak);
       setLearningStatsByCourse({});
       return;
@@ -106,7 +106,7 @@ export const StudyProvider = ({ children }) => {
   }, [currentUser]);
 
   const loadLearningReviews = useCallback(async () => {
-    if (!currentUser || !db) {
+    if (!currentUser || currentUser.isAnonymous || !db) {
       setLearningReviews([]);
       return;
     }
@@ -122,7 +122,7 @@ export const StudyProvider = ({ children }) => {
   }, [currentUser]);
 
   const loadBadges = useCallback(async () => {
-    if (!currentUser || !db) {
+    if (!currentUser || currentUser.isAnonymous || !db) {
       setBadges([]);
       return;
     }
@@ -139,7 +139,7 @@ export const StudyProvider = ({ children }) => {
   }, [currentUser]);
 
   const loadStudyNotes = useCallback(async () => {
-    if (!currentUser || !db) {
+    if (!currentUser || currentUser.isAnonymous || !db) {
       setStudyNotes([]);
       return;
     }
@@ -162,7 +162,7 @@ export const StudyProvider = ({ children }) => {
   }, [currentUser, addToast]);
 
   const loadFlashcards = useCallback(async () => {
-    if (!currentUser || !db) {
+    if (!currentUser || currentUser.isAnonymous || !db) {
       setFlashcards([]);
       return;
     }
@@ -185,7 +185,7 @@ export const StudyProvider = ({ children }) => {
   }, [currentUser, addToast]);
 
   const loadQuizzes = useCallback(async () => {
-    if (!currentUser || !db) {
+    if (!currentUser || currentUser.isAnonymous || !db) {
       setQuizzes([]);
       return;
     }
@@ -207,7 +207,7 @@ export const StudyProvider = ({ children }) => {
   }, [currentUser]);
 
   useEffect(() => {
-    if (!currentUser || !db) {
+    if (!currentUser || currentUser.isAnonymous || !db) {
       setStreak(emptyStreak);
       setLearningStatsByCourse({});
       setBadges([]);
@@ -372,7 +372,7 @@ export const StudyProvider = ({ children }) => {
   // Avoid issuing an extra getDoc after every study-time flush; doing so can
   // amplify Firestore quota exhaustion without adding useful UI state.
   const recordStudySession = async (durationMinutes = 0) => {
-    if (!currentUser || !db) return false;
+    if (!currentUser || currentUser.isAnonymous || !db) return false;
     if (durationMinutes === 5) {
       console.warn('[STUDY TIME] Ignoring deprecated synthetic 5-minute session.');
       return false;
@@ -575,7 +575,7 @@ export const StudyProvider = ({ children }) => {
   };
 
   const checkAndAwardBadges = async (streakDays, studyMinutes) => {
-    if (!currentUser || !db) return;
+    if (!currentUser || currentUser.isAnonymous || !db) return;
     const newBadges = [];
 
     if (streakDays >= 7 && !badges.some((b) => b.type === 'streak_7')) {
@@ -720,7 +720,7 @@ export const StudyProvider = ({ children }) => {
   };
 
   const createFlashcard = async (front, back, courseId = null, unitId = null) => {
-    if (!currentUser || !db) {
+    if (!currentUser || currentUser.isAnonymous || !db) {
       addToast('Please sign in before creating flashcards', 'error');
       return null;
     }
@@ -821,7 +821,7 @@ export const StudyProvider = ({ children }) => {
   };
 
   const createQuiz = async (questions, courseId = null, unitId = null) => {
-    if (!currentUser || !db) {
+    if (!currentUser || currentUser.isAnonymous || !db) {
       addToast('Please sign in before creating a quiz', 'error');
       return null;
     }
@@ -848,7 +848,7 @@ export const StudyProvider = ({ children }) => {
   };
 
   const submitQuizResult = async (quizId, score, totalQuestions, metadata = {}) => {
-    if (!currentUser || !db) {
+    if (!currentUser || currentUser.isAnonymous || !db) {
       addToast('Please sign in to save quiz progress', 'error');
       return false;
     }
@@ -900,7 +900,7 @@ export const StudyProvider = ({ children }) => {
   };
 
   const addStudyNote = async (content, courseId = null, unitId = null, documentId = null) => {
-    if (!currentUser || !db) {
+    if (!currentUser || currentUser.isAnonymous || !db) {
       addToast('Please sign in before saving notes', 'error');
       return null;
     }
