@@ -944,46 +944,45 @@ let resourceIndexRefreshPromise = null;
 
 async function buildResourceIndex() {
   if (!adminDb) throw new Error('Firebase Admin SDK is not initialized');
-  const coursesSnapshot = await adminDb.collection('RESOURCES_STUDYPEDIA').get();
-  const allDocuments = [];
 
-  for (const courseDoc of coursesSnapshot.docs) {
-    const courseId = courseDoc.id;
-    const courseData = courseDoc.data() || {};
-    const courseName = courseData.name || courseId;
-    const semestersSnapshot = await courseDoc.ref.collection('semesters').get();
+  // Build the index with collection-group reads instead of walking every
+  // course -> semester -> unit -> documents branch. Firebase Admin bypasses
+  // client security rules, while these queries drastically reduce read count.
+  const [coursesSnapshot, semestersSnapshot, unitsSnapshot, documentsSnapshot] = await Promise.all([
+    adminDb.collection('RESOURCES_STUDYPEDIA').get(),
+    adminDb.collectionGroup('semesters').get(),
+    adminDb.collectionGroup('courseunits').get(),
+    adminDb.collectionGroup('documents').get()
+  ]);
 
-    for (const semesterDoc of semestersSnapshot.docs) {
-      const semesterId = semesterDoc.id;
-      const semesterData = semesterDoc.data() || {};
-      const semesterName = semesterData.name || semesterId;
-      const semesterDocsSnapshot = await semesterDoc.ref.collection('documents').get();
+  const courseNames = new Map(
+    coursesSnapshot.docs.map((item) => [
+      item.id,
+      item.data()?.name || item.id
+    ])
+  );
 
-      for (const document of semesterDocsSnapshot.docs) {
-        const data = document.data() || {};
-        allDocuments.push({
-          id: document.id, ...data,
-          courseId, courseName, semesterId, semesterName,
-          unitId: null, unitName: null
-        });
-      }
+  const semesterNames = new Map();
+  for (const item of semestersSnapshot.docs) {
+    const parts = item.ref.path.split('/');
+    const courseId = parts[1] || item.data()?.courseId || '';
+    const semesterId = parts[3] || item.id;
+    semesterNames.set(
+      `${courseId}/${semesterId}`,
+      item.data()?.name || item.id
+    );
+  }
 
-      const unitsSnapshot = await semesterDoc.ref.collection('courseunits').get();
-      for (const unitDoc of unitsSnapshot.docs) {
-        const unitId = unitDoc.id;
-        const unitData = unitDoc.data() || {};
-        const unitName = unitData.name || unitId;
-        const documentsSnapshot = await unitDoc.ref.collection('documents').get();
-        for (const document of documentsSnapshot.docs) {
-          const data = document.data() || {};
-          allDocuments.push({
-            id: document.id, ...data,
-            courseId, courseName, semesterId, semesterName,
-            unitId, unitName
-          });
-        }
-      }
-    }
+  const unitNames = new Map();
+  for (const item of unitsSnapshot.docs) {
+    const parts = item.ref.path.split('/');
+    const courseId = parts[1] || item.data()?.courseId || '';
+    const semesterId = parts[3] || item.data()?.semesterId || '';
+    const unitId = parts[5] || item.id;
+    unitNames.set(
+      `${courseId}/${semesterId}/${unitId}`,
+      item.data()?.name || item.id
+    );
   }
 
   const toMillis = (value) => {
@@ -994,6 +993,46 @@ async function buildResourceIndex() {
     return Number.isFinite(parsed) ? parsed : 0;
   };
 
+  const allDocuments = documentsSnapshot.docs.map((document) => {
+    const data = document.data() || {};
+    const parts = document.ref.path.split('/');
+
+    const courseId = parts[1] || data.courseId || '';
+    const semesterId = parts[3] || data.semesterId || '';
+    const unitId = parts[5] === 'courseunits' ? parts[6] : (data.unitId || null);
+
+    const courseName =
+      data.courseName ||
+      data.course ||
+      courseNames.get(courseId) ||
+      courseId;
+
+    const semesterName =
+      data.semesterName ||
+      semesterNames.get(`${courseId}/${semesterId}`) ||
+      semesterId;
+
+    const unitName = unitId
+      ? (
+          data.unitName ||
+          unitNames.get(`${courseId}/${semesterId}/${unitId}`) ||
+          unitId
+        )
+      : null;
+
+    return {
+      id: document.id,
+      ...data,
+      courseId,
+      courseName,
+      semesterId,
+      semesterName,
+      unitId,
+      unitName,
+      fullPath: document.ref.path
+    };
+  });
+
   allDocuments.sort((a, b) => {
     if (a.time === 'latest' && b.time !== 'latest') return -1;
     if (a.time !== 'latest' && b.time === 'latest') return 1;
@@ -1002,7 +1041,13 @@ async function buildResourceIndex() {
 
   const courseCounts = Object.values(allDocuments.reduce((counts, item) => {
     const key = item.courseId || item.courseName || 'Other';
-    if (!counts[key]) counts[key] = { courseId: key, courseName: item.courseName || key, count: 0 };
+    if (!counts[key]) {
+      counts[key] = {
+        courseId: key,
+        courseName: item.courseName || key,
+        count: 0
+      };
+    }
     counts[key].count += 1;
     return counts;
   }, {})).sort((a, b) => b.count - a.count);
@@ -1011,12 +1056,20 @@ async function buildResourceIndex() {
     const createdAtMillis = toMillis(item.createdAt);
     return {
       ...item,
-      createdAtDate: createdAtMillis ? new Date(createdAtMillis).toISOString() : null
+      createdAtDate: createdAtMillis
+        ? new Date(createdAtMillis).toISOString()
+        : null
     };
   });
-  return { success: true, data, courseCounts, totalDocuments: data.length, generatedAt: new Date().toISOString() };
-}
 
+  return {
+    success: true,
+    data,
+    courseCounts,
+    totalDocuments: data.length,
+    generatedAt: new Date().toISOString()
+  };
+}
 app.get('/api/resources/count', async (req, res) => {
   try {
     if (!adminDb) return res.status(503).json({ success: false, error: 'Reporting database is not available', totalDocuments: 0 });
