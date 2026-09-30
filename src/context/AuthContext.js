@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  signInAnonymously,
   signOut,
   onAuthStateChanged,
   sendPasswordResetEmail,
@@ -77,6 +78,19 @@ export const AuthProvider = ({ children }) => {
         setIsBanned(false);
         setIsAdmin(false);
 
+        if (user?.isAnonymous) {
+          // Match Studypedia's startup model: establish a Firebase Auth
+          // identity before any Firestore-dependent UI is allowed to run.
+          // Anonymous users can access public resource data and collection
+          // queries that require request.auth, but must not create user-scoped
+          // study data or receive a Firestore profile read.
+          setUserProfile(null);
+          setIsBanned(false);
+          setIsAdmin(false);
+          if (active) setLoading(false);
+          return;
+        }
+
         if (user) {
           try {
             // The server is authoritative for admin identity. It re-applies lifetime
@@ -107,6 +121,15 @@ export const AuthProvider = ({ children }) => {
         } else {
           setUserProfile(null);
           setIsBanned(false);
+          try {
+            console.info('[AUTH] No Firebase user; establishing anonymous session before rendering app data.');
+            await signInAnonymously(auth);
+            // onAuthStateChanged will run again with the anonymous user and
+            // finish startup there. Do not mark auth ready prematurely.
+            return;
+          } catch (error) {
+            console.warn('[AUTH] Anonymous sign-in unavailable:', error?.message || error);
+          }
         }
 
         if (active) setLoading(false);
@@ -293,6 +316,7 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     currentUser,
+    isAuthenticated: !!currentUser && !currentUser.isAnonymous,
     userProfile,
     isBanned,
     isAdmin,
