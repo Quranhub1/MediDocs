@@ -93,7 +93,11 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
     setDocumentLoaded(false);
     setContentError('');
 
-    if (!viewerElementRef.current || !doc) return undefined;
+    // Icedrive documents are rendered inside the MediDocs reader iframe.
+    // Do not initialize Apryse for them: doing so causes an unnecessary
+    // request to /api/document/content and can surface 502 errors even though
+    // the embedded Icedrive viewer is already usable.
+    if (useIcedriveEmbed || !viewerElementRef.current || !doc) return undefined;
 
     const webViewerOptions = {
       path: '/lib/webviewer',
