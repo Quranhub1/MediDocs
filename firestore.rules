@@ -12,21 +12,8 @@ service cloud.firestore {
         );
     }
 
-    // Collection-group queries on nested documents need an explicit rule.
-    // Restrict access to documents that belong to the MediDocs resource hierarchy.
-    match /{resourcePath=**}/documents/{documentId} {
-      allow read: if request.auth != null &&
-        resourcePath.startsWith('RESOURCES_STUDYPEDIA/');
-      allow write: if request.auth != null &&
-        (
-          request.auth.token.email == 'kaigwaakram123@gmail.com' ||
-          request.auth.token.email == 'sshipher@gmail.com'
-        ) &&
-        resourcePath.startsWith('RESOURCES_STUDYPEDIA/');
-    }
-
-    // Compatibility rule for any legacy dashboard listener using lowercase /resources.
-    // The existing RESOURCES_STUDYPEDIA hierarchy remains unchanged.
+    // ADDED: Dashboard resource listener
+    // Keeps existing RESOURCES_STUDYPEDIA rules untouched.
     match /resources/{document=**} {
       allow read: if request.auth != null;
 
@@ -35,6 +22,19 @@ service cloud.firestore {
           request.auth.token.email == 'kaigwaakram123@gmail.com' ||
           request.auth.token.email == 'sshipher@gmail.com'
         );
+    }
+
+    // ADDED: Explicit collection-group access for nested resource documents.
+    // Required for queries/listeners against every "documents" subcollection
+    // inside the RESOURCES_STUDYPEDIA hierarchy.
+    match /{resourcePath=**}/documents/{documentId} {
+      allow read: if resourcePath.startsWith('RESOURCES_STUDYPEDIA/');
+      allow write: if request.auth != null &&
+        (
+          request.auth.token.email == 'kaigwaakram123@gmail.com' ||
+          request.auth.token.email == 'sshipher@gmail.com'
+        ) &&
+        resourcePath.startsWith('RESOURCES_STUDYPEDIA/');
     }
 
     match /users/{userId} {
@@ -59,10 +59,13 @@ service cloud.firestore {
 
       allow create: if request.auth != null;
 
-      // Preserve profile photo updates for the signed-in user.
+      // Allow signed-in users to update only their own profile photo fields.
       allow update: if request.auth != null &&
         request.auth.uid == userId &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['photoURL', 'photoUpdatedAt']);
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'photoURL',
+          'photoUpdatedAt'
+        ]);
     }
 
     // ============================================================
@@ -121,7 +124,7 @@ service cloud.firestore {
         request.auth.uid == userId;
     }
 
-    // Adaptive-learning / spaced-repetition review records
+    // Adaptive learning / spaced repetition reviews
     match /users/{userId}/learningReviews/{reviewId} {
       allow read, create, update, delete:
         if request.auth != null &&
@@ -132,7 +135,8 @@ service cloud.firestore {
     // USER STUDY PROGRESS
     // ============================================================
 
-    // Study streak, study time and other aggregated study data
+    // Study streak, study time, document activity,
+    // adaptive-learning statistics and other aggregated data.
     match /userStudyData/{userId} {
       allow read, create, update, delete:
         if request.auth != null &&
@@ -254,7 +258,12 @@ service cloud.firestore {
         request.auth.uid == userId;
     }
 
-    // Private study groups: only members can access the group and its messages.
+    // ============================================================
+    // STUDY GROUPS
+    // ============================================================
+
+    // Private study groups.
+    // Only members can read the group.
     match /studyGroups/{groupId} {
       allow create: if request.auth != null &&
         request.resource.data.ownerId == request.auth.uid &&
@@ -270,17 +279,31 @@ service cloud.firestore {
       allow delete: if request.auth != null &&
         resource.data.ownerId == request.auth.uid;
 
+      // Group messages
       match /messages/{messageId} {
         allow read: if request.auth != null &&
-          get(/databases/$(database)/documents/studyGroups/$(groupId)).data.memberIds.hasAny([request.auth.uid]);
+          get(
+            /databases/$(database)/documents/studyGroups/$(groupId)
+          ).data.memberIds.hasAny([request.auth.uid]);
 
         allow create: if request.auth != null &&
           request.resource.data.userId == request.auth.uid &&
-          get(/databases/$(database)/documents/studyGroups/$(groupId)).data.memberIds.hasAny([request.auth.uid]);
+          get(
+            /databases/$(database)/documents/studyGroups/$(groupId)
+          ).data.memberIds.hasAny([request.auth.uid]);
 
         allow update, delete: if request.auth != null &&
           resource.data.userId == request.auth.uid;
       }
+    }
+
+    // ============================================================
+    // NOTIFICATIONS / ANNOUNCEMENTS
+    // ============================================================
+
+    match /notifications/{userId} {
+      allow read, write: if request.auth != null &&
+        request.auth.uid == userId;
     }
 
     match /announcements/{document=**} {
@@ -292,6 +315,10 @@ service cloud.firestore {
           request.auth.token.email == 'sshipher@gmail.com'
         );
     }
+
+    // ============================================================
+    // DOCUMENTS
+    // ============================================================
 
     match /documents/{document=**} {
       allow read: if request.auth != null &&
@@ -307,6 +334,10 @@ service cloud.firestore {
         );
     }
 
+    // ============================================================
+    // TRENDING
+    // ============================================================
+
     match /trending/{trendId} {
       allow read: if true;
 
@@ -316,6 +347,10 @@ service cloud.firestore {
           request.auth.token.email == 'sshipher@gmail.com'
         );
     }
+
+    // ============================================================
+    // ARTICLES
+    // ============================================================
 
     match /articles/{articleId} {
       allow read: if true;
