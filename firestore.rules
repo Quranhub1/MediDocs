@@ -66,6 +66,23 @@ service cloud.firestore {
     }
 
     // ============================================================
+    // USER BOOKMARKS & RECENT SEARCHES
+    // ============================================================
+    // These are stored as subcollections under each user's document.
+    // Access is restricted to the authenticated owner.
+    match /users/{userId}/bookmarks/{bookmarkId} {
+      allow read, create, update, delete:
+        if request.auth != null &&
+        request.auth.uid == userId;
+    }
+
+    match /users/{userId}/recentSearches/{searchId} {
+      allow read, create, update, delete:
+        if request.auth != null &&
+        request.auth.uid == userId;
+    }
+
+    // ============================================================
     // USER STUDY DATA
     // ============================================================
 
