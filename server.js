@@ -302,7 +302,12 @@ const fetchIcedrivePreview = async (shareUrl) => {
       const parsed = new URL(String(value || '').trim());
       const hostname = parsed.hostname.replace(/^www\./, '').toLowerCase();
       return parsed.protocol === 'https:' &&
-        (hostname === 'icedrive.net' || hostname === 'icedrive.io' || hostname.endsWith('.icedrive.io'));
+        (
+          hostname === 'icedrive.net' ||
+          hostname === 'icedrive.io' ||
+          hostname.endsWith('.icedrive.net') ||
+          hostname.endsWith('.icedrive.io')
+        );
     } catch {
       return false;
     }
