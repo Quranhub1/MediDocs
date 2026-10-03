@@ -20,7 +20,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useStudy } from '../context/StudyContext';
 import { useBookmarks } from '../context/BookmarkContext';
 import { useToast } from '../context/ToastContext';
-import { fetchAllDocuments, subscribeToCourses, subscribeToSemesters, subscribeToCourseUnits, subscribeToDocuments } from '../services/FirestoreService';
+import { fetchLatestDocuments, subscribeToCourses, subscribeToSemesters, subscribeToCourseUnits, subscribeToDocuments } from '../services/FirestoreService';
 import { getDocumentUrl, downloadDocument } from '../utils/documentActions';
 
 const getAnalyticsDocumentId = (doc) => {
@@ -77,7 +77,7 @@ const MainContent = ({ view, user, userProfile, onLoginClick, onRegisterClick, o
     setLoading(true);
     setLoadError(null);
 
-    void fetchAllDocuments(10).then((result) => {
+    void fetchLatestDocuments(10).then((result) => {
       if (!mounted || !result?.success) return;
       const resources = (result.data || []).filter((item) => item?.status !== 'deleted');
       setLatestDocuments(resources.slice(0, 10));
