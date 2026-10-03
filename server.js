@@ -268,9 +268,10 @@ const fetchIcedrivePreview = async (shareUrl) => {
 
   const shareResponse = await fetch(shareUrl, {
     headers: {
-      'User-Agent': 'MediDocs/1.0 document-preview',
+      'User-Agent': 'Mozilla/5.0 (compatible; MediDocs/1.0; document-preview)',
       'Accept': 'text/html,application/xhtml+xml'
-    }
+    },
+    redirect: 'follow'
   });
 
   if (!shareResponse.ok) {
@@ -280,6 +281,12 @@ const fetchIcedrivePreview = async (shareUrl) => {
   const canonicalShareUrl = isAllowedIcedriveShareUrl(shareResponse.url)
     ? shareResponse.url
     : shareUrl;
+
+  // Icedrive's public-share API is session-aware. The public share page can
+  // establish an anonymous Icedrive session/cookie even though no login is
+  // required. Preserve that cookie for the follow-up API request; otherwise
+  // Icedrive responds with HTTP 403.
+  const shareCookie = getSetCookieHeader(shareResponse);
   const html = await shareResponse.text();
   const metadata = extractIcedriveShareMetadata(html);
 
@@ -301,11 +308,17 @@ const fetchIcedrivePreview = async (shareUrl) => {
   // Keep it as a secondary source for PDFs, Office files, and other types.
   const apiUrl = `https://icedrive.net/API/Internal/V1/?request=file-preview&id=${encodeURIComponent(metadata.fileId)}&sess=1`;
   try {
+    const previewHeaders = {
+      'User-Agent': 'Mozilla/5.0 (compatible; MediDocs/1.0; document-preview)',
+      'Accept': 'application/json,text/plain,*/*',
+      'Referer': canonicalShareUrl,
+      'Origin': 'https://icedrive.net'
+    };
+    if (shareCookie) previewHeaders.Cookie = shareCookie;
+
     const previewResponse = await fetch(apiUrl, {
-      headers: {
-        'User-Agent': 'MediDocs/1.0 document-preview',
-        'Accept': 'application/json,text/plain,*/*'
-      }
+      headers: previewHeaders,
+      redirect: 'follow'
     });
 
     const responseText = await previewResponse.text();
