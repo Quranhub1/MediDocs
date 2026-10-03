@@ -297,25 +297,43 @@ const fetchIcedrivePreview = async (shareUrl) => {
   let directUrl = '';
   let thumbnailUrl = metadata.thumbnail;
 
-  // For public image shares, the signed thumbnail embedded in the share
-  // metadata is already a usable preview resource. Use it first so a change
-  // to Icedrive's internal API cannot break image previews.
-  const isImageExtension = /^(?:jpe?g|png|gif|webp|svg)$/i.test(
-    String(metadata.shareData?.extension || '')
+  const isAllowedIcedriveResourceUrl = (value) => {
+    try {
+      const parsed = new URL(String(value || '').trim());
+      const hostname = parsed.hostname.replace(/^www\./, '').toLowerCase();
+      return parsed.protocol === 'https:' &&
+        (hostname === 'icedrive.net' || hostname === 'icedrive.io' || hostname.endsWith('.icedrive.io'));
+    } catch {
+      return false;
+    }
+  };
+
+  const takeIcedriveDirectUrl = (value) => {
+    const candidate = normalizeRemoteUrl(value);
+    return isAllowedIcedriveResourceUrl(candidate) ? candidate : '';
+  };
+
+  // Some Icedrive page/API revisions expose the signed full-file URL directly
+  // in the share metadata. Prefer it when present.
+  const metadataResource = findPreviewResource(metadata.shareData);
+  directUrl = takeIcedriveDirectUrl(
+    metadata.shareData?.download_url ||
+    metadata.shareData?.downloadUrl ||
+    metadataResource.direct
   );
 
   // Icedrive's preview endpoint may return a direct URL or a thumbnail.
   // Keep it as a secondary source for PDFs, Office files, and other types.
   const apiUrl = `https://icedrive.net/API/Internal/V1/?request=file-preview&id=${encodeURIComponent(metadata.fileId)}&sess=1`;
-  try {
-    const previewHeaders = {
-      'User-Agent': 'Mozilla/5.0 (compatible; MediDocs/1.0; document-preview)',
-      'Accept': 'application/json,text/plain,*/*',
-      'Referer': canonicalShareUrl,
-      'Origin': 'https://icedrive.net'
-    };
-    if (shareCookie) previewHeaders.Cookie = shareCookie;
+  const previewHeaders = {
+    'User-Agent': 'Mozilla/5.0 (compatible; MediDocs/1.0; document-preview)',
+    'Accept': 'application/json,text/plain,*/*',
+    'Referer': canonicalShareUrl,
+    'Origin': 'https://icedrive.net'
+  };
+  if (shareCookie) previewHeaders.Cookie = shareCookie;
 
+  try {
     const previewResponse = await fetch(apiUrl, {
       headers: previewHeaders,
       redirect: 'follow'
@@ -326,23 +344,57 @@ const fetchIcedrivePreview = async (shareUrl) => {
       try {
         const previewData = JSON.parse(responseText);
         const found = findPreviewResource(previewData);
-        directUrl = found.direct;
+        directUrl = takeIcedriveDirectUrl(found.direct) || directUrl;
         thumbnailUrl = found.thumbnail || thumbnailUrl;
       } catch {
         const directMatch = responseText.match(/["']download_url["']\s*:\s*["']([^"']+)["']/i);
         const thumbnailResponseMatch = responseText.match(/["']thumbnail["']\s*:\s*["']([^"']+)["']/i);
-        directUrl = normalizeRemoteUrl(directMatch?.[1] || '');
+        directUrl = takeIcedriveDirectUrl(directMatch?.[1]) || directUrl;
         thumbnailUrl = normalizeRemoteUrl(thumbnailResponseMatch?.[1] || thumbnailUrl);
       }
     } else {
       console.warn('[ICEDRIVE] Preview API returned no usable response:', previewResponse.status);
     }
   } catch (error) {
-    console.warn('[ICEDRIVE] Preview API request failed; using share thumbnail fallback:', error?.message || error);
+    console.warn('[ICEDRIVE] Preview API request failed:', error?.message || error);
+  }
+
+  // The preview endpoint is not the only Icedrive endpoint that can mint a
+  // signed file-server URL. The web app also uses download-multi, which is
+  // the appropriate fallback when preview is forbidden (HTTP 403).
+  if (!directUrl) {
+    const downloadApiUrl =
+      `https://icedrive.net/API/Internal/V1/?request=download-multi&items=file-${encodeURIComponent(metadata.fileId)}&sess=1`;
+
+    try {
+      const downloadResponse = await fetch(downloadApiUrl, {
+        headers: previewHeaders,
+        redirect: 'follow'
+      });
+
+      const downloadText = await downloadResponse.text();
+      if (downloadResponse.ok && downloadText) {
+        try {
+          const downloadData = JSON.parse(downloadText);
+          const candidate =
+            downloadData?.urls?.[0]?.url ||
+            downloadData?.urls?.[0]?.download_url ||
+            findPreviewResource(downloadData).direct;
+          directUrl = takeIcedriveDirectUrl(candidate);
+        } catch {
+          const directMatch = downloadText.match(/["'](?:url|download_url)["']\s*:\s*["']([^"']+)["']/i);
+          directUrl = takeIcedriveDirectUrl(directMatch?.[1]);
+        }
+      } else {
+        console.warn('[ICEDRIVE] Download URL API returned no usable response:', downloadResponse.status);
+      }
+    } catch (error) {
+      console.warn('[ICEDRIVE] Download URL API request failed:', error?.message || error);
+    }
   }
 
   // A thumbnail is never a valid substitute for the original document.
-  // Read Online and Download must use the full file URL returned by Icedrive.
+  // Read Online and Download must use the signed full-file URL returned by Icedrive.
   const previewUrl = directUrl;
   if (!previewUrl) {
     throw new Error('Icedrive did not expose a full-file download URL for this share');
