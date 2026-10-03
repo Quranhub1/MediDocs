@@ -37,6 +37,11 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
     ? getDocumentContentUrl(doc)
     : (validUrl ? filePath : '');
 
+  // Icedrive's public share page provides its own document viewer. Use the provider
+  // viewer directly instead of proxying the file through Apryse; this also avoids
+  // Icedrive signed-URL/streaming incompatibilities for public shares.
+  const useIcedriveEmbed = provider === 'icedrive.net' || provider.endsWith('.icedrive.net') || provider === 'icedrive.io' || provider.endsWith('.icedrive.io');
+
   const flushProgress = () => {
     if (!sessionStartedRef.current || !onProgress) return;
     const now = Date.now();
@@ -294,27 +299,41 @@ const DocumentReader = ({ document: doc, onClose, onProgress, onDownload }) => {
         </div>
 
         <div className="relative flex-1 min-h-0 bg-gray-100 dark:bg-gray-900">
-          <div ref={viewerElementRef} className="w-full h-full" />
 
-          {!viewerReady && !contentError && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-100/90 dark:bg-gray-900/90">
-              <div className="text-center px-6">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600 mx-auto mb-3" />
-                <p className="text-gray-700 dark:text-dark-text font-medium">Loading MediDocs document viewer...</p>
-                <p className="text-gray-500 dark:text-dark-muted text-sm mt-1">
-                  Preparing the complete file, not a thumbnail or provider preview.
-                </p>
-              </div>
-            </div>
-          )}
+          {useIcedriveEmbed && validUrl ? (
+            <iframe
+              src={filePath}
+              title={doc.title || fileName || 'Icedrive Document Viewer'}
+              className="w-full h-full border-0"
+              allowFullScreen
+              allow="fullscreen"
+              referrerPolicy="strict-origin-when-cross-origin"
+            />
+          ) : (
+            <>
+              <div ref={viewerElementRef} className="w-full h-full" />
 
-          {viewerReady && !documentLoaded && !contentError && (
-            <div className="absolute inset-0 pointer-events-none flex items-center justify-center bg-gray-100/50 dark:bg-gray-900/50">
-              <div className="text-center px-6">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-3" />
-                <p className="text-gray-700 dark:text-dark-text font-medium">Opening the complete document...</p>
-              </div>
-            </div>
+              {!viewerReady && !contentError && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-100/90 dark:bg-gray-900/90">
+                  <div className="text-center px-6">
+                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600 mx-auto mb-3" />
+                    <p className="text-gray-700 dark:text-dark-text font-medium">Loading MediDocs document viewer...</p>
+                    <p className="text-gray-500 dark:text-dark-muted text-sm mt-1">
+                      Preparing the complete file, not a thumbnail or provider preview.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {viewerReady && !documentLoaded && !contentError && (
+                <div className="absolute inset-0 pointer-events-none flex items-center justify-center bg-gray-100/50 dark:bg-gray-900/50">
+                  <div className="text-center px-6">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-3" />
+                    <p className="text-gray-700 dark:text-dark-text font-medium">Opening the complete document...</p>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {showFallback && contentError && (
