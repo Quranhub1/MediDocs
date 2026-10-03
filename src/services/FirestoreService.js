@@ -1,8 +1,12 @@
 import {
   collection,
+  collectionGroup,
   getDocs,
   getDocsFromCache,
   onSnapshot,
+  query,
+  where,
+  limit,
   addDoc,
   updateDoc,
   doc as docRef,
@@ -120,40 +124,34 @@ export const subscribeToCourseUnits = (courseId, semesterId, onData, onError) =>
 };
 
 export const subscribeToDocuments = (courseId, semesterId, unitId, onData, onError) => {
-  if (!courseId || !semesterId || !unitId) return () => {};
+  if (!db || !courseId || !semesterId || !unitId) return () => {};
 
-  let disposed = false;
-  let refreshTimer = null;
-
-  const load = async (forceRefresh = false) => {
-    try {
-      const result = await fetchResourceIndexFromApi(10000, forceRefresh);
-      if (disposed) return;
-      if (!result?.success) throw new Error(result?.error || 'Resource index unavailable');
-
-      const data = (result.data || []).filter((item) =>
-        String(item.courseId || '') === String(courseId) &&
-        String(item.semesterId || '') === String(semesterId) &&
-        String(item.unitId || '') === String(unitId)
-      );
-
-      onData(data);
-    } catch (error) {
-      if (disposed) return;
-      console.warn('[DOCUMENTS] Server document index unavailable:', error?.message || error);
+  const path = `RESOURCES_STUDYPEDIA/${courseId}/semesters/${semesterId}/courseunits/${unitId}/documents`;
+  return onSnapshot(
+    collection(db, path),
+    (snapshot) => {
+      const documents = snapshot.docs.map((item) => {
+        const data = item.data();
+        return {
+          id: item.id,
+          ...data,
+          status: data.status || 'free',
+          courseId,
+          semesterId,
+          unitId,
+          courseName: data.courseName || data.course || courseId,
+          semesterName: data.semesterName || semesterId,
+          unitName: data.unitName || data.unit || unitId,
+          createdAtDate: convertTimestamp(data.createdAt)
+        };
+      }).filter((item) => item.status !== 'deleted');
+      onData(documents);
+    },
+    (error) => {
+      console.error('[REALTIME] Documents listener failed:', error);
       if (onError) onError(error);
     }
-  };
-
-  void load(false);
-  refreshTimer = window.setInterval(() => {
-    void load(true);
-  }, 5 * 60 * 1000);
-
-  return () => {
-    disposed = true;
-    if (refreshTimer) window.clearInterval(refreshTimer);
-  };
+  );
 };
 
 // Fetch all documents from the RESOURCES_STUDYPEDIA collection
@@ -448,36 +446,31 @@ export const fetchCourseUnits = async (courseId, semesterId, forceRefresh = fals
 };
 
 // Get documents only for the selected course unit.
-export const fetchDocuments = async (courseId, semesterId, unitId, forceRefresh = false) => {
+export const fetchDocuments = async (courseId, semesterId, unitId) => {
   try {
-    if (!courseId || !semesterId || !unitId) {
+    if (!db || !courseId || !semesterId || !unitId) {
       return { success: false, error: 'Course ID, Semester ID, and Unit ID required', data: [] };
     }
 
-    const result = await fetchResourceIndexFromApi(10000, forceRefresh);
-    if (!result?.success) {
+    const path = `RESOURCES_STUDYPEDIA/${courseId}/semesters/${semesterId}/courseunits/${unitId}/documents`;
+    const snapshot = await getDocs(collection(db, path));
+    const data = snapshot.docs.map((item) => {
+      const itemData = item.data();
       return {
-        success: false,
-        error: result?.error || 'Resource index unavailable',
-        data: [],
-        quotaExceeded: Boolean(result?.quotaExceeded)
+        id: item.id,
+        ...itemData,
+        status: itemData.status || 'free',
+        courseId,
+        semesterId,
+        unitId,
+        courseName: itemData.courseName || itemData.course || courseId,
+        semesterName: itemData.semesterName || semesterId,
+        unitName: itemData.unitName || itemData.unit || unitId,
+        createdAtDate: convertTimestamp(itemData.createdAt)
       };
-    }
+    }).filter((item) => item.status !== 'deleted');
 
-    const data = (result.data || []).filter((item) =>
-      String(item.courseId || '') === String(courseId) &&
-      String(item.semesterId || '') === String(semesterId) &&
-      String(item.unitId || '') === String(unitId)
-    );
-
-    return {
-      success: true,
-      data: data.map((item) => ({
-        ...item,
-        createdAtDate: convertTimestamp(item.createdAt || item.createdAtDate),
-        status: item.status || 'free'
-      }))
-    };
+    return { success: true, data };
   } catch (error) {
     console.error('Error fetching documents:', error);
     return { success: false, error: error.message, data: [] };
