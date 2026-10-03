@@ -1,12 +1,8 @@
 import {
   collection,
-  collectionGroup,
   getDocs,
   getDocsFromCache,
   onSnapshot,
-  query,
-  where,
-  limit,
   addDoc,
   updateDoc,
   doc as docRef,
@@ -154,36 +150,28 @@ export const subscribeToDocuments = (courseId, semesterId, unitId, onData, onErr
   );
 };
 
-// Latest resources follow Studypedia's collection-group pattern. Firestore keeps the
-// hierarchy in the database while the homepage only asks for documents marked
-// `time: 'latest'`, avoiding a full resource scan on every visit.
+// Latest resources follow Studypedia's collec// Latest resources are served from the backend resource index. This keeps the
+// homepage independent of collection-group Firestore permissions and avoids a
+// collection-group read against the entire documents hierarchy.
 export const fetchLatestDocuments = async (maxItems = 10) => {
   try {
-    if (!db) return { success: false, error: 'Firestore is not configured', data: [] };
-
-    const latestQuery = query(
-      collectionGroup(db, 'documents'),
-      where('time', '==', 'latest'),
-      limit(Math.max(1, Math.min(50, Number(maxItems) || 10)))
-    );
-    const snapshot = await getDocs(latestQuery);
-
-    const data = snapshot.docs.map((item) => {
-      const itemData = item.data();
-      const pathParts = item.ref.path.split('/');
+    const result = await fetchResourceIndexFromApi(maxItems, false);
+    if (!result?.success) {
       return {
-        id: item.id,
-        ...itemData,
-        status: itemData.status || 'free',
-        courseId: pathParts[1] || itemData.courseId || null,
-        semesterId: pathParts[3] || itemData.semesterId || null,
-        unitId: pathParts[5] || itemData.unitId || null,
-        courseName: itemData.courseName || itemData.course || pathParts[1] || null,
-        semesterName: itemData.semesterName || itemData.semester || pathParts[3] || null,
-        unitName: itemData.unitName || itemData.unit || pathParts[5] || null,
-        createdAtDate: convertTimestamp(itemData.createdAt)
+        success: false,
+        error: result?.error || 'Resource index unavailable',
+        data: []
       };
-    }).filter((item) => item.status !== 'deleted');
+    }
+
+    const data = (result.data || [])
+      .map((item) => ({
+        ...item,
+        status: item.status || 'free',
+        createdAtDate: convertTimestamp(item.createdAt)
+      }))
+      .filter((item) => item.status !== 'deleted')
+      .slice(0, Math.max(1, Math.min(50, Number(maxItems) || 10)));
 
     return { success: true, data };
   } catch (error) {
