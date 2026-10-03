@@ -23,13 +23,16 @@ export const BookmarkProvider = ({ children }) => {
 
   useEffect(() => {
     if (isAuthenticated && currentUser && db) {
-      loadBookmarks();
+      void loadBookmarks();
+    } else {
+      setBookmarks([]);
     }
+
     if (db) {
-      loadTrending();
+      void loadTrending();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [currentUser?.uid, isAuthenticated]);
 
   const loadBookmarks = async () => {
     if (!isAuthenticated || !currentUser || !db) return;
@@ -76,8 +79,9 @@ export const BookmarkProvider = ({ children }) => {
           description: document.description,
           createdAt: serverTimestamp()
         };
-        const docRef = await setDoc(doc(collection(db, 'users', currentUser.uid, 'bookmarks')), bookmark);
-        setBookmarks(prev => [{ id: docRef.id, ...bookmark }, ...prev]);
+        const bookmarkRef = doc(collection(db, 'users', currentUser.uid, 'bookmarks'));
+        await setDoc(bookmarkRef, bookmark);
+        setBookmarks(prev => [{ id: bookmarkRef.id, ...bookmark }, ...prev]);
         addToast('Bookmarked!', 'success');
       }
     } catch (error) {
@@ -93,8 +97,9 @@ export const BookmarkProvider = ({ children }) => {
         term: searchTerm.trim(),
         createdAt: serverTimestamp()
       };
-      const docRef = await setDoc(doc(collection(db, 'users', currentUser.uid, 'recentSearches')), recent);
-      setRecentSearches(prev => [{ id: docRef.id, ...recent }, ...prev.filter(s => s.term !== searchTerm.trim())].slice(0, 10));
+      const recentRef = doc(collection(db, 'users', currentUser.uid, 'recentSearches'));
+      await setDoc(recentRef, recent);
+      setRecentSearches(prev => [{ id: recentRef.id, ...recent }, ...prev.filter(s => s.term !== searchTerm.trim())].slice(0, 10));
     } catch (error) {
       console.error('Error saving search:', error);
     }
