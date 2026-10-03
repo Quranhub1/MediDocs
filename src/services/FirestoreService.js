@@ -154,6 +154,44 @@ export const subscribeToDocuments = (courseId, semesterId, unitId, onData, onErr
   );
 };
 
+// Latest resources follow Studypedia's collection-group pattern. Firestore keeps the
+// hierarchy in the database while the homepage only asks for documents marked
+// `time: 'latest'`, avoiding a full resource scan on every visit.
+export const fetchLatestDocuments = async (maxItems = 10) => {
+  try {
+    if (!db) return { success: false, error: 'Firestore is not configured', data: [] };
+
+    const latestQuery = query(
+      collectionGroup(db, 'documents'),
+      where('time', '==', 'latest'),
+      limit(Math.max(1, Math.min(50, Number(maxItems) || 10)))
+    );
+    const snapshot = await getDocs(latestQuery);
+
+    const data = snapshot.docs.map((item) => {
+      const itemData = item.data();
+      const pathParts = item.ref.path.split('/');
+      return {
+        id: item.id,
+        ...itemData,
+        status: itemData.status || 'free',
+        courseId: pathParts[1] || itemData.courseId || null,
+        semesterId: pathParts[3] || itemData.semesterId || null,
+        unitId: pathParts[5] || itemData.unitId || null,
+        courseName: itemData.courseName || itemData.course || pathParts[1] || null,
+        semesterName: itemData.semesterName || itemData.semester || pathParts[3] || null,
+        unitName: itemData.unitName || itemData.unit || pathParts[5] || null,
+        createdAtDate: convertTimestamp(itemData.createdAt)
+      };
+    }).filter((item) => item.status !== 'deleted');
+
+    return { success: true, data };
+  } catch (error) {
+    console.error('[REALTIME] Failed to load latest documents:', error);
+    return { success: false, error: error.message, data: [] };
+  }
+};
+
 // Fetch all documents from the RESOURCES_STUDYPEDIA collection
 let resourceIndexCache = null;
 let resourceIndexCacheAt = 0;
